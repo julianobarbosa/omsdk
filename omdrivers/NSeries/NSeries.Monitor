@@ -1,0 +1,111 @@
+{
+   "System": {
+    "Key": ["ServiceTag"],
+    "MainHealth": ["PrimaryStatus"],
+    "BasicInventory": [
+       "SysObjectID",
+       "Model",
+       "Location",
+       "Description",
+       "FirmwareVersion",
+       "NetwUMACAddress",
+       "NetwUSerialNo",
+       "PPID",
+       "ExpressServiceCode",
+       "Hostname",
+       "ManagementIP"
+    ],
+    "Metrics": ["SwitchUptime"]
+  },
+  "dellNetFanTray": {
+    "Key": [
+      "_SNMPIndex"
+    ],
+    "Health": [
+      "OperStatus"
+    ],
+    "Inventory": [
+      "Type",
+      "Speed",
+      "dellNetFanDeviceIndex"
+    ]
+  },
+  "dellNetFan": {
+    "Key": [
+      "_SNMPIndex"
+    ],
+    "Health": [
+      "OperStatus"
+    ],
+    "Inventory": [
+      "envMonFanStatusIndex",
+      "envMonFanStatusDescr"
+    ],
+    "Metrics": [
+      "envMonFanSpeed"
+    ]
+  },
+  "dellNetPort": {
+    "Key": [
+      "ifIndex"
+    ],
+    "Health": ["Status"],
+    "Inventory": [
+      "Description",
+      "Type",
+      "Class",
+      "Address",
+      "dellNetSysIfName"
+    ],
+    "Metrics": [
+      "ifInOctets",
+      "ifOutOctets",
+      "ifInDiscards",
+      "ifOutDiscards",
+      "ifInErrors",
+      "ifOutErrors",
+      "ifInUnknownProtos",
+      "ifSpeed"
+    ]
+  },
+  "dellNetPowerSupply": {
+    "Key": [
+      "envMonSupplyStatusIndex"
+    ],
+    "Health": [
+      "OperStatus"
+    ],
+    "Inventory": [
+      "envMonSupplyStatusDescr",
+      "envMonSupplySource"
+    ],
+    "Metrics": [
+      "envMonSupplyCurrentPower",
+      "envMonSupplyAveragePower",
+      "envMonSupplyAvgStartTime"
+    ]
+  },
+  "dellNetPowerSupplyTray": {
+    "Key": [
+      "dellNetPowerDeviceIndex"
+    ],
+    "Health": [
+      "OperStatus"
+    ],
+    "Inventory": [
+      "Type"
+    ]
+  },
+  "dellNetProcessor": {
+    "Key": [
+      "_SNMPIndex"
+    ],
+    "Inventory": [
+      "MemSize"
+    ]
+  },
+  "Subsystem" : {
+    "Key" : ["Key"],
+      "MainHealth" : [ "PrimaryStatus" ]
+  }
+}

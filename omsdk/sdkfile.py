@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -51,6 +50,7 @@ logger = logging.getLogger(__name__)
 
 class Share(object):
     ShareType = EnumWrapper('ShareType', {'NFS':0, 'CIFS':2, 'TFTP' : 3, 'FTP' : 4, 'SCP': 5}).enum_type
+    ShareTypeRedfish = EnumWrapper('ShareTypeRedfish', {'NFS': 'NFS', 'CIFS': 'CIFS', 'TFTP': 'TFTP', 'FTP': 'FTP', 'SCP': 'SCP'}).enum_type
     LocalFolderType = EnumWrapper('LocalFolderType', {'Windows':-1, 'Linux':-2}).enum_type
     vFlashType = EnumWrapper('vFlashType', {'VFLASH' : 4}).enum_type
     IPAddressTypeEnum = EnumWrapper('IPAD', { 'Invalid' : 0, 'IPv4' : 1, 'IPv6': 2, 'DNS' : 16}).enum_type
@@ -631,6 +631,10 @@ class FileOnShare(Share):
        return self.remote.share_type
 
     @property
+    def remote_share_type_redfish(self):
+        return Share.ShareTypeRedfish[self.remote.share_type.name]
+
+    @property
     def remote_ipaddr(self):
        return self.remote.ipaddr
 
@@ -1004,3 +1008,16 @@ class cfgprocessor:
 				tst["DevicesCount"] = len(self.hostgroup[hgroup])
 				self.topology["DeviceGroups"][hgroup] = tst
 		return self
+
+
+class file_share_manager:
+    @staticmethod
+    def create_share_obj(share_path=None, creds=None, isFolder=True):
+        #Check if local file path confirms to unix/windows file path format
+        win_format = re.match(r"^[a-zA-Z]:\\(((?![<>:\"/\\|?*]).)+((?<![ .])\\)?)*$", share_path)
+        unix_format = re.match(r'^(\/[^\/\\ ]*)+\/?$', share_path)
+
+        if win_format or unix_format:
+            return LocalFile(local=share_path)
+        else:
+            return FileOnShare(share_path,isFolder=isFolder, creds=creds)

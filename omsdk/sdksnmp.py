@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -50,7 +49,7 @@ except ImportError:
     PySnmpPresent = False
 
 class SNMPProtocol(ProtocolBase):
-    def __init__(self, host, cstring, rwstring = None):
+    def __init__(self, host, cstring = "public", rwstring = None, pOptions = None, useSNMPGetFlag = False):
         if PySnmpPresent:
             self.snmpe = SnmpEngine()
             self.cmdGen = cmdgen.CommandGenerator()
@@ -62,6 +61,16 @@ class SNMPProtocol(ProtocolBase):
         self.rwstring = rwstring
         if rwstring is None:
             self.rwstring = cstring
+        self.pOptions = pOptions
+        if pOptions is None:
+            self.pOptions = pOptions
+        if ':' in host:
+            self.udpx = Udp6TransportTarget((self.host, self.pOptions.port), timeout=self.pOptions.timeout,
+                                           retries=self.pOptions.nretries)
+        else:
+            self.udpx = UdpTransportTarget((self.host, self.pOptions.port), timeout=self.pOptions.timeout,
+                                           retries=self.pOptions.nretries)
+        self.useSNMPGetFlag = useSNMPGetFlag
 
     def reset_connection(self):
         pass
@@ -70,10 +79,14 @@ class SNMPProtocol(ProtocolBase):
         pass
 
 
-    def enumerate(self, clsName, resource, select = {}, resetTransport = False):
+    def enumerate(self, clsName, resource, select = {}, resetTransport = False, filter=None):
         retval = {}
         retval['Status'] = 'Success'
-        retval['Data'] = self._snmp_builder(clsName, resource)
+        # print("USESNMPPGET Flag is ",self.useSNMPGetFlag)
+        if self.useSNMPGetFlag:
+            retval['Data'] = self._snmp_builder_UseSNMPGet(clsName, resource)
+        else:
+            retval['Data'] = self._snmp_builder(clsName, resource)
         #return { 'Status' : 'Error', 'Message' : 'Not implemented' }
         return retval
 
@@ -86,7 +99,7 @@ class SNMPProtocol(ProtocolBase):
             logger.debug("host=" + self.host + ":community=" + self.rwstring)
             errorIndication, errorStatus, errorIndex, varBinds = self.cmdGen.setCmd(
                 cmdgen.CommunityData(self.rwstring),
-                cmdgen.UdpTransportTarget((self.host, 161)),
+                self.udpx,
                 *newvar)
             if errorIndication:
                 rjson = { 'Status' : 'Failed', 'Message' : str(errorIndication) }
@@ -117,7 +130,7 @@ class SNMPProtocol(ProtocolBase):
                 oids = [ ObjectType(ObjectIdentity(indexField)) ]
                 for (errorIndication, errorStatus, errorIndex, varBinds) in nextCmd(self.snmpe,
                     CommunityData(self.cstring, mpModel=0),
-                    UdpTransportTarget((self.host, 161)),
+                    self.udpx,
                     ContextData(),
                     *oids, lexicographicMode=False):
                     counter = counter + 1
@@ -182,7 +195,7 @@ class SNMPProtocol(ProtocolBase):
                     oids = [ ObjectType(ObjectIdentity(nextIdx)) ]
                 for (errorIndication, errorStatus, errorIndex, varBinds) in nextCmd(self.snmpe,
                     CommunityData(self.cstring, mpModel=0),
-                    UdpTransportTarget((self.host, 161)),
+                    self.udpx,
                     ContextData(),
                     *oids, lexicographicMode=False):
                     counter = counter + 1
@@ -253,7 +266,7 @@ class SNMPProtocol(ProtocolBase):
                 errorIndex,
                 varBinds) in nextCmd(self.snmpe,
                     CommunityData(self.cstring, mpModel=0),
-                    UdpTransportTarget((self.host, 161), timeout=1, retries=2),
+                    self.udpx,
                     ContextData(),
                     *oids,
                     lexicographicMode=False):
@@ -304,6 +317,43 @@ class SNMPProtocol(ProtocolBase):
             logger.debug(clsName + " is not present!!")
             logger.debug(str(exp))
             traceback.print_exc()
+        if (len(entity_raw[clsName]) <= 0):
+            return { }
+        elif (len(entity_raw[clsName]) > 1):
+            return entity_raw
+        else:
+            return { clsName : entity_raw[clsName][0] }
+
+    def _snmp_builder_UseSNMPGet(self, clsName, snmpview):
+        ifMibRevVars = {}
+        entity_raw = {}
+        entity_raw[clsName] = []
+        oids = []
+        entry = {}
+        try:
+            for attr in snmpview:
+                tmpoid = ObjectType(snmpview[attr])
+                oids.append(tmpoid)
+                errorIndication, errorStatus, errorIndex, varBinds = next(nextCmd(self.snmpe, CommunityData(self.cstring, mpModel=0), self.udpx, ContextData(), ObjectType(snmpview[attr]), lexicographicMode=False))
+                if errorIndication:
+                    logger.debug(errorIndication)
+                    continue
+                elif errorStatus:
+                    logger.debug('%s at %s' % (errorStatus.prettyPrint(),
+                                               errorIndex and varBinds[int(errorIndex) - 1][0] or '?'))
+                    continue
+                else:
+                    for varBind in varBinds:
+                        # pprint(varBind)
+                        # print(' = '.join([x.prettyPrint() for x in varBind]))
+                        entry[attr] = varBind[1].prettyPrint()
+            entry["_SNMPIndex"] = '0'
+            entity_raw[clsName].append(entry)
+        except Exception as exp:
+            logger.debug(clsName + " is not present!!")
+            logger.debug(str(exp))
+            traceback.print_exc()
+
         if (len(entity_raw[clsName]) <= 0):
             return { }
         elif (len(entity_raw[clsName]) > 1):

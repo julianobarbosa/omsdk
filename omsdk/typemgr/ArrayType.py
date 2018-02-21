@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -226,6 +225,30 @@ class ArrayType(TypeBase):
             elif not self._entries[i]._volatile:
                 self._entries[i].copy(other._entries[i])
         return True
+
+    def _get_combined_properties(self, obj1, obj2):
+        list1 = [i for i in obj1.__dict__ if not i.startswith('_')]
+        list1.extend([i for i in obj2.__dict__ if not i.startswith('_')])
+        return sorted(set(list1))
+
+    # Compare APIs:
+    def __eq__(self, other):
+        if not isinstance(other, type(self)):
+            raise TypeError('unorderable types: ' + type(self).__name__ +
+                            ", " + type(other).__name__)
+        combined_props = self._get_combined_properties(self, other)
+        for i in combined_props:
+            if i not in self.__dict__:
+                return False
+            if i not in other.__dict__:
+                return False
+            if self.__dict__[i].__ne__(other.__dict__[i]):
+                return False
+        return True
+
+    # Compare APIs:
+    def __ne__(self, other):
+        return self.__eq__(other) != True
 
     # Freeze APIs
     def freeze(self):

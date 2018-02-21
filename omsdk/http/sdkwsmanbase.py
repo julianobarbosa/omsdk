@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -35,12 +34,17 @@ import requests.adapters
 import requests.exceptions
 import requests.packages.urllib3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from requests.auth import HTTPBasicAuth
 
 
 from omsdk.sdkprotobase import ProtocolBase
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.http.sdkwsmanpdu import WsManRequest, WsManResponse
-from omsdk.http.sdkhttpep import HttpEndPoint, HttpEndPointOptions
+from omsdk.http.sdkhttpep import HttpEndPoint, HttpEndPointOptions, AuthenticationType
+from omsdk.sdkprotopref import ProtoPreference, ProtocolEnum
+from omsdk.sdkprint import PrettyPrint
+import logging
+logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -56,11 +60,20 @@ ReturnValue = EnumWrapper('ReturnValue', ReturnValueMap).enum_type
 
 
 class WsManOptions(HttpEndPointOptions):
-    def __init__(self):
+    def __init__(
+                 self, authentication = AuthenticationType.Basic, port = 443, connection_timeout = 20,
+                 read_timeout = 30, max_retries = 1, verify_ssl = False
+                ):
         if PY2:
-            super(WsManOptions, self).__init__()
+            super(WsManOptions, self).__init__(
+                 ProtocolEnum.WSMAN, authentication, port, connection_timeout,
+                 read_timeout, max_retries, verify_ssl
+                )
         else:
-            super().__init__()
+            super().__init__(
+                 ProtocolEnum.WSMAN, authentication, port, connection_timeout,
+                 read_timeout, max_retries, verify_ssl
+                )
 
 class WsManProtocolBase(ProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
@@ -80,10 +93,10 @@ class WsManProtocolBase(ProtocolBase):
         wsm.identify()
         return self._communicate(wsm)
 
-    def enumerate(self, clsName, resource, select = {}, resetTransport = False):
+    def enumerate(self, clsName, resource, select = {}, resetTransport = False, filter = None):
         wsm = WsManRequest()
         wsm.enumerate(to = self._proto_endpoint(), ruri=resource,
-                      selectors = select)
+                      selectors = select, filter = filter)
         return self._communicate(wsm)
 
     # Operation Invoke
@@ -95,6 +108,11 @@ class WsManProtocolBase(ProtocolBase):
         return self._communicate(wsm, name)
 
     def operation(self, wsmancmds, cmdname, *args):
+        ##########################Below are redfish codes, need to be removed once prtocol issue is addressed#####################
+        cmmd = str(cmdname)
+        if cmmd.endswith("_redfish"):
+            return self.redfish_operation(wsmancmds, cmdname, *args)
+        ##########################Above are redfish codes, need to be removed once prtocol issue is addressed#####################
         ruri = wsmancmds[cmdname]["ResourceURI"]
         act = wsmancmds[cmdname]["Action"]
         sset = {}
@@ -108,6 +126,268 @@ class WsManProtocolBase(ProtocolBase):
         wsm.add_selectors(sset)
         wsm.add_body(ruri, act, toargs['retval'])
         return self._communicate(wsm)
+
+##########################Below are redfish codes, need to be moved once prtocol issue is addressed#####################
+    def _build_attribute_config_payload(self, toargs_dict):
+        if not toargs_dict:
+            return None
+        payload ={}
+        if toargs_dict.__contains__("parentattr"):
+            payload[toargs_dict["parentattr"]]=toargs_dict["payload_param"]
+        else:
+            if not toargs_dict["payload_param"]:
+                return None
+            payload = toargs_dict["payload_param"]
+        return payload
+
+    def _build_redfish_payload(self, toargs_dict):
+        """Prepare the payload for http methods body
+
+        :param toargs_dict: name and value of arguments as dictionary.
+        :param path: dict.         .
+        :returns: returns a json/dict body for http method
+
+        """
+        #status = toargs_dict['Status']
+        retval = toargs_dict['retval']
+        if not retval:
+            return None
+        payload = {}
+        for key in retval:
+            val = retval[key]
+            if "/" in key:
+                tokens = key.split("/")
+                ''' right now implementation is only for params containing single "/", it will be extented for generic numbers of "/"'''
+                if not tokens[0] in payload:
+                    param_key = tokens[0]
+                    param_val ={}
+                    param_val[tokens[1]]=val
+                    payload[param_key]=param_val
+                else:
+                    param_key = payload[tokens[0]]
+                    param_key[tokens[1]]=val
+
+            else:
+                payload[key]=val
+        return payload
+
+    def _pack_http_method_args(self, resource_path, http_headers, http_body=None, http_args=None):
+        """Pack the arguments required for the redfish client methods (post/get/put/patch ...) as a key value pair in a dictionary
+
+        :param resource_path: resource path on the device.
+        :param resource_path: str.
+        :param http_headers: header for http....
+        :param http_headers: str.
+        :param http_body: body for http request
+        :param http_body: dict/json.
+        :returns: returns a key-value pair as a dictionary for arguemnts
+
+        """
+        method_args = {}
+        method_args['path'] = resource_path
+        method_args['args'] = http_args
+        method_args['headers'] = http_headers
+        if not http_body is None:
+            method_args['body'] = http_body
+        return method_args
+    def _pack_rest_method_args(self, auth, verify = False, data=None, headers=None):
+        """Pack the arguments required for the rest methods (post/get/put/patch ...) as a key value pair in a dictionary
+
+        :param auth: authentication object.
+        :param auth: HttpAuth.
+        :param verify: verify certificate
+        :param verify: boolean.
+        :param data: payload
+        :param data: dict/json.
+        :param headers: http headers
+        :param headers: str.
+        :returns: returns a key-value pair as a dictionary for arguemnts
+
+        """
+        method_args = {}
+        method_args['auth'] = auth
+        method_args['verify'] = verify
+        if headers:
+            method_args['headers'] = headers
+        if data:
+            method_args['data'] = json.dumps(data)
+        return method_args
+
+    def _get_base_url(self, ipaddr, resouce_path, port = 443):
+        baseurl = "https://" + ipaddr + ':' + str(port)+resouce_path
+        return baseurl
+
+    def _get_redfish_jobid(self, headers):
+        """Search jobid in the redfish_op
+
+        :param headers: response header.
+        :param headers: dict.         .
+        :returns: returns jobid
+
+        """
+        joblocation = headers['Location']
+        tokens = joblocation.split("/")
+        if tokens and tokens.__len__()>0:
+            return tokens[-1]
+        return None
+
+    def _remove_dummyparams(self, redfish_cmdlist, redfish_cmdname, argdict):
+        """Remove dummy params which are not required by the actual redfish command,
+            these dummy params are required for ceratin URI's and other supporting purposes
+
+        :param redfish_cmdlist: redfish command list.
+        :param redfish_cmdlist: list.
+        :param redfish_cmdname: name of the redfish operation to be performed
+        :param redfish_cmdname: str.
+        :param argdict: arguments for the redfish operation to be performed along with dummy args
+        :param args: dict.
+        :returns: returns a tuple containing required arguments for redfish call and uri
+
+        """
+        dummyargs = redfish_cmdlist[redfish_cmdname]['DummyParams']
+        paramtuples = redfish_cmdlist[redfish_cmdname]['Parameters']
+        newargdict = argdict['retval']
+        uriarg=''
+        for i in range(0, dummyargs):
+            key = paramtuples[i][0]
+            val = newargdict[key]
+            newargdict.pop(key)
+            if val.startswith("/"):
+                uriarg = uriarg+val
+            else:
+                uriarg=uriarg+'/'+val
+        argdict['retval'] = newargdict
+        return (argdict, uriarg)
+
+    def redfish_operation(self, redfish_cmdlist, redfish_cmdname, *args):
+        """Perform redfish operation as mentioned in redfish_cmdname
+
+        :param redfish_cmdlist: redfish command list.
+        :param redfish_cmdlist: list.
+        :param redfish_cmdname: name of the redfish operation to be performed
+        :param redfish_cmdname: str.
+        :param args: arguments for the redfish operation to be performed
+        :param args: list.
+        :returns: returns redfish command operation response
+
+        """
+        resource_uri = redfish_cmdlist[redfish_cmdname]["ResourceURI"]
+        action = redfish_cmdlist[redfish_cmdname]["Action"]
+        http_method=redfish_cmdlist[redfish_cmdname]["HttpMethod"]
+
+        if "SuccessCode" in redfish_cmdlist[redfish_cmdname]:
+            success_code = redfish_cmdlist[redfish_cmdname]["SuccessCode"]
+        else:
+            success_code = [200]
+
+        if "ReturnsJobid" in redfish_cmdlist[redfish_cmdname]:
+            returns_job_id = redfish_cmdlist[redfish_cmdname]["ReturnsJobid"]
+        else:
+            returns_job_id = False
+
+        rpath = resource_uri
+        if action:
+            rpath = rpath + '.' + action
+
+        toargs = self._build_ops(redfish_cmdlist, redfish_cmdname, *args)
+
+        if redfish_cmdlist[redfish_cmdname].__contains__("DummyParams") and redfish_cmdlist[redfish_cmdname]['DummyParams'] > 0:
+            (toargs, uriarg) = self._remove_dummyparams(redfish_cmdlist, redfish_cmdname, toargs)
+            rpath = rpath + uriarg
+        if redfish_cmdname.endswith("attributes_redfish") and toargs['retval']:
+            toargdict = toargs['retval']
+            redfish_payload = self._build_attribute_config_payload(toargdict)
+            rpath = rpath + toargs['retval']['r_path']
+        else:
+            redfish_payload = self._build_redfish_payload(toargs)
+
+        url = self._get_base_url(ipaddr= self.proto.ipaddr, resouce_path = rpath, port=self.proto.pOptions.port)
+        auth = HTTPBasicAuth(self.proto.creds.username, self.proto.creds.password)
+        cert_verify = False
+        headers = {'content-type': 'application/json'}
+        kwargs = self._pack_rest_method_args(auth = auth, verify = cert_verify, data = redfish_payload, headers = headers)
+        retval={}
+        try:
+            response = requests.request(method = http_method, url = url, **kwargs)
+        except Exception as exp:
+            logger.debug("Exception while executing redfish request: {}".format(exp))
+            retval["Status"]="Failed"
+            retval["Data"]={"Status":"Failed", "Message":"Failed to execute resfish request"}
+            return retval
+        retval = self._parse_redfish_output(response, success_code, returns_job_id)
+        return retval
+
+    def _parse_redfish_output(self, response, success_code, returns_jobid=False):
+        """Parse redfish response
+
+        :param redfish_response: response from redfish command.
+        :param success_code: status code expected.         .
+        :returns: returns a json/dict
+
+        """
+        retval ={}
+        Data = {}
+        if response == None:
+            logger.debug("redfish response is None")
+            retval["Status"] = "Failed"
+            retval["Data"] = {"Status": "Failed",
+                              "Message": "redfish response is None"}
+            return retval
+        headers = response.headers
+        retval["StatusCode"] = response.status_code
+        if response.status_code not in success_code:
+            print("response.status_code:"+str(response.status_code)+", success_code:"+str(success_code))
+            logger.debug("returned status code doesn't match with the expected success code")
+            logger.debug("Expected:"+str(success_code)+", returned status code:"+str(response.status_code))
+            retval["Status"]="Failed"
+            retval["Data"]={"Status":"Failed", "Message":"returned status code doesn't match with the expected success code"}
+            retval["Data"]['StatusCode']=response.status_code
+            if 'Content-Length' in headers and int(headers['Content-Length']) > 0:
+                if 'application/json' in headers['Content-Type']:
+                    error = response.json()
+                else:
+                    error = response.text
+                retval['error'] = error
+            return retval
+        retval["Status"]="Success"
+
+        if 'Content-Length' in headers and int(headers['Content-Length'])>0:
+            if 'application/json' in headers['Content-Type']:
+                body = response.json()
+            else:
+                body = response.text
+            Data['body'] = body
+        #Data['headers']=headers
+        Data['StatusCode']=response.status_code
+        if 'Location' in headers:
+            Data['next_ruri']=headers['Location']
+        if returns_jobid:
+            jobid = self._get_redfish_jobid(headers)
+            if jobid:
+                Data['jobid']=jobid
+                job={'JobId':jobid, 'ResourceURI':headers['Location']}
+                retval['Job']=job
+                retval['Return'] = 'JobCreated'
+        retval['Data']=Data
+        return retval
+
+    def _get_redfish_jobid(self, headers):
+        """Search jobid in the redfish_op
+
+        :param headers: response header.
+        :param headers: dict.         .
+        :returns: returns jobid
+
+        """
+        joblocation = headers['Location']
+        tokens = joblocation.split("/")
+        if tokens and tokens.__len__()>0:
+            return tokens[-1]
+        return None
+
+
+
+##########################Above are redfish codes, need to be moved once prtocol issue is addressed#####################
 
     def _proto_connect(self):
         pass
@@ -129,15 +409,20 @@ class WsManProtocolBase(ProtocolBase):
             self._logger.debug("Received: " + str(result))
             en = WsManResponse().execute_str(result)
             out = self._parse_output(en, name)
+
+            if out['Status'] != 'Success':
+                self._logger.error(PrettyPrint.prettify_json(out))
+
             return out
         except Exception as ex:
-            self._logger.debug(str(ex))
+            self._logger.error(str(ex))
             # fake as if the error came from the WsMan subsystem
             sx = WsManRequest()
             sx.add_error(ex)
             self._logger.debug(sx.get_text())
             en = WsManResponse().execute_str(sx.get_text())
             out = self._parse_output(en)
+            self._logger.error(PrettyPrint.prettify_json(out))
             return out
 
     def printx(self, json_object):

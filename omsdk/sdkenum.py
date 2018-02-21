@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -109,12 +108,30 @@ class MonitorScopeFilter(Filter):
             super(MonitorScopeFilter, self).__init__(*args)
         else:
             super().__init__(*args)
+        self.monitorScopedefaultMap = {
+            MonitorScope.Key : "Not Available",
+            MonitorScope.Metrics : None,
+            MonitorScope.ConfigState : "Not Available",
+            MonitorScope.BasicInventory : "Not Available",
+            MonitorScope.OtherInventory : "Not Available",
+            MonitorScope.Inventory : "Not Available",
+            MonitorScope.MainHealth : None,  # Main component health
+            MonitorScope.OtherHealth : None,  # other health component
+            MonitorScope.Health : None
+        }
     def allowedtype(self, scopeType):
         return type(scopeType) == type(MonitorScope)
     def check(self, scopeEnum):
         return TypeHelper.belongs_to(MonitorScope, scopeEnum)
     def all(self):
         return self._all(MonitorScope)
+    def getdefaultMap(self, mscope):
+        if mscope in self.monitorScopedefaultMap:
+            return self.monitorScopedefaultMap[mscope]
+        else:
+            return None
+    def setdefaultMap(self, mscope, ndefval):
+        self.monitorScopedefaultMap[mscope] = ndefval
 
 def CreateMonitorScopeFilter(argument = ""):
     if argument == "":

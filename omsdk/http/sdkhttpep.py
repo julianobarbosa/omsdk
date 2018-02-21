@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -42,21 +41,25 @@ import logging
 
 
 AuthenticationTypeMap = {
-    'Basic' : 1
+    'Basic' : 1,
+    'Digest' : 2,
+    'OAuth1' : 3,
+    'OAuth2' : 4
 }
 AuthenticationType = EnumWrapper('AT', AuthenticationTypeMap).enum_type
 
 
 class HttpEndPointOptions(object):
-    def __init__(self):
-        self.connection_timeout = 10 # establish a connection
-        self.read_timeout = 50 # how long to wait for response from client
-        self.max_retries = 1
-        self.skip_ca_check = True
-        self.skip_cn_check = True
-        self.verify_ssl = None
-        self.authentication = AuthenticationType.Basic
-        self.port = 443
+    def __init__(self, enid, authentication, port, connection_timeout, read_timeout, max_retries, verify_ssl):
+        self.enid = enid
+        self.connection_timeout = connection_timeout # establish a connection
+        self.read_timeout = read_timeout # how long to wait for response from client
+        self.max_retries = max_retries 
+        self.verify_ssl = verify_ssl 
+        self.authentication = authentication 
+        self.port = port 
+		#self.skip_ca_check = True
+        #self.skip_cn_check = True
 
 class HttpEndPointProtocolException(Exception):
     pass

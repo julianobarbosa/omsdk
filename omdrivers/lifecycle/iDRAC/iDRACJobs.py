@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -63,9 +62,42 @@ class iDRACJobs(iBaseJobApi):
         return self.entity._jobq_setup(jobs = job_list, startat=schtime)
 
     def delete_job(self, jobid):
+        """
+            Delete a job
+
+            :param jobid: Job ID
+            :type jobid: str
+            :return: success/failure response
+            :rtype: JSON
+
+
+            .. code-block:: python
+                :caption: Examples
+                :name: Examples
+
+            # Delete a job
+            job_status = idrac.job_mgr.delete_job(jobid="jid_1234")
+        """
+        if self.entity.use_redfish:
+            rjson = self.entity._delete_job_redfish(job_id = jobid)
+            return rjson
         return self.entity._jobq_delete(jobid = jobid)
 
     def delete_all_jobs(self):
+        """
+            Delete all jobs
+
+            :return: success/failure response
+            :rtype: JSON
+
+
+            .. code-block:: python
+                :caption: Examples
+                :name: Examples
+
+            # Delete all jobs
+            job_status = idrac.job_mgr.delete_all_jobs()
+        """
         return self.entity._jobq_delete(jobid ="JID_CLEARALL")
 
     def _get_osd_job_details(self):
@@ -84,10 +116,30 @@ class iDRACJobs(iBaseJobApi):
         }
 
     def get_job_details(self, jobid):
+        if self.entity.use_redfish:
+            return self.get_job_details_redfish(jobid)
         selector = { "InstanceID" : jobid }
         return self.entity.cfactory.opget(iDRACJobsEnum.Jobs, selector)
 
     def get_job_status(self, jobid):
+        """
+            Get the job status
+
+            :param jobid: Job ID
+            :type jobid: str
+            :return: success/failure response
+            :rtype: JSON
+
+
+            .. code-block:: python
+                :caption: Examples
+                :name: Examples
+
+            # Get Job Status
+            job_status = idrac.job_mgr.get_job_status(jobid="jid_1234")
+        """
+        if self.entity.use_redfish:
+            return self.get_job_status_redfish(jobid)
         jobs = {}
         jobret = { "Status" : TypeHelper.resolve(JobStatusEnum.InProgress) }
         if jobid.startswith('DCIM_OSD'):
@@ -109,8 +161,6 @@ class iDRACJobs(iBaseJobApi):
             jobstatus = jb['JobStatus']
             if jobstatus == 'Completed':
                 jobstaten = JobStatusEnum.Success
-            elif 'Message' in jb and jb['Message'] and 'completed' in jb['Message']:
-                jobstaten = JobStatusEnum.Success
             elif jobstatus == 'Failed':
                 jobstaten = JobStatusEnum.Failed
             elif jobstatus == 'Pending':
@@ -123,6 +173,12 @@ class iDRACJobs(iBaseJobApi):
                 jobstaten = JobStatusEnum.InProgress
             elif jobstatus.endswith('Invalid'):
                 jobstaten = JobStatusEnum.InProgress
+            elif jobstatus.endswith('Success'):
+                jobstaten = JobStatusEnum.Success
+            elif jobstatus.endswith('Errors'):
+                jobstaten = JobStatusEnum.Failed
+            elif 'Message' in jb and jb['Message'] and 'completed' in jb['Message'] and 'errors' not in jb['Message']:
+                jobstaten = JobStatusEnum.Success
             else:
                 jobstaten = JobStatusEnum.InProgress
             jb['Status'] = TypeHelper.resolve(jobstaten)
@@ -160,19 +216,30 @@ class iDRACJobs(iBaseJobApi):
         elif not jobid:
             rjson['retval'] = False
             return rjson
-        rjson = self.job_wait(jobid, track_jobid, show_progress) 
+        rjson = self.job_wait(jobid, track_jobid, show_progress)
         rjson['file'] = fname
         return rjson
 
     def job_wait(self, jobid, track_jobid = True, show_progress=False,
                        wait_for = 2*60*60):  # wait for a 2 hours (longgg time)
+        """Wait for the job to finish(fail/success)
+
+        :param jobid: id of the job.
+        :param path: str.         .
+        :returns: returns a json/dict containing job details
+
+        """
         if track_jobid:
             self.last_job = jobid
         ret_json = {}
         job_ret = False
         wait_till = time.time() + wait_for
         while True:
-            status = self.get_job_status(jobid)
+            status = {}
+            if self.entity.use_redfish:
+                status = self.get_job_status_redfish(jobid)
+            else:
+                status = self.get_job_status(jobid)
             if not 'Status' in status:
                 logger.debug("Invalid Status")
             else:
@@ -209,3 +276,75 @@ class iDRACJobs(iBaseJobApi):
         return ret_json
 
     # End Job Functions
+    def get_job_details_redfish(self, jobid):
+        """Gets Details of the job
+
+        :param jobid: id of the job.
+        :param path: str.         .
+        :returns: returns a json/dict containing job details
+
+        """
+        detail = None
+        try:
+            detail = self.entity._get_idracjobdeatilbyid_redfish(job_id=jobid)
+        except:
+            logger.debug("Exception in getting job details")
+
+        if detail and 'Status' in detail and detail['Status']=='Success' and 'Data' in detail and 'body' in detail['Data']:
+            jobs = detail['Data']['body']
+            detail['Data']={}
+            detail['Data']['Jobs']=jobs
+            return detail
+
+        retval ={}
+        if detail:
+            retval['StatusCode']=detail['StatusCode']
+        retval["Status"] = "Failed"
+        if detail and detail['StatusCode']==501:
+            retval["Data"] = {"Status": "Failed",
+                              "Message": "Failed to get job detail. Your iDRAC Firmware does not support this operation."}
+        else:
+            retval["Data"] = {"Status": "Failed",
+                              "Message": "Failed to get job detail"}
+
+        return retval
+
+    def get_job_status_by_msgid(self, msg_id):
+        print("msg_id="+msg_id)
+        severity = self.entity.eemi_registry[msg_id]["Severity"]
+        print("Severity="+severity)
+        if severity is "Informational":
+            return JobStatusEnum.Success
+        return JobStatusEnum.Failed
+
+    def get_job_status_redfish(self, jobid):
+        """Gets status of the job
+
+        :param jobid: id of the job.
+        :param path: str.         .
+        :returns: returns a json/dict containing job status(key in the dict is Status) along with other details
+
+        """
+        jobdetail = self.get_job_details_redfish(jobid)
+        if jobdetail['Status']=='Failed':
+            return jobdetail
+
+        jobdetail_data = jobdetail['Data']['Jobs']
+        if jobdetail_data['PercentComplete'] < 100:
+            jobstaten = JobStatusEnum.InProgress
+        elif jobdetail_data['JobState'] =='Completed':
+            jobstaten = self.get_job_status_by_msgid(jobdetail_data['MessageId'])
+        elif jobdetail_data['JobState'] == 'Failed' or 'Errors' in jobdetail_data['JobState']:
+            jobstaten = JobStatusEnum.Failed
+        else:
+            jobstaten = JobStatusEnum.Invalid
+
+        jobdetail_data['Status'] = TypeHelper.resolve(jobstaten)
+        return jobdetail_data
+
+    def list_idrac_jobs(self):
+        if self.entity.use_redfish:
+            job_list = self.entity._list_all_idracjob_redfish()
+            if job_list and job_list['Data'] and job_list['Data']['body']:
+                job_list['Data'] = job_list['Data']['body']
+            return job_list

@@ -2,26 +2,26 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
 from enum import Enum
+from datetime import datetime
 from omsdk.sdkcreds import ProtocolCredentialsFactory, CredentialsEnum
 from omsdk.sdksnmp import SNMPProtocol, EntityMibConvertor
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
@@ -36,6 +36,11 @@ import os
 import logging
 import sys
 
+
+from omsdk.http.sdkrestbase import RestOptions
+from omsdk.http.sdkredfishbase import RedfishOptions
+from omsdk.http.sdkrest import RestProtocol
+from omsdk.http.sdkredfish import RedfishProtocol
 from omsdk.http.sdkwsmanbase import WsManOptions
 from omsdk.http.sdkwsman import WsManProtocol
 
@@ -44,6 +49,29 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
+
+class Simulation:
+    def __init__(self):
+        self.record = False
+        self.simulate = False
+    def start_recording(self):
+        self.record = True
+        self.simulate = False
+    def end_recording(self):
+        self.record = False
+        self.simulate = False
+    def start_simulating(self):
+        self.simulate = True
+        self.record = False
+    def end_simulating(self):
+        self.record = False
+        self.simulate = False
+    def is_recording(self):
+        return self.record
+    def is_simulating(self):
+        return self.simulate
+
+Simulator = Simulation()
 
 class ProtocolOptions(object):
     def __init__(self, enid):
@@ -79,17 +107,29 @@ class ProtocolOptionsFactory:
         return self
 
     def get(self, pEnum):
-        if creden in self.pOptions:
+        if pEnum in self.pOptions:
             return self.pOptions[pEnum]
         return None
 
 class SNMPOptions(ProtocolOptions):
-    def __init__(self):
+    def __init__(self, port = 161, timeout = 30, nretries = 3):
         if PY2:
             super(SNMPOptions, self).__init__(ProtocolEnum.SNMP)
         else:
             super().__init__(ProtocolEnum.SNMP)
 
+        self.port = port
+        self.timeout = timeout
+        self.nretries = nretries
+
+    def __str__(self):
+        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(self.timeout) + ")" /
+        + "(nretries =" + str(self.nretries) + ")")
+
+    def __repr__(self):
+        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(self.timeout) + ")" /
+        + "(nretries =" + str(self.nretries) + ")")
+ 
 class ProtocolWrapper(object):
     def __init__(self, enumid):
         self.enumid = enumid
@@ -130,11 +170,17 @@ class ProtocolWrapper(object):
         logger.debug("Connecting to " + ipaddr + " using " + str(self.creds))
         if Simulator.is_simulating():
             return Simulator.simulator_connect(self.ipaddr, self.enumid, self)
-        # no options for me!
-        if not pOptions or not pOptions.get(self.enumid):
-            pOptions = None
-        
-        return self.my_connect(ipaddr, self.creds, pOptions)
+        self.pOptions = None
+        if pOptions is None:
+                pOptions = ProtocolOptionsFactory()
+        for supported_pOp in [self.enumid]:
+           if isinstance(pOptions, ProtocolOptionsFactory):
+               self.pOptions = pOptions.get(supported_pOp)
+           elif TypeHelper.resolve(pOptions.enid) == TypeHelper.resolve(supported_pOp):
+               self.pOptions = pOptions
+           else:
+               logger.debug("Invalid pOptions provided!")
+        return self.my_connect(ipaddr, self.creds, self.pOptions)
 
     def disconnect(self):
         not_implemented
@@ -170,10 +216,6 @@ class ProtocolWrapper(object):
                     rjson[i] = self.view_fieldspec[en][i]['Values'][orig_value]
                 logger.debug("orig_value: " + str(orig_value) + ", " +\
                              "new_value: " + str(rjson[i]))
-            if 'Rename' in self.view_fieldspec[en][i]:
-                orig_value = rjson[i]
-                del rjson[i]
-                rjson[self.view_fieldspec[en][i]['Rename']] = orig_value
 
             if 'CopyTo' in self.view_fieldspec[en][i]:
                 orig_value = rjson[i]
@@ -196,9 +238,86 @@ class ProtocolWrapper(object):
                 unit_spec = self.view_fieldspec[en][i]
                 rjson[i] = UnitsFactory.append_sensors_unit(rjson[i], unit_spec['UnitScale'], unit_spec['UnitAppend'])
 
+            if 'Create' in self.view_fieldspec[en][i]:
+                creatordict = self.view_fieldspec[en][i]['Create']
+                for k,v in creatordict.items():
+                    node = rjson[i]
+                    # print("CREATE in ",k)
+                    x = v['_Attribute']
+                    while isinstance(x, dict):
+                        node = node[list(x.keys())[0]]
+                        x = list(x.values())[0]
+                        # node = node[x.ElementAt(0)]
+                    if x in node:
+                        rjson[k] = node[x]
+                        if '_Mapping' in v:
+                            m = v['_Mapping']
+                            if node[x] in m:
+                                rjson[k] = m[node[x]]
+                                # print('Mapped ',node[x])
+                        # print("Created ",k," with ",rjson[k])
             if 'Macedit' in self.view_fieldspec[en][i]:
                 s = rjson[i]
                 rjson[i] = str(':'.join([s[j]+s[j+1] for j in range(2,14,2)]))
+
+            if 'DateTime' in self.view_fieldspec[en][i]:
+                if rjson[i]:
+                    dstr = rjson[i].split('+')
+                    dtformat = '%Y%m%d%H%M%S.%f'
+                    # "20140326110958.000000+000" this is the format being processed
+                    if self.view_fieldspec[en][i]['DateTime']:
+                        dtformat = self.view_fieldspec[en][i]['DateTime']
+                    datetimeobject = datetime.strptime(dstr[0], dtformat)
+                    strFormat = '%Y-%m-%d %H:%M:%S'
+                    strdatetimeobject = datetimeobject.strftime(strFormat)
+                    #Need to convert this to string it is in datetime format
+                    rjson[i] = strdatetimeobject
+            if 'Rename' in self.view_fieldspec[en][i]:
+                orig_value = rjson[i]
+                del rjson[i]
+                rjson[self.view_fieldspec[en][i]['Rename']] = orig_value
+    def simulator_save(self, retval, clsName):
+        mypath = "."
+        for i in ["simulator", self.ipaddr, str(self.enumid)]:
+            mypath = os.path.join(mypath, i)
+            if not os.path.exists(mypath):
+                os.mkdir(mypath)
+        with open(os.path.join(mypath, clsName + ".json"), "w") as f:
+            json.dump(retval, f, sort_keys=True, indent=4, \
+                 separators=(',', ': '))
+
+    def simulator_connect(self):
+        mypath = "."
+        for i in ["simulator", self.ipaddr, str(self.enumid)]:
+            mypath = os.path.join(mypath, i)
+        if os.path.exists(mypath) and os.path.isdir(mypath):
+            if self.enumid != ProtocolEnum.WSMAN:
+                return self
+            sjson = os.path.join(mypath, 'System.json')
+            simspec = None
+            for i in self.views:
+                if TypeHelper.resolve(i) == 'System':
+                    simspec = re.sub(".*/", '', self.views[i])
+                    break
+            if os.path.exists(sjson) and simspec:
+                with open(sjson, 'r') as endata:
+                    _s = json.load(endata)
+                    if _s and 'Data' in _s and \
+                       _s['Data'] and simspec in _s['Data']:
+                        return self
+        return None
+
+    def simulator_load(self, clsName):
+        mypath = "."
+        for i in ["simulator", self.ipaddr, str(self.enumid)]:
+            mypath = os.path.join(mypath, i)
+        mypath = os.path.join(mypath, clsName + ".json")
+        retval = {'Data' : {}, 'Status' : 'Failed', 'Message' : 'No file found'}
+        if os.path.exists(mypath) and not os.path.isdir(mypath):
+            with open(mypath) as enum_data:
+                retval = json.load(enum_data)
+        return retval
+
 
     def enumerate_view(self, index, bTrue):
         return self._enumerate_view(index, self.views, bTrue)
@@ -212,7 +331,13 @@ class ProtocolWrapper(object):
         if Simulator.is_simulating():
             retval = Simulator.simulate_proto(self.ipaddr, self.enumid, clsName)
         else:
-            retval = self.proto.enumerate(clsName, views[index], self.selectors, True)
+            #Changed True to False for having single session
+            wsprof = views[index]
+            filter = None
+            if isinstance(views[index], list) and self.enumid == ProtocolEnum.WSMAN:
+                wsprof = views[index][0]
+                # filter = views[index][1]
+            retval = self.proto.enumerate(clsName, wsprof, self.selectors, False, filter)
             if Simulator.is_recording():
                 Simulator.record_proto(self.ipaddr,self.enumid, clsName, retval)
         if not 'Data' in retval or retval['Data'] is None:
@@ -346,9 +471,11 @@ class PWSMAN(ProtocolWrapper):
         return PWSMAN(self.selectors, self.views, self.compmap, self.cmds, self.view_fieldspec)
 
     def my_connect(self, ipaddr, creds, pOptions):
-        if pOptions:
-            logger.debug("Using wsman options!")
-        self.proto = WsManProtocol(ipaddr, creds, WsManOptions())
+        if pOptions is None:
+            pOptions = WsManOptions()
+
+        self.proto = WsManProtocol(ipaddr, creds, pOptions)
+
         if self.proto is None:
             return False
 
@@ -360,7 +487,7 @@ class PWSMAN(ProtocolWrapper):
 
 
 class PSNMP(ProtocolWrapper):
-    def __init__(self, views, classifier, view_fieldspec = {}, cmds = {}):
+    def __init__(self, views, classifier, view_fieldspec = {}, cmds = {}, useSNMPGetFlag = False):
         if PY2:
             super(PSNMP, self).__init__(ProtocolEnum.SNMP)
         else:
@@ -373,14 +500,16 @@ class PSNMP(ProtocolWrapper):
         self.supported_creds = [ CredentialsEnum.SNMPv1_v2c ]
         self.supports_entity_mib = False
         self.emib_mgr = EntityMibConvertor()
+        self.useSNMPGetFlag = useSNMPGetFlag
 
     def clone(self):
-        return PSNMP(self.views, self.classifier, self.view_fieldspec, self.cmds)
+        return PSNMP(self.views, self.classifier, self.view_fieldspec, self.cmds, self.useSNMPGetFlag)
 
     def my_connect(self, ipaddr, creds, pOptions):
-        if pOptions:
-            logger.debug("Using snmp options!")
-        self.proto = SNMPProtocol(ipaddr, creds.community, creds.writeCommunity)
+        if pOptions is None:
+            pOptions = SNMPOptions()
+
+        self.proto = SNMPProtocol(ipaddr, creds.community, creds.writeCommunity, pOptions, self.useSNMPGetFlag)
         if self.proto is None:
             return False
         return True
@@ -410,27 +539,42 @@ class PREST(ProtocolWrapper):
         self.supported_creds = [ CredentialsEnum.User ]
 
     def my_connect(self, ipaddr, creds, pOptions):
+
+        if pOptions is None:
+                pOptions = RestOptions()
+				
         return False
 
     def clone(self):
         return PREST(self.views, self.cmds)
 
 class PREDFISH(ProtocolWrapper):
-    def __init__(self, views, cmds):
+    def __init__(self, views, cmds={}, view_fieldspec={}):
         if PY2:
             super(PREDFISH, self).__init__(ProtocolEnum.REDFISH)
         else:
             super().__init__(ProtocolEnum.REDFISH)
         self.selectors = {}
         self.views = views
+        self.view_fieldspec = view_fieldspec
+        # self.classifier = classifier
         self.cmds = cmds
         self.supported_creds = [ CredentialsEnum.User ]
 
     def my_connect(self, ipaddr, creds, pOptions):
-        return False
+        if pOptions is None:
+            pOptions = RedfishOptions()
+        self.proto = RedfishProtocol(ipaddr, creds, pOptions)
+        if self.proto is None:
+            return False
+        return True
 
     def clone(self):
-        return PREDFISH(self.views, self.cmds)
+        return PREDFISH(self.views, self.cmds, self.view_fieldspec)
+
+    def disconnect(self):
+        if self.proto:
+            self.proto.reset(True)
 
 class PCONSOLE(ProtocolWrapper):
     def __init__(self, obj):
@@ -467,7 +611,7 @@ class ProtocolFactoryIterator:
                 self.current += 1
                 if self.protocol_factory.pref.include_flag[self.current - 1]:
                     break
-            if self.current >= self.high:
+            if i >= self.high:
                 raise StopIteration
             return self.protocol_factory.protos[self.current - 1]
 

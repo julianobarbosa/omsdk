@@ -2,38 +2,41 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
 import os
 import imp
 import logging
+import socket
 import sys, glob
-from omsdk.sdkprint import PrettyPrint
+from collections import OrderedDict
 from omsdk.sdkcenum import EnumWrapper,TypeHelper
 
 logger = logging.getLogger(__name__)
 
 class sdkinfra:
+    """
+    Class to initilaize and load the device drivers
+    """
     def __init__(self):
         self.drivers = {}
-        self.disc_modules = {}
+        self.disc_modules = OrderedDict()
         self.driver_names = {}
     
     def load_from_file(self, filepath):
@@ -80,9 +83,25 @@ class sdkinfra:
                     self.drivers[alias] = self.drivers[mname]
                     self.driver_names[alias] = self.driver_names[mname]
 
+        tempdict = OrderedDict(sorted(self.disc_modules.items(), key=lambda t: t[1].prefDiscOrder))
+        self.disc_modules = tempdict
         self.driver_enum = EnumWrapper("Driver", self.driver_names).enum_type
     
     def find_driver(self, ipaddr, creds, protopref = None, pOptions = None):
+        """Find a device driver for the given IPAddress or host name
+
+                :param ipaddr: ipaddress or hostname of the device
+                :param creds: bundle of credentials for finding the device driver.
+                :param protopref: the preferred protocol to be used if the device supports the protocol
+                :param pOptions: protocol specific options to be passed, port, timeout etc
+                :type ipaddr: str
+                :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
+                :type protopref: enumeration of preferred protocol
+                :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+                :return: a driver handle for further configuration/monitoring
+                :rtype: object <iBaseDriver>
+
+        """
         for mod in self.disc_modules:
             if str(mod) == "FileList":
                 continue
@@ -95,12 +114,37 @@ class sdkinfra:
     #    None - if driver not found, not classifed
     #    instance of iBaseEntity  - if device of the proper type
     def get_driver(self, driver_en, ipaddr, creds, protopref = None, pOptions = None):
+        """Get a device driver for the given IPAddress or host name, also checking for a particular device type
+
+            :param ipaddr: ipaddress or hostname of the device
+            :param driver_en: enumeration of the device type
+            :param creds: bundle of credentials for finding the device driver.
+            :param protopref: the preferred protocol to be used if the device supports the protocol
+            :param pOptions: protocol specific options to be passed, port, timeout etc
+            :type ipaddr: str
+            :type driver_en: enumerate of the device type
+            :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
+            :type protopref: enumeration of preferred protocol
+            :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+            :return: a driver handle for further configuration/monitoring
+            :rtype: object <iBaseDriver>
+
+        """
         mod = TypeHelper.resolve(driver_en)
         logger.debug("get_driver(): Asking for " + mod)
         return self._create_driver(mod, ipaddr, creds, protopref, pOptions)
 
-    def _create_driver(self, mod, ipaddr, creds, protopref, pOptions):
+    def _create_driver(self, mod, host, creds, protopref, pOptions):
         logger.debug("get_driver(): Asking for " + mod)
+        ipaddr = host
+        try:
+            result = socket.getaddrinfo(host, None);
+            lastuple = result[-1]
+            ipaddress = lastuple[-1][0]
+            if ipaddress:
+                ipaddr = ipaddress
+        except socket.gaierror as err:
+            print("cannot resolve hostname: ", host, err)
         if not mod in self.disc_modules:
             # TODO: Change this to exception
             logger.debug(mod + " not found!")

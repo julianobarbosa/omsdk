@@ -3,6 +3,7 @@
         "Key" : [ "NodeID"],
         "ConfigState" : [
             "PowerCapEnabledState",
+            "CurrentRollupStatus",
             "PowerState"
         ],
         "BasicInventory" : [
@@ -14,8 +15,10 @@
             "OSName",
             "OSVersion",
             "RACType",
-            "FirmwareVersion",
-            "MachineName"
+            "MachineName",
+            "iDRACURL",
+            "DeviceType",
+            "LifecycleControllerVersion"
         ],
         "MainHealth"      : ["PrimaryStatus"],
         "Inventory"   : [ 
@@ -33,7 +36,6 @@
         "DeviceDescription",
         "ExpressServiceCode",
         "HostName",
-        "LifecycleControllerVersion",
         "Manufacturer",
         "MaxCPUSockets",
         "MaxDIMMSlots",
@@ -42,28 +44,15 @@
         "PlatformGUID",
         "PowerCap",
         "ServerAllocation",
-        "ServiceTag",
         "SysMemMaxCapacitySize",
         "SysMemTotalSize",
         "SystemID",
         "SystemRevision",
         "UUID",
         "smbiosGUID",
-        "OSName",
-        "OSVersion"
-        ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "critical" : "Critical",
-            "warning" : "Warning",
-            "healthy" : "Healthy",
-            "unknown" : "Warning"
-        }
-
+        "VirtualAddressManagementApplication",
+        "SystemLockDown"
+        ]
     },
     "Memory" : {
         "Key" : [ "FQDD" ],
@@ -80,24 +69,12 @@
             "Rank",
             "SerialNumber",
             "Size",
+	    "memoryDeviceStateSettings",
             "Speed"
         ],
         "Metrics" : [
             "CurrentOperatingSpeed"
         ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "OK" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        },
         "MemoryType" :{
             "1" : "Other", 
             "2" : "Unknown",
@@ -149,24 +126,12 @@
             "TurboModeEnabled",
             "VirtualizationTechnologyEnabled",
             "ExecuteDisabledEnabled",
+	    "processorDeviceStateSettings",
             "ExecuteDisabledCapable"
         ],
         "ConfigState" : [  ],
         "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ "Voltage", "CurrentClockSpeed"],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        },
         "Characteristics" :{
             "4" : "64-bit capable",
             "2" : "Unknown"
@@ -189,8 +154,10 @@
             "MaxAvailablePCILinkSpeed",
             "MaxPossiblePCILinkSpeed",
             "PCISlot",
+            "PCIVendorID",
             "ProductName",
             "SASAddress",
+            "SecurityStatus",
             "SlicedVDCapability",
             "SupportControllerBootMode",
             "SupportEnhancedAutoForeignImport",
@@ -203,33 +170,7 @@
             "RollupStatus"
         ],
         "MainHealth" : [ "PrimaryStatus" ],
-        "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        },
-        "RollupStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        }
+        "Metrics" : [ ]
     },
     "ControllerBattery": {
         "Key" : [ "FQDD"],
@@ -284,19 +225,15 @@
             "DeviceDescription",
             "PWM",
             "RateUnits",
+            "Location",
             "VariableSpeed"
         ],
         "ConfigState" : [ 
+            "State"
         ],
         "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : ["RedundancyStatus" ],
-        "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        }
+        "Metrics" : [ "CurrentReading" ]
     },
     "NIC": {
         "Key" : [ "FQDD" ],
@@ -349,10 +286,10 @@
             "iScsiOffloadMode",
             "FCoEOffloadMode"
         ],
-        "MainHealth" : [ "PrimaryStatus" ],
-        "OtherHealth" : [ ],
+        "MainHealth" : [ "LinkStatus" ],
+        "OtherHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ 
-            "CurrentClockSpeed"
+            "CurrentClockSpeed", "RxUnicast", "RxMutlicast", "TxUnicast", "TxMutlicast", "RxBytes", "TxBytes"
         ],
         "LinkSpeed" :{
             "0" : "Unknown",
@@ -442,6 +379,7 @@
             "Model",
             "SerialNumber",
             "Size",
+            "UsedSize",
             "MediaType",
             "Revision",
             "BlockSize",
@@ -457,7 +395,8 @@
             "Slot",
             "SupportedEncryptionTypes",
             "BusProtocol",
-            "SecurityState"
+            "SecurityState",
+            "RAIDNegotiatedSpeed"
         ],
         "ConfigState" : [ 
             "RaidStatus",
@@ -469,49 +408,6 @@
             "RemainingRatedWriteEndurance",
             "FreeSize"
         ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        },
-        "PredictiveFailureState" : {
-            "0" : "None",
-            "1" : "Predictive Failure"
-        },
-        "MediaType" :{
-            "0" : "HDD",
-            "1" : "SSD"
-        },
-        "RaidStatus" :{
-            "0" : "Unknown", 
-            "1" : "Ready", 
-            "2" : "Online", 
-            "3" : "Foreign", 
-            "4" : "Offline",
-            "5" : "Blocked", 
-            "6" : "Failed", 
-            "7" : "Degraded", 
-            "8" : "Non-RAID", 
-            "9" : "Removed" 
-        },
-        "BusProtocol" :{
-            "0" : "Unknown",
-            "1" : "SCSI",
-            "2" : "PATA",
-            "3" : "FIBRE",
-            "4" : "USB",
-            "5" : "SATA",
-            "6" : "SAS",
-            "7" : "PCIe"
-        },
         "HotSpareStatus" :{
             "0" : "No",
             "1" : "Dedicated",
@@ -523,10 +419,6 @@
             "2" : "3 Gbps",
             "3" : "6 Gbps",
             "4" : "12 Gbps"
-        },
-        "MediaType" :{
-            "0" : "HDD",
-            "1" : "SSD"
         },
         "DriveFormFactor" :{
             "0" : "Unknown",
@@ -542,6 +434,12 @@
             "3" : "Foreign",
             "4" : "Encryption Capable",
             "5" : "Unknown"
+        },
+        "RAIDNegotiatedSpeed" :{
+            "1_5_GBS" : "1.5 Gbps",
+            "3_GBS" : "3 Gbps",
+            "6_GBS" : "6 Gbps",
+            "12_GBS" : "12 Gbps"
         }
     },
     "PowerSupply": {
@@ -552,48 +450,24 @@
             "Manufacturer",
             "Model",
             "PartNumber",
-            "Range1MaxInputPower",
             "RedMinNumberNeeded",
             "RedTypeOfSet",
             "SerialNumber",
             "TotalOutputPower",
-            "Type"
+            "powerSupplyStateCapabilitiesUnique",
+            "PowerSupplySensorState",
+            "DetailedState",
+            "Type",
+            "Name"
         ],
         "ConfigState" : [ 
             "RAIDState"
         ],
         "MainHealth" : [ "PrimaryStatus" ],
-        "OtherHealth" : ["RedundancyStatus" ],
+        "OtherHealth" : ["Redundancy" ],
         "Metrics" : [ 
-            "InputVoltage"
+            "InputVoltage", "TotalOutputPower", "Range1MaxInputPower"
         ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok" : "Healthy",
-            "other" : "Warning",
-            "unknown" : "Warning",
-            "ok" : "Healthy",
-            "nonCritical" : "Warning",
-            "critical" : "Critical",
-            "nonRecoverable" : "Critical"
-        },
-        "RedundancyStatus" :{
-            "_0" : "Unknown",
-            "_1" : "DMTF Reserved",
-            "_2" : "Fully Redundant",
-            "_3" : "Degraded Redundancy",
-            "_4" : "Redundancy Lost",
-            "_5" : "Overall Failure",
-            "0" : "Unknown",
-            "1" : "Unknown",
-            "2" : "Healthy",
-            "3" : "Warning",
-            "4" : "Critical",
-            "5" : "Fatal"
-        },
         "Type" :{
             "0" : "AC",
             "1" : "DC"
@@ -612,11 +486,11 @@
             "InitializedState",
             "VFlashEnabledState"
         ],
-        "MainHealth" : [ "HealthStatus" ],
+        "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [
             "AvailableSize"
         ],
-        "HealthStatus" : {
+        "PrimaryStatus" : {
             "0" : "Warning",
             "1" : "Healthy",
             "2" : "Warning",
@@ -675,9 +549,10 @@
             "NicMode",
             "LinkDuplex",
             "LinkSpeed",
+            "LinkStatus",
             "FCoEOffloadMode"
         ],
-        "MainHealth" : [ ],
+        "MainHealth" : [ "PortStatus" ],
         "Metrics" : [ ],
         "PortSpeed" :{
             "0" : "No Link",
@@ -687,6 +562,11 @@
             "4" : "16 Gbps",
             "5" : "32 Gbps",
             "6" : "Unknown"
+        },
+        "PortStatus" :{
+            "0":"Down",
+            "1":"Up",
+            "2":"Unknown"
         }
         },
     "iDRAC": {
@@ -734,6 +614,8 @@
             "SpanDepth",
             "SpanLength",
             "BlockSize",
+            "Layout",
+            "Name",
             "DeviceDescription"
         ],
         "ConfigState" : [ 
@@ -742,13 +624,6 @@
         ],
         "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "ok": "Healthy"
-        },
         "WriteCachePolicy": {
             "0" : "Unknown",
             "1" :  "Write Through",
@@ -765,26 +640,6 @@
             "16" : "No Read Ahead",
             "32" : "Read Ahead",
             "64" : "Adaptive Read Ahead"
-        },
-        "RAIDTypes" :{
-            "1"      : "No RAID",
-            "2"      : "RAID 0",
-            "4"      : "RAID 1",
-            "64"     : "RAID 5",
-            "128"    : "RAID 6",
-            "2048"   : "RAID 10",
-            "8192"   : "RAID 50",
-            "16384"  : "RAID 60"
-        },
-        "RAIDStatus" :{
-            "0" : "Unknown", 
-            "1" : "Ready", 
-            "2" : "Online", 
-            "3" : "Foreign", 
-            "4" : "Offline",
-            "5" : "Blocked", 
-            "6" : "Failed", 
-            "7" : "Degraded"            
         },
         "BusProtocol" :{
             "0" : "Unknown",
@@ -830,7 +685,7 @@
     "EnclosurePSU": {
         "Key" : [ "FQDD"],
         "Inventory" : [
-            "PartNumber "
+            "PartNumber"
         ],
         "ConfigState" : [ 
             "RAIDStatus"
@@ -844,13 +699,30 @@
             "3" : "Critical"
         }
     },
+    "EnclosureTempSensor": {
+        "Key" : [ "FQDD"],
+        "Inventory" : [ ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : [ ]
+    },
+    "EnclosureFanSensor": {
+        "Key" : [ "FQDD"],
+        "Inventory" : [ ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : [ ]
+    },
     "Subsystem" : {
         "Key" : ["Key"],
         "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : [ ],
-        "PrimaryStatus" : { "0" : "Warning", "1" : "Healthy", "2" : "Warning", "3" : "Critical" }
+        "PrimaryStatus" : { "0" : "Unknown", "1" : "Healthy", "2" : "Warning", "3" : "Critical" }
     },
     "SystemString":{
+        "Key" : [ "InstanceID"]
+    },
+    "LCString":{
         "Key" : [ "InstanceID"]
     },
     "NICString":{
@@ -864,6 +736,12 @@
     },
     "PSNumericSensor": {
         "Key" : [ "DeviceID"]
+    },
+    "BaseMetricValue" : {
+        "Key" : [ "InstanceID"]
+    },
+    "AggregationMetric": {
+        "Key" : [ "InstanceID"]
     },
     "NumericSensor": {
         "Key" : [ "DeviceID"]
@@ -883,6 +761,9 @@
     "NICCapabilities": {
         "Key" : [ "FQDD"]
     },
+    "RAIDEnumeration": {
+        "Key" : [ "InstanceID"]
+    },
     "HostNICView": {
         "Key" : [ "InstanceID"]
     },
@@ -893,28 +774,29 @@
         "Key" : [ "FQDD"]
     },
     "Sensors_Battery": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
+            "CurrentReading",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+	"HealthState" : {
+      		"0" : "Unknown",
+      		"5" : "Normal",
+      		"10" : "Warning",
+      		"25" : "Critical"          
+	},
         "MainHealth" : [
             "PrimaryStatus"
         ],
         "Metrics" : ["CurrentReading"],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        },
         "SensorType" : {
             "1": "Battery",
             "2" : "Temperature",
@@ -925,18 +807,25 @@
         }
     },
     "Sensors_Temperature": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
+            "CurrentReading(Degree Celsius)",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+        "HealthState" : {
+                "0" : "Unknown",
+                "5" : "Normal",
+                "10" : "Warning",
+                "25" : "Critical"
+        },
         "MainHealth" : [
             "PrimaryStatus"
         ],
@@ -957,18 +846,29 @@
         }
     },
     "Sensors_Fan": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
-            "OtherSensorTypeDescription"
+            "OtherSensorTypeDescription",
+            "coolingUnitIndexReference",
+            "Type",
+            "SubType",
+            "FQDD",
+            "Name"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+        "HealthState" : {
+                "0" : "Unknown",
+                "5" : "Normal",
+                "10" : "Warning",
+                "25" : "Critical"
+        },
         "MainHealth" : [
             "PrimaryStatus"
         ],
@@ -989,28 +889,30 @@
         }
     },
     "Sensors_Intrusion": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
+            "Type",
+            "CurrentReading",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+        "HealthState" : {
+                "0" : "Unknown",
+                "5" : "Normal",
+                "10" : "Warning",
+                "25" : "Critical"
+        },
         "MainHealth" : [
             "PrimaryStatus"
         ],
         "Metrics" : ["CurrentReading"],
-        "PrimaryStatus" : {
-            "0" : "Unknown",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        },
         "SensorType" : {
             "1": "Battery",
             "2" : "Temperature",
@@ -1021,28 +923,30 @@
         }
     },
     "Sensors_Voltage": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
+            "Reading(V)",
+            "CurrentReading",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+        "HealthState" : {
+                "0" : "Unknown",
+                "5" : "Normal",
+                "10" : "Warning",
+                "25" : "Critical"
+        },
         "MainHealth" : [
             "PrimaryStatus"
         ],
         "Metrics" : ["CurrentReading"],
-        "PrimaryStatus" : {
-            "0" : "Unknown",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        },
         "SensorType" : {
             "1": "Battery",
             "2" : "Temperature",
@@ -1053,22 +957,28 @@
         }
     },
     "Sensors_Amperage": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "ElementName",
+            "DeviceID",
             "SensorType",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
-            "EnabledState",
+            "State",
             "HealthState",
             "CurrentState"
         ],
+        "HealthState" : {
+                "0" : "Unknown",
+                "5" : "Normal",
+                "10" : "Warning",
+                "25" : "Critical"
+        },
         "MainHealth" : [
             "PrimaryStatus"
         ],
-        "Metrics" : ["CurrentReading"],
+        "Metrics" : ["ProbeReading", "CurrentReading"],
         "PrimaryStatus" : {
             "0" : "Unknown",
             "1" : "Healthy",
@@ -1117,7 +1027,7 @@
             "NICSpeed",
             "IPv4Address",
             "ProductInfo",
-            "MACAddress",
+            "PermanentMACAddress",
             "IPv6Address",
             "GroupName",
             "SwitchConnection",
@@ -1140,5 +1050,90 @@
         "ConfigState" : [ ],
         "MainHealth" : [ ],
         "Metrics" : [ ]
+    },
+    "BIOS" : {
+        "Key" : [ "InstanceID" ],
+        "Inventory" : [
+            "FQDD",
+            "VersionString",
+            "BIOSReleaseDate",
+            "SMBIOSPresent"
+        ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : [ ]
+    },
+    "PCIeSSDExtender" : {
+        "Key" : [ "FQDD" ],
+        "Inventory" : [ "InstanceID" ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : []
+    },
+    "EnclosureTemperatureSensor" : {
+        "Key" : [ "FQDD" ],
+        "Inventory" : [ ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : []
+    },
+    "PCIeSSDBackPlaneView" : {
+        "Key" : [ "FQDD" ],
+        "Inventory" : [ "ProductName", "SlotCount", "FirmwareVersion" ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : []
+    },
+    "PCIeSSDView" : {
+        "Key" : [ "FQDD" ],
+        "Inventory" : [ "Model", "SizeInBytes", "BusProtocol", "DeviceProtocol", "MediaType", 
+        "Manufacturer", "ProductID", "SerialNumber", "DriveFormFactor", "CapableSpeed", "Revision" ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : []
+    },
+    "SystemMetrics" : {
+        "Key" : [ "SystemMetrics" ],
+        "Inventory" : [ ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : [ 
+                "EnergyConsumption", "PowerConsumption", 
+                "InletTempWarnPerc", "InletTempCriticalPerc"
+        ]
+    },
+    "SystemBoardMetrics" : {
+        "Key" : [ "SystemBoardMetrics" ],
+        "Inventory" : [ ],
+        "ConfigState" : [ ],
+        "MainHealth" : [ ],
+        "Metrics" : [ 
+                "CPUUsageMin1H", "CPUUsageMin1D", "CPUUsageMin1W", 
+                "CPUUsageMax1H", "CPUUsageMax1D", "CPUUsageMax1W", 
+                "CPUUsageAvg1H", "CPUUsageAvg1D", "CPUUsageAvg1W", 
+                "MemoryUsageMin1H", "MemoryUsageMin1D", "MemoryUsageMin1W", 
+                "MemoryUsageMax1H", "MemoryUsageMax1D", "MemoryUsageMax1W", 
+                "MemoryUsageAvg1H", "MemoryUsageAvg1D", "MemoryUsageAvg1W", 
+                "IOUsageMin1H", "IOUsageMin1D", "IOUsageMin1W", "IOUsageMax1H", 
+                "IOUsageMax1D", "IOUsageMax1W", "IOUsageAvg1H", "IOUsageAvg1D", 
+                "IOUsageAvg1W", "SYSUsageMin1H", "SYSUsageMin1D", "SYSUsageMin1W", 
+                "SYSUsageMax1H", "SYSUsageMax1D", "SYSUsageMax1W", "SYSUsageAvg1H", 
+                "SYSUsageAvg1D", "SYSUsageAvg1W", "PeakAmperage", "PeakPower",
+                "PeakHeadroom", "SYSPeakCPUUsage", "SYSPeakIOUsage", "SYSPeakMemoryUsage",
+                "SYSPeakSYSUsage"
+        ]
+    },
+    "PresenceAndStatusSensor" : {
+        "Key" : [ "DeviceID" ],
+        "Inventory" : ["ElementName"],
+        "ConfigState" : [],
+        "MainHealth" : [],
+        "Metrics" : []
+    },
+    "ChassisRF": {
+        "Key" : [ "Id"]
+    },
+    "DellAttributes": {
+        "Key" : [ "Id"]
     }
 }

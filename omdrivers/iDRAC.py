@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -38,7 +37,7 @@ from omsdk.sdkfile import FileOnShare, Share
 from omsdk.sdkcreds import UserCredentials
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omdrivers.enums.iDRAC.iDRACEnums import *
-
+from omsdk.idracmsgdb import eemiregistry
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +66,7 @@ try:
     from omdrivers.lifecycle.iDRAC.iDRACUpdate import iDRACUpdate
     from omdrivers.lifecycle.iDRAC.iDRACLicense import iDRACLicense
     from omdrivers.lifecycle.iDRAC.iDRACSecurity import iDRACSecurity
+    from omdrivers.lifecycle.iDRAC.iDRACStreaming import iDRACStreaming
     from omdrivers.lifecycle.iDRAC.iDRACCredsMgmt import iDRACCredsMgmt
 except ImportError as ex:
     logger.debug(str(ex))
@@ -91,6 +91,8 @@ iDRACCompEnum = EnumWrapper("iDRACCompEnum", {
     "Enclosure" : "Enclosure",
     "EnclosureEMM" : "EnclosureEMM",
     "EnclosurePSU" : "EnclosurePSU",
+    "EnclosureFanSensor" : "EnclosureFanSensor",
+    "EnclosureTempSensor" : "EnclosureTempSensor",
     "VFlash"  : "VFlash",
     "Video" : "Video",
     "ControllerBattery" : "ControllerBattery" ,
@@ -105,7 +107,11 @@ iDRACCompEnum = EnumWrapper("iDRACCompEnum", {
     "Sensors_Fan" : "Sensors_Fan",
     "LogicalSystem" : "LogicalSystem",
     "License" : "License",
-    "iDRACNIC" : "iDRACNIC"
+    "iDRACNIC" : "iDRACNIC",
+    "BIOS" : "BIOS",
+    "SystemMetrics" : "SystemMetrics",
+    "SystemBoardMetrics" : "SystemBoardMetrics",
+    "PresenceAndStatusSensor" : "PresenceAndStatusSensor"
     }).enum_type
 
 iDRACSensorEnum = EnumWrapper("iDRACSensorEnum", {
@@ -124,7 +130,16 @@ iDRACMiscEnum = EnumWrapper("iDRACMiscEnum", {
     "NICCapabilities" : "NICCapabilities",
     "SwitchConnection" : "SwitchConnection",
     "FCStatistics" : "FCStatistics",
-    "HostNICView" : "HostNICView"
+    "HostNICView" : "HostNICView",
+    "RAIDEnumeration" : "RAIDEnumeration",
+    "LCString" : "LCString",
+    "ChassisRF" : "ChassisRF",
+    "DellAttributes" : "DellAttributes"
+    }).enum_type
+
+iDRACMetricsEnum = EnumWrapper("iDRACMetricsEnum", {
+    "AggregationMetric" : "AggregationMetric",
+    "BaseMetricValue" : "BaseMetricValue",
     }).enum_type
 
 
@@ -142,8 +157,14 @@ iDRACComponentTree = {
         iDRACCompEnum.PowerSupply,
         iDRACCompEnum.VFlash,
         iDRACCompEnum.Video,
+        iDRACCompEnum.License,
+        iDRACCompEnum.HostNIC,
+        iDRACCompEnum.BIOS,
         "Sensors",
         "Storage"
+    ],
+    iDRACCompEnum.iDRAC : [
+        iDRACCompEnum.iDRACNIC,
     ],
     "Storage" : [
         iDRACCompEnum.Controller,
@@ -154,7 +175,8 @@ iDRACComponentTree = {
         iDRACCompEnum.Sensors_Voltage,
         iDRACCompEnum.Sensors_Intrusion,
         iDRACCompEnum.Sensors_Battery,
-        iDRACCompEnum.Sensors_Fan
+        iDRACCompEnum.Sensors_Fan,
+        iDRACCompEnum.PresenceAndStatusSensor
     ],
     iDRACCompEnum.Controller : [
         iDRACCompEnum.Enclosure, # Enclosure.RAID.Modular.3-1
@@ -166,6 +188,11 @@ iDRACComponentTree = {
         iDRACCompEnum.EnclosureEMM,
         iDRACCompEnum.EnclosurePSU,
         iDRACCompEnum.PhysicalDisk,
+        "EnclosureSensor"
+    ],
+    "EnclosureSensor" : [
+        iDRACCompEnum.EnclosureFanSensor,
+        iDRACCompEnum.EnclosureTempSensor
     ]
 }
 
@@ -186,54 +213,159 @@ iDRACSWCompMapping = {
 
 # http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICStatistics
 iDRACWsManViews = {
-    iDRACCompEnum.System: "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SystemView",
-    iDRACCompEnum.Memory : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_MemoryView",
-    iDRACCompEnum.CPU : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_CPUView",
-    iDRACCompEnum.Fan : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_FanView",
-    iDRACCompEnum.iDRAC : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_iDRACCardView",
-    iDRACCompEnum.iDRACNIC : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_iDRACCardView",
-    iDRACCompEnum.FC : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_FCView",
-    iDRACCompEnum.NIC : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NICView",
-    iDRACCompEnum.HostNIC : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_HostNetworkInterfaceView",
-    iDRACCompEnum.PowerSupply : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PowerSupplyView",
-    iDRACCompEnum.VFlash : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_VFlashView",
-    iDRACCompEnum.Video : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_VideoView",
-    iDRACCompEnum.PhysicalDisk : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PhysicalDiskView",
-    iDRACCompEnum.ControllerBattery : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_ControllerBatteryView",
-    iDRACCompEnum.Controller : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_ControllerView",
-    iDRACCompEnum.EnclosureEMM : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_EnclosureEMMView",
-    iDRACCompEnum.EnclosurePSU : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_EnclosurePSUView",
-    iDRACCompEnum.Enclosure : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_EnclosureView",
-    iDRACCompEnum.PCIDevice : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PCIDeviceView",
-    iDRACCompEnum.VirtualDisk : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_VirtualDiskView",
-    iDRACSensorEnum.ServerSensor : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_Sensor",
-    iDRACSensorEnum.NumericSensor : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NumericSensor",
-    iDRACSensorEnum.PSNumericSensor : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PSNumericSensor",
-    iDRACFirmEnum.Firmware : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SoftwareIdentity",
-    iDRACJobsEnum.Jobs : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LifecycleJob",
+    iDRACCompEnum.System: "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SystemView",
+    iDRACCompEnum.Memory : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_MemoryView",
+    iDRACCompEnum.CPU : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_CPUView",
+    iDRACCompEnum.Fan : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_FanView",
+    iDRACCompEnum.iDRAC : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardView",
+    iDRACCompEnum.iDRACNIC : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardView",
+    iDRACCompEnum.FC : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_FCView",
+    iDRACCompEnum.NIC : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICView",
+    iDRACCompEnum.HostNIC : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_HostNetworkInterfaceView",
+    iDRACCompEnum.PowerSupply : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PowerSupplyView",
+    iDRACCompEnum.VFlash : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VFlashView",
+    iDRACCompEnum.Video : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VideoView",
+    iDRACCompEnum.PhysicalDisk : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PhysicalDiskView",
+    iDRACCompEnum.ControllerBattery : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ControllerBatteryView",
+    iDRACCompEnum.Controller : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ControllerView",
+    iDRACCompEnum.EnclosureEMM : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureEMMView",
+    iDRACCompEnum.EnclosurePSU : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosurePSUView",
+    iDRACCompEnum.Enclosure : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureView",
+    iDRACCompEnum.PCIDevice : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PCIDeviceView",
+    iDRACCompEnum.VirtualDisk : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VirtualDiskView",
+    iDRACSensorEnum.ServerSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_Sensor",
+    iDRACSensorEnum.NumericSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NumericSensor",
+    iDRACSensorEnum.PSNumericSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PSNumericSensor",
+    iDRACFirmEnum.Firmware : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareIdentity",
+    iDRACJobsEnum.Jobs : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_LifecycleJob",
     iDRACOSDJobsEnum.OSDJobs : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_OSDConcreteJob",
-    iDRACMiscEnum.SystemString : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SystemString",
-    iDRACMiscEnum.NICString : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NICString",
-    iDRACMiscEnum.NICEnumeration : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NICEnumeration",
-    iDRACMiscEnum.iDRACString : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_iDRACCardString",
-    iDRACMiscEnum.iDRACEnumeration : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_iDRACCardEnumeration",
-    iDRACMiscEnum.NICStatistics : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NICStatistics",
-    iDRACMiscEnum.NICCapabilities : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_NICCapabilities",
-    iDRACMiscEnum.SwitchConnection : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SwitchConnectionView",
-    iDRACMiscEnum.FCStatistics : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_FCStatistics",
-    iDRACMiscEnum.HostNICView : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_HostNetworkInterfaceView",
+    # iDRACMiscEnum.SystemString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SystemString",
+    iDRACMiscEnum.SystemString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SystemString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_SystemString WHERE AttributeName = 'OSName' or AttributeName = 'OSVersion'"],
+    # iDRACMiscEnum.NICString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICString",
+    iDRACMiscEnum.NICString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_NICString WHERE AttributeName = 'VirtWWN' or AttributeName = 'VirtWWPN' or AttributeName = 'WWN' or AttributeName = 'WWPN'  or AttributeName = 'FCoEBootSupport' or AttributeName = 'PXEBootSupport' or AttributeName = 'iSCSIBootSupport' or AttributeName = 'WOLSupport' or AttributeName = 'FlexAddressingSupport' or AttributeName = 'VFSRIOVSupport' or AttributeName = 'iSCSIOffloadSupport' or AttributeName = 'FCoEOffloadSupport' or AttributeName = 'NicPartitioningSupport' or AttributeName = 'TCPChimneySupport'"],
+    iDRACMiscEnum.NICEnumeration : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICEnumeration",
+    # iDRACMiscEnum.iDRACString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardString",
+    iDRACMiscEnum.iDRACString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardString WHERE InstanceID = 'iDRAC.Embedded.1#IPv4.1#Address' or  InstanceID = 'iDRAC.Embedded.1#Info.1#Product' or  InstanceID = 'iDRAC.Embedded.1#CurrentNIC.1#MACAddress' or  InstanceID = 'iDRAC.Embedded.1#CurrentIPv6.1#Address1' or  InstanceID = 'iDRAC.Embedded.1#GroupManager.1#GroupName' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchConnection' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchPortConnection'"],
+    # iDRACMiscEnum.iDRACEnumeration : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardEnumeration",
+    iDRACMiscEnum.iDRACEnumeration : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardEnumeration", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardEnumeration WHERE InstanceID='iDRAC.Embedded.1#GroupManager.1#Status' or InstanceID='iDRAC.Embedded.1#NIC.1#Duplex' or InstanceID='iDRAC.Embedded.1#NIC.1#Speed' or InstanceID='iDRAC.Embedded.1#NIC.1#Enable' or InstanceID='iDRAC.Embedded.1#Lockdown.1#SystemLockdown'"],
+    iDRACMiscEnum.NICStatistics : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICStatistics",
+    iDRACMiscEnum.NICCapabilities : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICCapabilities",
+    iDRACMiscEnum.SwitchConnection : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SwitchConnectionView",
+    iDRACMiscEnum.FCStatistics : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_FCStatistics",
+    iDRACMiscEnum.HostNICView : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_HostNetworkInterfaceView",
     iDRACCompEnum.License : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_License",
     iDRACLicenseEnum.LicensableDevice : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LicensableDevice",
     iDRACLogsEnum.SELLog : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_SELLogEntry",
+    iDRACCompEnum.BIOS : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SoftwareIdentity",
+    iDRACCompEnum.EnclosureFanSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureFanSensor",
+    iDRACMiscEnum.RAIDEnumeration : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_RAIDEnumeration","select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_RAIDEnumeration WHERE AttributeName = 'RAIDNegotiatedSpeed'"],
+    iDRACCompEnum.EnclosureTempSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureTemperatureSensor",
+    iDRACMetricsEnum.BaseMetricValue : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_BaseMetricValue",
+    iDRACMetricsEnum.AggregationMetric : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_AggregationMetricValue",
+    iDRACCompEnum.PresenceAndStatusSensor : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_PresenceAndStatusSensor",
+    iDRACMiscEnum.LCString : ["http://schemas.dell.com/wbem/wscim/1/cim-schema/2/DCIM_LCString","select InstanceID,AttributeName,CurrentValue from DCIM_LCString WHERE AttributeName = 'VirtualAddressManagementApplication'"]
 }
 
 iDRACWsManViews_FieldSpec = {
     iDRACCompEnum.Memory : {
         "Size" : { 'Type' : 'Bytes', 'InUnits' : "MB" },
-        "Speed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz" }
+        "CurrentOperatingSpeed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz", 'OutUnits' : 'MHz' },
+        "Speed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz" },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "DMTF Reserved",
+                "0xFFFF" : "Vendor Reserved"
+            }
+        }
+    },
+    iDRACCompEnum.Fan : {
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        }
+    },
+    iDRACCompEnum.FC : {
+        "LinkStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Down",
+                "1" : "Up",
+                "2" : "Unknown",
+            }
+        }
     },
     iDRACCompEnum.Controller : {
         "CacheSizeInMB" : { 'Rename' : 'CacheSize', 'Type' : 'Bytes', 'InUnits' : 'MB', 'OutUnits' : 'MB' },
+        "SecurityStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Encryption Not Capable",
+                "1" : "Encryption Capable",
+                "2" : "Security Key Assigned"
+            }
+        },
+        "EncryptionMode" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "None",
+                "1" : "Local Key Management",
+                "2" : "Dell Key Management",
+                "3" : "Pending Dell Key Management"
+            }
+        },
+        "EncryptionCapability" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "None",
+                "1" : "Local Key Management Capable",
+                "2" : "Dell Key Management Capable",
+                "3" : "Local Key Management and Dell Key Management Capable"
+            }
+        },
+        "SlicedVDCapability" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Sliced Virtual Disk creation not supported",
+                "1" : "Sliced Virtual Disk creation supported"
+            }
+        },
+        "CachecadeCapability" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Cachecade Virtual Disk not supported",
+                "1" : "Cachecade Virtual Disk supported"
+            }
+        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "DMTF Reserved",
+                "0xFFFF" : "Vendor Reserved"
+            }
+        },
+        "RollupStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+            }
+        }
     },
     iDRACCompEnum.CPU : {
         "CPUFamily" : {
@@ -492,21 +624,33 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Yes" 
             }
         },
-        "MaxClockSpeed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz" }
-    },
-    iDRACMiscEnum.NICStatistics : {
-        "LinkStatus" : {'Rename' : 'PrimaryStatus',
+        "MaxClockSpeed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz" },
+        "CurrentClockSpeed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz", 'OutUnits' : 'GHz' },
+        "PrimaryStatus" : {
             'Lookup'  :  'True',
             'Values' : {
-                '0' : "Warning",
-                '1' : "Healthy",      
-                '3' : "Critical"
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "DMTF Reserved",
+                "0xFFFF" : "Vendor Reserved"
+            }
+        }
+    },
+    iDRACMiscEnum.NICStatistics : {
+        "LinkStatus" : { 
+            'Lookup'  :  'True',
+            'Values' : {
+                '0' : "Unknown",
+                '1' : "Up",      
+                '3' : "Down"
             }
         }
     },
     iDRACCompEnum.PhysicalDisk : {
         "SizeInBytes" : { 'Rename' : 'Size', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
-        "UsedSpace" : { 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
+        "UsedSizeInBytes" : { 'Rename' : 'UsedSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
         "FreeSizeInBytes" : { 'Rename' : 'FreeSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
         "BlockSizeInBytes":  { 'Rename' : 'BlockSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'B' },
         "RemainingRatedWriteEndurance":  {
@@ -514,11 +658,101 @@ iDRACWsManViews_FieldSpec = {
             'Values' : {
                 '255' : "Not Available"
             }
+        },
+        "MediaType" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                '0' : "HDD",
+                '1' : "SSD"
+            }
+        },
+        "BusProtocol" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "SCSI",
+                "2" : "PATA",
+                "3" : "FIBRE",
+                "4" : "USB",
+                "5" : "SATA",
+                "6" : "SAS",
+                "7" : "PCIe",
+                "8" : "NVME"
+            }
+        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "DMTF Reserved",
+                "0xFFFF" : "Vendor Reserved"
+            }
+        },
+        "RaidStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Ready",
+                "2" : "Online",
+                "3" : "Foreign",
+                "4" : "Offline",
+                "5" : "Blocked",
+                "6" : "Failed",
+                "7" : "Degraded",
+                "8" : "Non-RAID",
+                "9" : "Missing"
+            }
+        },
+        "PredictiveFailureState" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Healthy",
+                "1" : "Warning"
+            }
         }
     },
     iDRACCompEnum.System: {
-        "SysMemMaxCapacitySize" : { 'Type' : 'Bytes' , 'InUnits' : 'KB' },
-        "SysMemTotalSize" : { 'Type' : 'Bytes' , 'InUnits' : 'KB' },
+        "SysMemMaxCapacitySize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'OutUnits' : 'TB' },
+        "SysMemTotalSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'OutUnits' : 'GB' },
+        "CurrentRollupStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                '0'       :  'Unknown',
+                '1'       :  'Healthy',
+                '2'       :  'Warning',
+                '3'       :  'Critical'
+            }
+        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        },
+        "FanRollupStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        },
+        "RollupStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        }
     },
     iDRACCompEnum.VirtualDisk : {
         "SizeInBytes" : { 'Rename' : 'Size', 'Type' : 'Bytes' , 'InUnits' : 'B' , 'Metrics' : 'GB'},
@@ -534,6 +768,28 @@ iDRACWsManViews_FieldSpec = {
                 '2048'    :  'RAID 10',
                 '8192'    :  'RAID 50',
                 '16384'   :  'RAID 60'
+            }
+        },
+        "RAIDStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Ready",
+                "2" : "Online",
+                "3" : "Foreign",
+                "4" : "Offline",
+                "5" : "Blocked",
+                "6" : "Failed",
+                "7" : "Degraded"
+            }
+        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
             }
         },
         "StripeSize" : {
@@ -557,12 +813,57 @@ iDRACWsManViews_FieldSpec = {
                 "16384" :"8388608",
                 "32768" : "16777216"
             }
+        },
+        "EnabledState" : { 'Rename' : 'State',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Other",
+                "2" : "Enabled",
+                "3" : "Disabled",
+                "4" : "Shutting Down",
+                "5" : "Not Applicable",
+                "6" : "Enabled but Offline",
+                "7" : "In Test",
+                "8" : "Deferred",
+                "9" : "Quiesce",
+                "10" : "Starting"
+            }
         }
     },
     iDRACCompEnum.VFlash : {
         "Capacity" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
         "AvailableSize" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
         "HealthStatus":  { 'Rename' : 'PrimaryStatus'},
+    },
+    iDRACSensorEnum.ServerSensor : {
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        },
+        "ElementName":  { 'Rename' : 'Location'},
+        "EnabledState" : { 'Rename' : 'State',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Other",
+                "2" : "Enabled",
+                "3" : "Disabled",
+                "4" : "Shutting Down",
+                "5" : "Not Applicable",
+                "6" : "Enabled but Offline",
+                "7" : "In Test",
+                "8" : "Deferred",
+                "9" : "Quiesce",
+                "10" : "Starting"
+            }
+
+        }
     },
     iDRACSensorEnum.NumericSensor : {
         "CurrentReading" :  {'UnitModify': 'UnitModifier', 
@@ -575,7 +876,33 @@ iDRACWsManViews_FieldSpec = {
                                 '19' : None, #'RPM',
                                 '65' : None, #'Percentage'
                             }
-                        }
+                        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        },
+        "ElementName":  { 'Rename' : 'Location'},
+        "EnabledState" : { 'Rename' : 'State',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Other",
+                "2" : "Enabled",
+                "3" : "Disabled",
+                "4" : "Shutting Down",
+                "5" : "Not Applicable",
+                "6" : "Enabled but Offline",
+                "7" : "In Test",
+                "8" : "Deferred",
+                "9" : "Quiesce",
+                "10" : "Starting"
+            }
+        }
     },
     iDRACSensorEnum.PSNumericSensor : {
         "CurrentReading" :  {'UnitModify': 'UnitModifier', 
@@ -588,7 +915,35 @@ iDRACWsManViews_FieldSpec = {
                                 '19' : None, # 'RPM',
                                 '65' : None, #'Percentage'
                             }
-                        }   
+                        },
+        "ElementName":  { 'Rename' : 'Location'},
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+
+        },
+        "EnabledState" : { 'Rename' : 'State',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Other",
+                "2" : "Enabled",
+                "3" : "Disabled",
+                "4" : "Shutting Down",
+                "5" : "Not Applicable",
+                "6" : "Enabled but Offline",
+                "7" : "In Test",
+                "8" : "Deferred",
+                "9" : "Quiesce",
+                "10" : "Starting"
+            }
+
+        }   
     },
     iDRACMiscEnum.iDRACEnumeration : {
         "InstanceID" : {
@@ -617,7 +972,93 @@ iDRACWsManViews_FieldSpec = {
         }
     },
     iDRACCompEnum.PowerSupply : {
-        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'Watts'}
+        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'Watts'},
+        "Range1MaxInputPower" : {'UnitScale': '0', 'UnitAppend' : 'W'},
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        },
+        "RedundancyStatus" : { 'Rename' : 'Redundancy',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "DMTF Reserved",
+                "2" : "Fully Redundant",
+                "3" : "Degraded Redundancy",
+                "4" : "Redundancy Lost",
+                "5" : "Overall Failure"
+            }
+        }
+    },
+    iDRACMetricsEnum.BaseMetricValue : {
+        "InstanceID" : {
+            'Lookup'  :  'True',
+            'Values' : {
+        "DCIM:System:Point:Energy:Cont" : 'EnergyConsumption',
+        "DCIM:System:Point:PowerHdrm:Cont" : 'PowerConsumption',
+        "DCIM:System:Point:InletTempWarnPerc:Cont" : 'InletTempWarnPerc',
+        "DCIM:System:Point:InletTempCriticalPerc:Cont" : 'InletTempCriticalPerc'
+            }
+        }
+    },
+    iDRACMetricsEnum.AggregationMetric: {
+        "InstanceID" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "DCIM:SystemBoard:Min:CPUUsage:1H" : 'CPUUsageMin1H',
+                "DCIM:SystemBoard:Min:CPUUsage:1D" : 'CPUUsageMin1D',                  
+                "DCIM:SystemBoard:Min:CPUUsage:1W" : 'CPUUsageMin1W',                 
+                "DCIM:SystemBoard:Max:CPUUsage:1H" : 'CPUUsageMax1H',                 
+                "DCIM:SystemBoard:Max:CPUUsage:1D" : 'CPUUsageMax1D',                 
+                "DCIM:SystemBoard:Max:CPUUsage:1W" : 'CPUUsageMax1W',                
+                "DCIM:SystemBoard:Avg:CPUUsage:1H" : 'CPUUsageAvg1H',              
+                "DCIM:SystemBoard:Avg:CPUUsage:1D" : 'CPUUsageAvg1D',                 
+                "DCIM:SystemBoard:Avg:CPUUsage:1W" : 'CPUUsageAvg1W',
+                "DCIM:SystemBoard:Min:MemoryUsage:1H" : 'MemoryUsageMin1H',               
+                "DCIM:SystemBoard:Min:MemoryUsage:1D" : 'MemoryUsageMin1D',               
+                "DCIM:SystemBoard:Min:MemoryUsage:1W" : 'MemoryUsageMin1W',              
+                "DCIM:SystemBoard:Max:MemoryUsage:1H" : 'MemoryUsageMax1H',             
+                "DCIM:SystemBoard:Max:MemoryUsage:1D" : 'MemoryUsageMax1D',               
+                "DCIM:SystemBoard:Max:MemoryUsage:1W" : 'MemoryUsageMax1W',             
+                "DCIM:SystemBoard:Avg:MemoryUsage:1H" : 'MemoryUsageAvg1H',               
+                "DCIM:SystemBoard:Avg:MemoryUsage:1D" : 'MemoryUsageAvg1D',               
+                "DCIM:SystemBoard:Avg:MemoryUsage:1W" : 'MemoryUsageAvg1W',             
+                "DCIM:SystemBoard:Min:IOUsage:1H" : 'IOUsageMin1H',                   
+                "DCIM:SystemBoard:Min:IOUsage:1D" : 'IOUsageMin1D',
+                "DCIM:SystemBoard:Min:IOUsage:1W" : 'IOUsageMin1W',                   
+                "DCIM:SystemBoard:Max:IOUsage:1H" : 'IOUsageMax1H',                   
+                "DCIM:SystemBoard:Max:IOUsage:1D" : 'IOUsageMax1D',                   
+                "DCIM:SystemBoard:Max:IOUsage:1W" : 'IOUsageMax1W',                   
+                "DCIM:SystemBoard:Avg:IOUsage:1H" : 'IOUsageAvg1H',                   
+                "DCIM:SystemBoard:Avg:IOUsage:1D" : 'IOUsageAvg1D',                  
+                "DCIM:SystemBoard:Avg:IOUsage:1W" : 'IOUsageAvg1W',                   
+                "DCIM:SystemBoard:Min:SYSUsage:1H" : 'SYSUsageMin1H',                  
+                "DCIM:SystemBoard:Min:SYSUsage:1D" : 'SYSUsageMin1D',                  
+                "DCIM:SystemBoard:Min:SYSUsage:1W" : 'SYSUsageMin1W',                  
+                "DCIM:SystemBoard:Max:SYSUsage:1H" : 'SYSUsageMax1H',                  
+                "DCIM:SystemBoard:Max:SYSUsage:1D" : 'SYSUsageMax1D',                  
+                "DCIM:SystemBoard:Max:SYSUsage:1W" : 'SYSUsageMax1W',                  
+                "DCIM:SystemBoard:Avg:SYSUsage:1H" : 'SYSUsageAvg1H',                  
+                "DCIM:SystemBoard:Avg:SYSUsage:1D" : 'SYSUsageAvg1D',                 
+                "DCIM:SystemBoard:Avg:SYSUsage:1W" : 'SYSUsageAvg1W',                  
+                "DCIM:System:Max:Current:Cont" : 'PeakAmperage',
+                "DCIM:System:Max:Power:Cont" : 'PeakPower',
+                "DCIM:System:Max:PowerHdrm:Cont" : 'PeakHeadroom',
+                "DCIM:SystemBoard:Peak:CPUUsage" : 'SYSPeakCPUUsage',
+                "DCIM:SystemBoard:Peak:IOUsage" : 'SYSPeakIOUsage',
+                "DCIM:SystemBoard:Peak:MemoryUsage" : 'SYSPeakMemoryUsage',
+                "DCIM:SystemBoard:Peak:SYSUsage" : 'SYSPeakSYSUsage'
+            }
+        }
+    },
+    iDRACCompEnum.License : {
+        "LicenseInstallDate" : {'DateTime' : None},
+        "LicenseSoldDate" : {'DateTime' : None}
     }
 }
 
@@ -625,8 +1066,145 @@ iDRACWsManViews_FieldSpec = {
 iDRACClassifier = [ iDRACCompEnum.System ]
 
 iDRACRedfishViews = {
-    iDRACCompEnum.System: "/redfish/v1/Systems/System.Embedded.1",
-    iDRACCompEnum.NIC : "/redfish/v1/Managers/iDRAC.Embedded.1/SerialInterfaces",
+    iDRACCompEnum.System: ["Systems","Members"],
+    iDRACCompEnum.NIC : ["Systems","Members","EthernetInterfaces","Members"],
+    iDRACCompEnum.CPU : ["Systems","Members","Processors","Members"],
+    iDRACCompEnum.Sensors_Fan : ["Systems","Members","Links","CooledBy"],
+    iDRACCompEnum.PowerSupply : ["Systems","Members","Links","PoweredBy"],
+    iDRACCompEnum.Sensors_Voltage : ["Chassis","Members","Power","Voltages"],
+    iDRACCompEnum.Sensors_Temperature : ["Chassis","Members","Thermal","Temperatures"],
+    iDRACCompEnum.Controller : ["Systems","Members","SimpleStorage","Members"],
+    iDRACCompEnum.iDRAC : ["Managers", "Members"],
+    iDRACMiscEnum.ChassisRF : ["Chassis","Members"],
+    iDRACMiscEnum.DellAttributes : ["Managers", "Members", "Links", "Oem", "Dell", "DellAttributes"]
+}
+
+iDRACRedfishViews_FieldSpec = {
+    iDRACCompEnum.System : {
+        "MemorySummary" : {'Create' : {
+                                        'SysMemTotalSize' : {'_Attribute' : 'TotalSystemMemoryGiB'},
+                                        'SysMemPrimaryStatus' :{ '_Attribute' : {'Status':'Health'}}
+                                      }
+                          },
+        "ProcessorSummary" : {'Create' : {
+                                            'CPURollupStatus' : {'_Attribute' : {'Status':'Health'}}
+                                         }
+                             },
+        "Status" : {'Create' : { 'PrimaryStatus' : {'_Attribute' : 'Health'}}},
+        "SKU" : { 'Rename' : 'ServiceTag'},
+        "BiosVersion" : { 'Rename' : 'BIOSVersionString'},
+        "PartNumber" : { 'Rename' : 'BoardPartNumber'},
+        "SerialNumber" : { 'Rename' : 'BoardSerialNumber'}
+    },
+    iDRACCompEnum.NIC : {
+        "Id" : { 'Rename' : 'FQDD'},
+        "SpeedMbps" : {'Rename' : 'LinkSpeed', 'UnitScale': '0', 'UnitAppend' : 'Mbps'},
+        "Name" : {'Rename' : 'ProductName'},
+        "AutoNeg" : {'Rename' : 'AutoNegotiation'},
+        "MACAddress" : {'Rename' : 'CurrentMACAddress'},
+        "Status" : {'Create' : {
+                                'PrimaryStatus' : {'_Attribute' : 'Health'},
+                                'LinkStatus' : {'_Attribute' : 'State',
+                                                '_Mapping' : {'Enabled' : 'Up',
+                                                              'Disabled' : 'Down',
+                                                              'StandbyOffline': 'Down',
+                                                              'StandbySpare' : 'Down',
+                                                              'InTest' : 'Down',
+                                                              'Starting' : 'Down',
+                                                              'Absent' : 'Down',
+                                                              'UnavailableOffline' : 'Down',
+                                                              'Deferring' : 'Down',
+                                                              'Quiesced' : 'Down',
+                                                              'Updating' : 'Down'}
+                                               }
+                               }
+                   },
+        "Description" : {'Rename' : 'DeviceDescription'}
+    },
+    iDRACCompEnum.CPU : {
+        "Id" : { 'Rename' : 'FQDD'},
+        "ProcessorId" : {'Create' : {
+                                     'VendorId' : {'_Attribute' : 'VendorID'},
+                                     'CPUFamily': {'_Attribute' : 'EffectiveFamily'},
+                                     'Model': {'_Attribute' : 'EffectiveModel'}
+                                    }
+                         },
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'}}},
+        "TotalCores" : { 'Rename' : 'NumberOfProcessorCores'},
+        "TotalThreads" : { 'Rename' : 'NumberOfEnabledThreads'},
+        "MaxSpeedMHz" : {'Rename' : 'MaxClockSpeed'},
+        "Name" : {'Rename' : 'DeviceDescription'}
+    },
+    iDRACCompEnum.Sensors_Fan : {
+        "MemberID" : { 'Rename' : 'Key'},
+        "MemberId" : { 'Rename' : 'Key'},
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'},
+                                'State' : {'_Attribute' : 'State'}}
+                   },
+        "Reading" : { 'Rename' : 'CurrentReading'}
+    },
+    iDRACCompEnum.Sensors_Voltage : {
+        "MemberID" : { 'Rename' : 'Key'},
+        "MemberId" : { 'Rename' : 'Key'},
+        "Name" : { 'Rename' : 'Location'},
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'},
+                                'State' : {'_Attribute' : 'State'}}
+                    },
+        "ReadingVolts" : { 'Rename' : 'Reading(V)'}
+    },
+    iDRACCompEnum.Sensors_Temperature : {
+        "MemberID" : { 'Rename' : 'Key'},
+        "MemberId" : { 'Rename' : 'Key'},
+        "Name" : { 'Rename' : 'Location'},
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'},
+                                'State' : {'_Attribute' : 'State'}}
+                    },
+        "ReadingCelsius" : { 'Rename' : 'CurrentReading(Degree Celsius)'}
+    },
+    iDRACCompEnum.PowerSupply : {
+        "MemberID" : { 'Rename' : 'FQDD'},
+        "LastPowerOutputWatts" : {'Rename' : 'TotalOutputPower'},
+        "LineInputVoltage" : { 'Rename' : 'InputVoltage'},
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'}}
+                    },
+        "Redundancy" : { 'Rename' : 'RedfishRedundancy'}#This is to not show redundancy
+    },
+    iDRACCompEnum.Controller : {
+        "Id" : { 'Rename' : 'FQDD'},
+        "Name" : {'Rename' : 'ProductName'},
+        "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'}}
+                    }
+    },
+    iDRACMiscEnum.DellAttributes : {
+        "Attributes" : {'Create' : {'GroupName' : {'_Attribute' : 'GroupManager.1.GroupName'},
+                                    'GroupStatus' : {'_Attribute' : 'GroupManager.1.Status'},
+                                    'OSName' : {'_Attribute' : 'ServerOS.1.OSName'},
+                                    'OSVersion' : {'_Attribute' : 'ServerOS.1.OSVersion'},
+                                    'SystemLockDown' : {'_Attribute' : 'Lockdown.1.SystemLockdown'},
+                                    'LifecycleControllerVersion' : {'_Attribute' : 'Info.1.Version'},
+                                    'IPv4Address' : {'_Attribute' : 'CurrentIPv4.1.Address'},
+                                    'ProductInfo' : {'_Attribute' : 'Info.1.Product'},
+                                    'MACAddress' : {'_Attribute' : 'CurrentNIC.1.MACAddress'},
+                                    'NICDuplex' : {'_Attribute' : 'NIC.1.Duplex'},
+                                    'NICSpeed' : {'_Attribute' : 'NIC.1.Speed'},
+                                    'DNSDomainName' : {'_Attribute' : 'NIC.1.DNSDomainName'},
+                                    'DNSRacName' : {'_Attribute' : 'NIC.1.DNSRacName'},
+                                    'IPv6Address' : {'_Attribute' : 'IPv6.1.Address1'},
+                                    'PermanentMACAddress': {'_Attribute' : 'NIC.1.MACAddress'},
+                                    'VirtualAddressManagementApplication' : {'_Attribute' : 'LCAttributes.1.VirtualAddressManagementApplication'}}
+                        }
+    },
+    iDRACMiscEnum.ChassisRF : {
+        "Location" : {'Create' : {'ChassisLocation' : {'_Attribute' : 'Info'}}},
+        'SKU' : {'Rename' : 'ChassisServiceTag'},
+        'Model' : {'Rename' : 'ChassisModel'},
+        'Name' : {'Rename' : 'ChassisName'},
+        'PhysicalSecurity' : {'Create' : {'IntrusionRollupStatus' : {'_Attribute' :'IntrusionSensor'}}}
+    }
+    # iDRACCompEnum.iDRAC : {
+    #     "Links" : {'Create' : {'DellHealth' : {'Oem':{'Dell' : '@odata.type'}}}
+    #               }
+    # }
 }
 
 if PySnmpPresent:
@@ -638,7 +1216,7 @@ if PySnmpPresent:
             "Model" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.1.3.12'),
             "SystemGeneration" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.1.1.7'),
             "ChassisServiceTag" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.1.2.1'),
-            "PrimaryStatus" : ObjectIdentity(' 1.3.6.1.4.1.674.10892.5.4.200.10.1.2'),
+            "PrimaryStatus" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.2.1'),
             'ChassisModel' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.6"), 
             'StateSettings' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.3"), 
             'Manufacturer' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.8"), 
@@ -653,19 +1231,26 @@ if PySnmpPresent:
             'SystemRevisionNumber' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.47"), 
             'ExpressServiceCodeName' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.49"), 
             'AssetTag' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.10"), 
-            'SysMemPrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.300.10.1.27"), 
+            'SysMemPrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.27"), 
             "CPURollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.50"),
-            "FanRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.44"),
+            "FanRollupStatus" : ObjectIdentity(".1.3.6.1.4.1.674.10892.5.4.200.10.1.21"),
             "PSRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.9"),
             "StorageRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.2.3"),
             "VoltRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.12"),
             "TempRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.24"),
-            "AmpRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.15"),
+            "CurrentRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.15"),
             "BatteryRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.52"),
             "SDCardRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.56"),
             "IDSDMRollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.58"),
             "ChassisIntrusion" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.30"),
             "ChassisStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.4"),
+            "CoolingUnit" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.44"),
+            "PowerUnit" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.200.10.1.42"),
+            "LifecycleControllerVersion" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.8"),
+            "OSName" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.3.6"),
+            "iDRACURL" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.6"),
+            # "RollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.2.1"),
+            "DeviceType" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.2")
         },
         iDRACCompEnum.CPU : {
             'Index' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.2"), 
@@ -686,6 +1271,7 @@ if PySnmpPresent:
             "ExtendedEnabled" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.22"), 
             'Model' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.23"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.26"), 
+            'processorDeviceStateSettings' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.4"),
         },
         iDRACCompEnum.Memory : {
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.26"), 
@@ -694,11 +1280,12 @@ if PySnmpPresent:
             'LocationName' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.8"), 
             'BankLabel' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.10"), 
             'Size' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.14"), 
-            'Speed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.15"), 
+            'CurrentOperatingSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.15"), 
             'Manufacturer' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.21"), 
             'PartNumber' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.22"), 
             'SerialNumber' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.23"), 
             'StateCapabilities' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.3"), 
+            'memoryDeviceStateSettings' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.4"),
             # 'Rank' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.50.1.2"),
             # The OID above corresponds to Index and Rank not in iDRAC MIB
         },
@@ -727,12 +1314,13 @@ if PySnmpPresent:
             'Description' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.80.1.9"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.80.1.12"), 
         },
-        iDRACCompEnum.Fan : {
+        iDRACCompEnum.Sensors_Fan : {
             'Index' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.2"), 
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.5"), 
             'coolingUnitIndexReference' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.15"), 
             'CurrentReading' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.6"), 
             'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.7"), 
+            'State' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.4"),
             'Location' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.8"), 
             'SubType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.16"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.19"), 
@@ -744,9 +1332,11 @@ if PySnmpPresent:
             'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.7"), 
             'Location' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.8"), 
             'InputVoltage' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.9"), 
-            'RatedInputWattage' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.14"), 
+            'Range1MaxInputPower' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.14"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.15"), 
             'IndexReference' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.10"), 
+            'powerSupplyStateCapabilitiesUnique' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.3"),
+            'PowerSupplySensorState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.600.12.1.11"),
         },
         iDRACCompEnum.Enclosure : {
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.3.1.1"), 
@@ -809,7 +1399,7 @@ if PySnmpPresent:
             'ProductName' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.2"), 
             'ControllerFirmwareVersion' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.8"), 
             'CacheSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.9"), 
-            'RollUpStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.37"), 
+            'RollupStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.37"),
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.38"), 
             'DriverVersion' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.41"), 
             'PCISlot' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.42"), 
@@ -827,11 +1417,11 @@ if PySnmpPresent:
         iDRACCompEnum.VirtualDisk : {
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.1"), 
             'Name' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.2"), 
-            'State' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.4"), 
+            'RAIDStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.4"),
             'Size' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.6"), 
-            'WritePolicy' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.10"), 
-            'ReadPolicy' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.11"), 
-            'Layout' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.13"), 
+            'WriteCachePolicy' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.10"), 
+            'ReadCachePolicy' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.11"), 
+            'RAIDTypes' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.13"),
             'StripeSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.14"), 
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.20"), 
             'Secured' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.24"), 
@@ -846,21 +1436,20 @@ if PySnmpPresent:
         iDRACCompEnum.PhysicalDisk : {
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.1"), 
             'Name' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.2"), 
-            'State' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.4"), 
+            'RaidStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.4"),
             'Model' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.6"), 
             'SerialNumber' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.7"), 
             'Revision' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.8"), 
             'Size' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.11"), 
-            'UsedSpace' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.17"), 
-            'FreeSpace' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.19"), 
+            'UsedSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.17"),
+            'FreeSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.19"),
             'BusType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.21"), 
             'SpareState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.22"), 
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.24"), 
             'PPID' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.27"), 
             'SASAddress' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.28"), 
             'NegotiatedSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.29"), 
-            'CapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"), 
-            'PredictiveFailureState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.31"), 
+            'PredictiveFailureState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.31"),
             'CapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"), 
             'MediaType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.35"), 
             'PowerState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.42"), 
@@ -911,48 +1500,165 @@ if PySnmpPresent:
             "ManufacturerName" : ObjectIdentity('IDRAC-MIB-SMIv2', 'systemBIOSManufacturerName'),
         },
         iDRACCompEnum.Sensors_Amperage : {
-            "DeviceID" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.8'),
+            "Location" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.8'),
             "PrimaryStatus" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.5'),
             "State" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.4'),
             "ProbeReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.6'),
-            "Reading"       : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.16'),
+            "CurrentReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.16'),
         },
         iDRACCompEnum.Sensors_Battery : {
             "State"           : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.4'),
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.5'),
-            "Reading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.6'),
-            "DeviceID"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.7'),
+            "CurrentReading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.6'),
+            "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.50.1.7'),
         },
         iDRACCompEnum.Sensors_Intrusion : {
             "State"           : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.4'),
             "Type"            : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.7'),
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.5'),
-            "Reading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.6'),
-            "DeviceID"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.8'),
+            "CurrentReading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.6'),
+            "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.300.70.1.8'),
         },
         iDRACCompEnum.Sensors_Voltage : {
             "State"           : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.4'),
-            "Reading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.16'),
+            "CurrentReading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.16'),
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.5'),
             "Reading(V)"      : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.6'),
-            "DeviceID"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.8'),
+            "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.20.1.8'),
         },
         iDRACCompEnum.Sensors_Temperature : {
             "State"           : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.4'),
-            "Reading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.16'),
+            "CurrentReading"         : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.16'),
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.5'),
-            "Reading(Degree Celsius)"      : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.6'),
-            "DeviceID"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.8'),
+            "CurrentReading(Degree Celsius)"      : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.6'),
+            "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.8'),
         },
     }
     iDRACSNMPViews_FieldSpec = {
         iDRACCompEnum.Memory : {
             "Size" : { 'Type' : 'Bytes', 'InUnits' : "KB" },
+            "CurrentOperatingSpeed" : { 'Type' : 'ClockSpeed', 'InUnits' : "MHz", 'OutUnits' : 'MHz' },
+            "memoryDeviceStateSettings" : {
+                'Lookup' :  'True',
+                'Values' : {
+                    "1"  : "unknown",
+                    "2"  : "enabled",
+                    "4"  : "notReady",
+                    "6"  : "enabledAndNotReady"
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
         },
         iDRACCompEnum.Controller : {
             "CacheSize" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "RollupStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "Unknown",
+                    "3": "Healthy",
+                    "4": "Warning",
+                    "5": "Critical",
+                    "6": "Critical"
+                }
+            }
+        },
+        iDRACCompEnum.Sensors_Fan: {
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "unknown",
+                    "2" : "enabled",
+                    "4" : "notReady",
+                    "6" : "enabledAndNotReady",
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical",
+                    "7" : "Warning",
+                    "8" : "Critical",
+                    "9" : "Critical",
+                    "10" : "Critical"
+                }
+            },
+            "Type" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "coolingDeviceTypeIsOther", 
+                    "2" : "coolingDeviceTypeIsUnknown", 
+                    "3" : "coolingDeviceTypeIsAFan", 
+                    "4" : "coolingDeviceTypeIsABlower", 
+                    "5" : "coolingDeviceTypeIsAChipFan", 
+                    "6" : "coolingDeviceTypeIsACabinetFan", 
+                    "7" : "coolingDeviceTypeIsAPowerSupplyFan", 
+                    "8" : "coolingDeviceTypeIsAHeatPipe", 
+                    "9" : "coolingDeviceTypeIsRefrigeration", 
+                    "10" : "coolingDeviceTypeIsActiveCooling", 
+                    "11" : "coolingDeviceTypeIsPassiveCooling"
+                }
+            },
+            "SubType" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "coolingDeviceSubTypeIsOther",
+                    "2" : "coolingDeviceSubTypeIsUnknown", 
+                    "3" : "coolingDeviceSubTypeIsAFanThatReadsInRPM", 
+                    "4" : "coolingDeviceSubTypeIsAFanReadsONorOFF", 
+                    "5" : "coolingDeviceSubTypeIsAPowerSupplyFanThatReadsinRPM", 
+                    "6" : "coolingDeviceSubTypeIsAPowerSupplyFanThatReadsONorOFF", 
+                    "16" : "coolingDeviceSubTypeIsDiscrete"
+                }
+            },
         },
         iDRACCompEnum.CPU : {
+            "processorDeviceStateSettings" : {
+                'Lookup' :  'True',
+                'Values' : {
+                    "1"  : "unknown",
+                    "2"  : "enabled",
+                    "4"  : "notReady",
+                    "6"  : "enabledAndNotReady"
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
             "CPUFamily" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -1139,22 +1845,21 @@ if PySnmpPresent:
             "LinkStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "0" : "Warning", 
-                    "1" : "OK",      
-                    "2" : "Critical",
-                    "3" : "Warning", 
-                    "4" : "Warning", 
-                    "10" : "Warning",
-                    "11" : "Warning",
-                    "12" : "Warning",
-                    "13" : "Warning",
+                    "1" : "Up",      
+                    "2" : "Down",
+                    "3" : "Down", 
+                    "4" : "Down", 
+                    "10" : "Down",
+                    "11" : "Down",
+                    "12" : "Down",
+                    "13" : "Down",
                 }
 	    },
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "Warning",
-                    "2" : "Warning",
+                    "1" : "Unknown",
+                    "2" : "Unknown",
                     "3" : "Healthy",
                     "4" : "Warning",
                     "5" : "Critical",
@@ -1170,6 +1875,15 @@ if PySnmpPresent:
         },
         iDRACCompEnum.VirtualDisk : {
             "Size" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
+            "RAIDStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    '1'       :  'Unknown',
+                    '2'       :  'Online',
+                    '3'       :  'Failed',
+                    '4'       :  'Degraded'
+                }
+            },
             "RAIDTypes" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -1181,8 +1895,43 @@ if PySnmpPresent:
                     '6'       :  'RAID 10',
                     '7'       :  'RAID 50',
                     '8'       :  'RAID 60',
-                    '9'       :  'ConcatRAID-1',
-                    '10'      :  'ConcatRAID-5'
+                    '9'       :  'Concatenated RAID 1',
+                    '10'      :  'Concatenated RAID 5'
+                }
+            },
+            "ReadCachePolicy" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    '1'       :  'No Read Ahead',
+                    '2'       :  'Read Ahead',
+                    '3'       :  'Adaptive Read Ahead',
+                }
+            },
+            "DiskCachePolicy" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    '1'       :  'Enabled',
+                    '2'       :  'Disabled',
+                    '3'       :  'Default',
+                }
+            },
+            "WriteCachePolicy" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    '1'       :  'Write Through',
+                    '2'       :  'Write Back',
+                    '3'       :  'Write Back Force',
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
                 }
             },
             "StripeSize" : {
@@ -1211,8 +1960,46 @@ if PySnmpPresent:
         },
         iDRACCompEnum.PhysicalDisk : {
             "Size" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' },
-            "UsedSpace" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'Metrics' : 'GB'},
+            "UsedSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'Metrics' : 'GB'},
             "FreeSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'Metrics' : 'GB' },
+            "RaidStatus" : {
+                'Lookup' :  'True',
+                'Values' : {
+                    "1"  : "Unknown",
+                    "2"  : "Ready",
+                    "3"  : "Online",
+                    "4"  : "Foreign",
+                    "5"  : "Offline",
+                    "6"  : "Blocked",
+                    "7"  : "Failed",
+                    "8"  : "Nonraid",
+                    "9"  : "Removed",
+                    "10" : "Readonly"
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical",
+                    "7" : "Warning",
+                    "8" : "Critical",
+                    "9" : "Critical",
+                    "10" : "Critical",
+                }
+            },
+            "MediaType" : {
+                'Lookup' :  'True',
+                'Values' : {
+                    "1" : "unknown",
+                    "2" : "HDD",
+                    "3" : "SSD"
+                }
+            },
         },
         iDRACCompEnum.System : {
             "SystemGeneration" : {
@@ -1234,8 +2021,162 @@ if PySnmpPresent:
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "Warning",
-                    "2" : "Warning",
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "RollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "PSRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "CPURollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "SysMemPrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "FanRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "BatteryRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "SDCardRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "ChassisIntrusion" : { 'Rename' : 'IntrusionRollupStatus', 
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "CoolingUnit" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "PowerUnit" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "ChassisStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "StorageRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "VoltRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "CurrentRollupStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
                     "3" : "Healthy",
                     "4" : "Warning",
                     "5" : "Critical",
@@ -1245,8 +2186,8 @@ if PySnmpPresent:
             "TempRollupStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "Warning",
-                    "2" : "Warning",
+                    "1" : "Unknown",
+                    "2" : "Unknown",
                     "3" : "Healthy",
                     "4" : "Warning",
                     "5" : "Critical",
@@ -1256,15 +2197,114 @@ if PySnmpPresent:
         },
         iDRACCompEnum.PowerSupply : {
             'TotalOutputPower' :  {'UnitScale': '-1', 'UnitAppend' : 'W'},
-            'RatedInputWattage' :  {'UnitScale': '-1', 'UnitAppend' : 'W'}
-        },
-        iDRACCompEnum.Sensors_Temperature : {
-            'Reading(Degree Celsius)' :  {'UnitScale': '-1', 'UnitAppend' : 'Degree Celsius'},
+            'Range1MaxInputPower' :  {'UnitScale': '-1', 'UnitAppend' : 'W'},
+            "powerSupplyStateCapabilitiesUnique" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "0" : "No Power Supply State",
+                    "1" : "unknown",
+                    "2" : "onlineCapable",
+                    "4" : "notReadyCapable",
+                }
+            },
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "Warning",
-                    "2" : "Warning",
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "PowerSupplySensorState" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "presenceDetected",
+                    "2" : "psFailureDetected",
+                    "4" : "predictiveFailure",
+                    "8" : "psACLost",
+                    "16" : "acLostOrOutOfRange",
+                    "32" : "acOutOfRangeButPresent",
+                    "64" : "configurationError"
+                }
+            }
+        },
+        iDRACCompEnum.Sensors_Battery : {
+            "CurrentReading" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "predictiveFailure",
+                    "2" : "failed",
+                    "4" : "presenceDetected",
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
+                }
+            }
+        },
+        iDRACCompEnum.Sensors_Intrusion: {
+            "CurrentReading" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "chassisNotBreached",
+                    "2" : "chassisBreached",
+                    "3" : "chassisBreachedPrior",
+                    "4" : "chassisBreachSensorFailure",
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            },
+            "Type" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "chassisBreachDetectionWhenPowerON",
+                    "2" : "chassisBreachDetectionWhenPowerOFF",
+                }
+            },
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
+                }
+            }
+        },
+        iDRACCompEnum.Sensors_Amperage : {
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
                     "3" : "Healthy",
                     "4" : "Warning",
                     "5" : "Critical",
@@ -1274,10 +2314,84 @@ if PySnmpPresent:
                     "9" : "Critical",
                     "10" : "Critical"
                 }
+            },
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
+                }
+            },
+            "CurrentReading": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Good",
+                    "2": "Bad"
+                }
+            }
+        },
+        iDRACCompEnum.Sensors_Temperature : {
+            'Reading(Degree Celsius)' :  {'UnitScale': '-1', 'UnitAppend' : 'Degree Celsius'},
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical",
+                    "7" : "Warning",
+                    "8" : "Critical",
+                    "9" : "Critical",
+                    "10" : "Critical"
+                }
+            },
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
+                }
             }
         },
         iDRACCompEnum.Sensors_Voltage : {
-            'Reading(V)' :  {'UnitScale': '-3', 'UnitAppend' : 'V'}
+            'Reading(V)' :  {'UnitScale': '-3', 'UnitAppend' : 'V'},
+            "CurrentReading" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "voltageIsGood",
+                    "2" : "voltageIsBad",
+                }
+            },
+            "PrimaryStatus" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical",
+                    "7" : "Warning",
+                    "8" : "Critical",
+                    "9" : "Critical",
+                    "10" : "Critical"
+                }
+            },
+            "State" : {
+                'Lookup'  :  'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
+                }
+            }
         }
     }
 
@@ -1289,10 +2403,11 @@ if PySnmpPresent:
 
 # Agnostic of protocols
 iDRACSubsystemHealthSpec = {
+    iDRACCompEnum.System : { "Component" : iDRACCompEnum.System, "Field": 'PrimaryStatus' },
     iDRACCompEnum.Memory : { "Component" : iDRACCompEnum.System, "Field" : 'SysMemPrimaryStatus' },
     iDRACCompEnum.CPU : { "Component" : iDRACCompEnum.System, "Field": 'CPURollupStatus' },
     'Sensors_Fan' : { "Component" : iDRACCompEnum.System, "Field": 'FanRollupStatus' },
-    iDRACCompEnum.iDRAC : { "Component" : iDRACCompEnum.System, "Field": 'RollupStatus' },
+    # iDRACCompEnum.iDRAC : { "Component" : iDRACCompEnum.System, "Field": 'RollupStatus' },
     iDRACCompEnum.PowerSupply : { "Component" : iDRACCompEnum.System, "Field": 'PSRollupStatus' },
     'Storage' : { "Component" : iDRACCompEnum.System, "Field": 'StorageRollupStatus' },
     'License' : { "Component" : iDRACCompEnum.System, "Field": 'LicensingRollupStatus' },
@@ -1301,6 +2416,10 @@ iDRACSubsystemHealthSpec = {
     'Sensors_Battery' : { "Component" : iDRACCompEnum.System, "Field": 'BatteryRollupStatus' },
     'VFlash' : { "Component" : iDRACCompEnum.System, "Field": 'SDCardRollupStatus' },
     'Sensors_Intrusion' : { "Component" : iDRACCompEnum.System, "Field": 'IntrusionRollupStatus' },
+    'Sensors_Amperage' : { "Component" : iDRACCompEnum.System, "Field": 'CurrentRollupStatus' },
+    'Chassis' : { "Component" : iDRACCompEnum.System, "Field": 'ChassisStatus' },
+    'Cooling_Unit' : { "Component" : iDRACCompEnum.System, "Field": 'CoolingUnit' },
+    'Power_Unit' : { "Component" : iDRACCompEnum.System, "Field": 'PowerUnit' },
 }
 
 iDRACUnionCompSpec = {
@@ -1315,7 +2434,7 @@ iDRACUnionCompSpec = {
             iDRACSensorEnum.NumericSensor,
             iDRACSensorEnum.PSNumericSensor
         ],
-        "_remove_duplicates" : "True",
+        "_remove_duplicates" : True,
         "_pivot" : "SensorType",
         "SensorType" : {
             "1": "Battery",
@@ -1331,10 +2450,14 @@ iDRACUnionCompSpec = {
 iDRACDynamicValUnion = {
     "System":{
         "_complexkeys": {
-            "SystemString" : ["FQDD", "AttributeName", "CurrentValue"]
+            "SystemString" : ["FQDD", "AttributeName", "CurrentValue"],
+            "LCString" :[None, "AttributeName", "CurrentValue" ],
+            "iDRACEnumeration" :[None, "InstanceID", "CurrentValue"]
         },
         "_components_enum": [
-          iDRACMiscEnum.SystemString
+          iDRACMiscEnum.SystemString,
+          iDRACMiscEnum.LCString,
+          iDRACMiscEnum.iDRACEnumeration
         ],
         "_createFlag" : False
     },
@@ -1366,6 +2489,33 @@ iDRACDynamicValUnion = {
           iDRACMiscEnum.iDRACString
         ],
         "_createFlag" : False
+    },
+    "PhysicalDisk":{
+        "_complexkeys": {
+            "RAIDEnumeration" :["FQDD", "AttributeName", "CurrentValue"],
+        },
+        "_components_enum": [
+          iDRACMiscEnum.RAIDEnumeration
+        ],
+        "_createFlag" : False
+    },
+    "SystemMetrics":{
+        "_complexkeys": {
+            "BaseMetricValue" :[None, "InstanceID", "MetricValue" ]
+        },
+        "_components_enum": [
+          iDRACMetricsEnum.BaseMetricValue
+        ],
+        "_createFlag" : True
+    },
+    "SystemBoardMetrics":{
+        "_complexkeys": {
+            "AggregationMetric" :[None, "InstanceID", "MetricValue" ]
+        },
+        "_components_enum": [
+          iDRACMetricsEnum.AggregationMetric
+        ],
+        "_createFlag" : True 
     }    
 }
 
@@ -1383,7 +2533,8 @@ iDRACMergeJoinCompSpec = {
             iDRACMiscEnum.NICCapabilities,
             iDRACMiscEnum.SwitchConnection,
             iDRACMiscEnum.HostNICView
-        ]
+        ],
+        "_overwrite" : False
    },
    "FC" : {
         "_components" : [
@@ -1392,10 +2543,26 @@ iDRACMergeJoinCompSpec = {
         "_components_enum": [
             iDRACCompEnum.FC,
             iDRACMiscEnum.FCStatistics
-        ]
+        ],
+        "_overwrite" : False
    }
 }
- 
+
+iDRAC_more_details_spec = {
+    "System":{
+        "_components_enum": [
+            iDRACCompEnum.System,
+            iDRACMiscEnum.ChassisRF,
+            iDRACMiscEnum.DellAttributes
+        ]
+    },
+    "iDRAC":{
+        "_components_enum": [
+            iDRACCompEnum.iDRAC,
+            iDRACMiscEnum.DellAttributes
+        ]
+    }
+}
 
 class iDRAC(iDeviceDiscovery):
     def __init__(self, srcdir):
@@ -1405,15 +2572,16 @@ class iDRAC(iDeviceDiscovery):
             super().__init__(iDeviceRegistry("iDRAC", srcdir, iDRACCompEnum))
         self.srcdir = srcdir
         self.protofactory.add(PWSMAN(
-            selectors = { }, #"__cimnamespace" : "root/dcim" },
+            selectors = {"__cimnamespace" : "root/dcim" },
             views = iDRACWsManViews,
             view_fieldspec = iDRACWsManViews_FieldSpec,
             compmap = iDRACSWCompMapping,
             cmds = iDRACWsManCmds
         ))
         self.protofactory.add(PREDFISH(
-            views = iDRACRedfishViews,
-            cmds = iDRACRedfishCmds
+            views=iDRACRedfishViews,
+            cmds=iDRACRedfishCmds,
+            view_fieldspec=iDRACRedfishViews_FieldSpec
         ))
         if PySnmpPresent:
             self.protofactory.add(PSNMP(
@@ -1424,6 +2592,7 @@ class iDRAC(iDeviceDiscovery):
         self.protofactory.addCTree(iDRACComponentTree)
         self.protofactory.addSubsystemSpec(iDRACSubsystemHealthSpec)
         self.protofactory.addClassifier(iDRACClassifier)
+        self.prefDiscOrder = 1
 
     def my_entitytype(self, pinfra, ipaddr, creds, protofactory):
         return iDRACEntity(self.ref, protofactory, ipaddr, creds, self.srcdir, 'iDRAC')
@@ -1441,16 +2610,20 @@ class iDRACEntity(iDeviceDriver):
         self.config_dir = os.path.join(srcdir, name, "Config")
         self.ePowerStateEnum = PowerStateEnum
         self.job_mgr = iDRACJobs(self)
+        self.use_redfish = False
         self.config_mgr = iDRACConfig(self)
         self.log_mgr = iDRACLogs(self)
         self.update_mgr = iDRACUpdate(self)
         self.license_mgr = iDRACLicense(self)
         self.security_mgr = iDRACSecurity(self)
+        self.streaming_mgr = iDRACStreaming(self)
         self.user_mgr = iDRACCredsMgmt(self)
         self.comp_union_spec = iDRACUnionCompSpec
         self.comp_misc_join_spec = iDRACDynamicValUnion
         self.comp_merge_join_spec = iDRACMergeJoinCompSpec
+        self.more_details_spec = iDRAC_more_details_spec
         self.device_type = 'Server'
+        self.eemi_registry = eemiregistry
 
     def my_reset(self):
         if hasattr(self, 'update_mgr'):
@@ -1465,10 +2638,12 @@ class iDRACEntity(iDeviceDriver):
                 js['ServiceTag'] = self.ipaddr
             retval = js['ServiceTag']
         else:
-            if 'DeviceID' in js:
-                retval = js['DeviceID']
-            if retval is None:
-                retval = clsName + "_null"
+            idlist = ['Id','DeviceID', 'MemberID', 'MemberId', '@odata.id']
+            retval = clsName + "_null"
+            for id in idlist:
+                if id in js:
+                    retval = js[id]
+                    return retval
         return retval
 
     def _isin(self, parentClsName, parent, childClsName, child):
@@ -1515,7 +2690,7 @@ class iDRACEntity(iDeviceDriver):
 
     @property
     def IsRackStyleManaged(self):
-        # return true if rack server, pounce platform
+        # return true if rack services, pounce platform
         if not "Modular" in self.get_server_generation():
             return True
 
@@ -1538,7 +2713,7 @@ class iDRACEntity(iDeviceDriver):
     @property
     def IDRACFirmwareVersion(self):
         self.get_partial_entityjson(self.ComponentEnum.iDRAC)
-        return self._get_field_device(self.ComponentEnum.iDRAC, "FirmwareVersion")
+        return self._get_field_device(self.ComponentEnum.iDRAC, "LifecycleControllerVersion")
 
     @property
     def PowerCap(self):
@@ -1558,6 +2733,47 @@ class iDRACEntity(iDeviceDriver):
         #if component in ["PhysicalDisk"]:
         #    if entry["RollupStatus"] == 0 or entry["PrimaryStatus"] == 0: 
         #        return False
+        if component == 'System':
+            if 'iDRAC' in self.entityjson:
+                if 'URLString' in self.entityjson['iDRAC'][0]:
+                    entry['iDRACURL'] = self.entityjson['iDRAC'][0]['URLString']
+            if 'ChassisRF' in self.entityjson:
+                ChaSysDict = self.entityjson['ChassisRF'][0]
+                ChassisDict = None
+                if len(self.entityjson['ChassisRF']) > 1:
+                    for chinst in self.entityjson['ChassisRF']:
+                        if 'Chassis/System.' in chinst['@odata.id']:
+                            ChaSysDict = chinst
+                        if 'Chassis/Chassis.' in chinst['@odata.id']:
+                            ChassisDict = chinst
+                chassisAttr = ['ChassisServiceTag', 'ChassisLocation', 'ChassisName', 'IntrusionRollupStatus']
+                for attr in chassisAttr:
+                    # if attr in ChasysDict and ChasysDict[attr]:
+                    entry.update({attr: ChaSysDict.get(attr, 'Not Available')})
+                chassisAttr = ['ChassisServiceTag', 'ChassisModel', 'ChassisName']
+                if ChassisDict:
+                    for attr in chassisAttr:
+                        # if attr in ChassisDict and ChassisDict[attr]:
+                        entry.update({attr : ChassisDict.get(attr, 'Not Available')})
+
+                # del self.entityjson['ChassisRF']
+            if 'DellAttributes' in self.entityjson:
+                dellAttrList = self.entityjson['DellAttributes']
+                needAttr = ['OSName' ,'OSVersion','SystemLockDown','LifecycleControllerVersion','VirtualAddressManagementApplication']
+                for dAttr in dellAttrList:
+                    for attr in needAttr:
+                        if attr in dAttr and dAttr[attr]:
+                            entry.update({attr: dAttr[attr]})
+        if component == 'iDRAC':
+            if 'DellAttributes' in self.entityjson:
+                dellAttrList = self.entityjson['DellAttributes']
+                needAttr = ['GroupName','GroupStatus','SystemLockDown','IPv4Address','ProductInfo','MACAddress',
+'NICDuplex', 'NICSpeed' ,'DNSDomainName','DNSRacName','IPv6Address', 'PermanentMACAddress']
+                for dAttr in dellAttrList:
+                    for attr in needAttr:
+                        if attr in dAttr and dAttr[attr]:
+                            entry.update({attr: dAttr[attr]})
+
         if component in ["Sensors_Battery"]:
            if "OtherSensorTypeDescription" in entry:
                 if not entry["OtherSensorTypeDescription"] == 'Battery':
@@ -1587,7 +2803,34 @@ class iDRACEntity(iDeviceDriver):
                     nicCapabilities=nicCapabilities+ncpDict[ncp]
             if(nicCapabilities != ""):
                 entry["NICCapabilities"] = nicCapabilities.rstrip(',')
+        if component == "BIOS":
+            # SCOM Requirement to get 1 instance
+            if not (entry["ComponentType"] == 'BIOS') or not ("INSTALLED#" in entry["InstanceID"]):
+                return False
+            else:
+                if 'System' in self.entityjson:
+                    entry['SMBIOSPresent'] = 'True'
+                    entry['BIOSReleaseDate'] = self.entityjson['System'][0]['BIOSReleaseDate']
+        if component == "HostNIC":
+            if not entry["DeviceFQDD"] or entry["DeviceFQDD"] == "Not Available":
+                return False
+        if component == 'Sensors_Fan':
+            cl = ['Key','Location']
+            for x in cl:
+                if x in entry:
+                    s = entry[x]
+                    if '|' in s:
+                        entry[x] = s.split('|')[-1]
+            cl = None
         return True
+
+    def _should_i_modify_component(self, finalretjson, component):
+        if 'Sensors_' in component:
+            pkeys = ["Key"]
+            filtered = {tuple((k, d[k]) for k in sorted(d) if k in pkeys): d for d in finalretjson[component]}
+            finalretjson[component] = list(filtered.values())
+        if component == 'ChassisRF' or component == 'DellAttributes':
+            del finalretjson[component]
 
     def _get_topology_info(self):
         return iDRACTopologyInfo(self.get_json_device())

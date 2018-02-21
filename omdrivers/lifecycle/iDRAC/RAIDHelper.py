@@ -2,22 +2,21 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
@@ -219,15 +218,17 @@ class RAIDHelper:
         counter = 0
         (n_dhs, n_ghs) = (kwargs['NumberDedicatedHotSpare'],
                                kwargs['NumberGlobalHotSpare'])
+        raid_disks = ndisks - (n_dhs + n_ghs)
+
         for disk in disks:
             counter += 1
-            if counter >= (ndisks + n_dhs):
-                state = "Global"
-            elif counter >= ndisks:
-                state = "Dedicated"
+            if n_dhs > 0 and (counter > raid_disks and counter <= (raid_disks + n_dhs)):
+                state = RAIDHotSpareStatusTypes.Dedicated
                 vdisk.RAIDdedicatedSpare = disk.FQDD._value
+            elif n_ghs > 0 and (counter > (raid_disks + n_dhs) and counter <= ndisks):
+                state = RAIDHotSpareStatusTypes.Global
             else:
-                state = "No"
+                state = RAIDHotSpareStatusTypes.No
                 vdisk.IncludedPhysicalDiskID = disk.FQDD._value
             tgt_disk = target.PhysicalDisk.find_first(FQDD = disk.FQDD)
             if tgt_disk is None:

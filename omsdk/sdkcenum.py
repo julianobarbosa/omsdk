@@ -2,28 +2,27 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
 # Authors: Vaideeswaran Ganesan
 #
 from omsdk.version.sdkversion import OverrideCompatibleEnumPyVersion
 
-from enum import Enum
+from enum import Enum, EnumMeta
 import sys
 
 if OverrideCompatibleEnumPyVersion:
@@ -88,6 +87,18 @@ class TypeHelper:
             return (enval.name)
         else:
             return enval
+    @staticmethod
+    def get_enumname(enval):
+        if PY2Enum and TypeHelper.is_enum(enval) :
+            mymap = enval.enumtype.__dict__
+            enval_value = TypeHelper.resolve(enval)
+            for i in mymap:
+                if hasattr(mymap[i],'_key') and mymap[i]._key == enval_value:
+                    return i
+        elif PY3Enum and isinstance(enval, Enum):
+            return (enval.name)
+        else:
+            return enval
 
     @staticmethod
     def convert_to_enum(enval, entype, defval = None):
@@ -98,10 +109,9 @@ class TypeHelper:
 
     @staticmethod
     def is_enum(entype):
-
-        if PY3Enum and isinstance(entype, type(Enum)):
+        if PY3Enum and (isinstance(entype, EnumMeta) or isinstance(entype, Enum)):
             return True
-        elif PY2Enum and isinstance(entype, Enum):
+        elif PY2Enum and isinstance(entype, EnumValue):
             return True
         return False
 

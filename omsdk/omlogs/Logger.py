@@ -2,36 +2,39 @@
 # -*- coding: utf-8 -*-
 #
 #
-# Copyright © 2017 Dell Inc. or its subsidiaries. All rights reserved.
-# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its
-# subsidiaries. Other trademarks may be trademarks of their respective owners.
+# Copyright Â© 2018 Dell Inc. or its subsidiaries. All rights reserved.
+# Dell, EMC, and other trademarks are trademarks of Dell Inc. or its subsidiaries.
+# Other trademarks may be trademarks of their respective owners.
 #
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    http://www.apache.org/licenses/LICENSE-2.0
 #
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 #
-# Authors: Karthik Prabu
+# Authors: Karthik Prabhu
 #
 import os
+import sys
 import json
+import yaml
 import logging.config
 import tempfile
+from logging import StreamHandler, Formatter
+from logging.handlers import TimedRotatingFileHandler
 from enum import Enum
 
 DEFAULT_LOGGER_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config", "logging.json")
 
 DEFAULT_LOGGER_LOG_FILE = os.path.join(tempfile.gettempdir(), "omsdk-logs", "omsdk-logs.log")
 DEFAULT_LOGGER_FORMAT = "%(asctime)s - %(levelname)-5s - %(name)s:%(lineno)d - %(message)s"
-DEFAULT_LOGGER_LEVEL = logging.ERROR
+DEFAULT_LOGGER_LEVEL = logging.DEBUG
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +52,8 @@ class LoggerConfiguration:
             with open(path, 'rt') as f:
                 if file_type == "json":
                     config = json.load(f)
+                elif file_type == "yaml":
+                    config = yaml.safe_load(f.read())
                 logging.config.dictConfig(config)
 
         except IOError as e:
@@ -69,16 +74,25 @@ class LoggerConfiguration:
             if not os.path.exists(logger_log_directory):
                 os.makedirs(logger_log_directory)
 
-            # set up basic logging
-            logging.basicConfig(filename=logger_log_file, format=logger_format, level=logger_level)
+            # Configure basic logging
+            root = logging.getLogger()
+            root.setLevel(logger_level)
+
+            # Create a Logging Formatter
+            formatter = Formatter(logger_format)
 
             # set up logging to console
-            console = logging.StreamHandler()
-            console.setLevel(logger_level)
-            # set a format which is simpler for console use
-            formatter = logging.Formatter(logger_format)
-            console.setFormatter(formatter)
-            logging.getLogger("").addHandler(console)
+            console_handler = StreamHandler(sys.stdout)
+            console_handler.setLevel(logger_level)
+            console_handler.setFormatter(formatter)
+            root.addHandler(console_handler)
+
+            # set up logging to file
+            file_handler = TimedRotatingFileHandler(logger_log_file, when='S', interval=10, backupCount=5,
+                                                    encoding="utf8")
+            file_handler.setLevel(logger_level)
+            file_handler.setFormatter(formatter)
+            root.addHandler(file_handler)
 
         # Logging from Configuration File
         elif logger_config_type == LoggerConfigTypeEnum.CONFIG_FILE:
@@ -95,6 +109,10 @@ class LoggerConfiguration:
                 # CONF/INI-based Configuration
                 elif file_type == "conf" or file_type == "ini":
                     logging.config.fileConfig(path)
+
+                # YAML-based Configuration
+                elif file_type == "yaml":
+                    self.__load_config(file_type, path)
 
                 # Unsupported Configuration
                 else:
