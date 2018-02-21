@@ -1,15 +1,14 @@
  
 # Dell EMC OpenManage Python SDK
 
-Dell EMC OpenManage Python Software Development Kit (SDK) is a pythonic library for programatically managing Dell EMC Servers and Chassis. Using this library a user can perform lifecycle operations on Dell EMC PowerEdge Servers and Blade Enclosure Chassis in Pythonic way. The Dell EMC OpenManage Python SDK leverages DMTF's Web Services Management standard (WS-Man), IETF's Simple Network Management Protocol (SNMP) and the DMTF Redfish standard for managing and monitoring the Dell EMC PowerEdge branded hardware.
+DellEMC OpenManage python software development kit (OMPSDK) is a library for programatically managing DellEMC Servers and Chassis. Using this library a user can perform lifecycle operations on DellEMC PowerEdge servers, chassis storage and switches. The OMPSDK leverages the DMTF Redfish, DMTF's Web Services Management standard (WS-Man), and IETF's Simple Network Management Protocol (SNMP) standard for managing and monitoring the DellEMC PowerEdge servers and chassis.
 
 # Supported Systems
 
 All Dell EMC PowerEdge 12th and above Generation Servers, and Chassis Management Controllers of Dell EMC PowerEdge M1000e, Dell EMC PowerEdge VRTX and Dell EMC PowerEdge FX2 Chassis
 
-* iDRAC 7/8 with Firmware Versions 2.00.00.00 or above
+* iDRAC 7/8 with Firmware Versions 2.41.40.40 or above
 * iDRAC 9 with Firmware Versions 3.00.00.00 or above
-* CMC Firmware Versions 5.00.00 and above
 
 # Prerequisites
 
