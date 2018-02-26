@@ -52,7 +52,7 @@ Licensed under the Appache Software License, version 2.0 (the "License"); you ma
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 # Support
-Please note that Dell EMC OpenManage Python SDK is still in development and therefore no support is provided at present. However, if you want to report any issues or provide any feedback, then please send an email to OpenManageAnsibleEval@dell.com.
+Dell EMC OpenManage Python SDK is supported by the OpenManage developers team. Please feel free to report any issues by creating a new issue. If you have a need that is not addressed by the current implementation of the SDK libraries, then please let us know by creating a new issue. In addition, you want to send a feedback to the development team, then please send an email to OpenManageAnsibleEval@Dell.com
 
 # Authors
 Vaideeswaran Ganesan (vaideeswaran_ganesan@dell.com)
