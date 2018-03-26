@@ -1,7 +1,7 @@
  
 # Dell EMC OpenManage Python SDK
 
-DellEMC OpenManage Python SDK (OMSDK) is a python library that helps developers and custoemrs to automate the lifecycle management of PowerEdge Servers. OMSDK module leverages the iDRAC's REST APIs based on [DMTF Redfish standards](https://www.dmtf.org/standards/redfish) as well as [WS-Man](https://www.dmtf.org/standards/ws-man) and SNMP protocols for configuration, deployment, updates and monitoring of PowerEdge Servers.  In addition, OMSDK also supports monitoring and querying inventory information for PowerEdge Modular Infrastructure (M1000e, VRTX and FX2).
+DellEMC OpenManage Python SDK (OMSDK) is a python library that helps developers and customers to automate the lifecycle management of PowerEdge Servers. OMSDK module leverages the iDRAC's REST APIs based on [DMTF Redfish standards](https://www.dmtf.org/standards/redfish) as well as [WS-Man](https://www.dmtf.org/standards/ws-man) and SNMP protocols for configuration, deployment, updates and monitoring of PowerEdge Servers.  In addition, OMSDK also supports monitoring and querying inventory information for PowerEdge Modular Infrastructure (M1000e, VRTX and FX2).
 
 ## Supported Systems
 
@@ -11,20 +11,20 @@ All Dell EMC PowerEdge 12th and above Generation of PowerEdge Servers, and Chass
   * iDRAC 9 with Firmware Versions 3.00.00.00 or above
 
 # Prerequisites
-Dell EMC OpenManage Python SDK requires is supported for python 2.7 and above.
+Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
 
   * Install the prequisites using the requirements file on python 2.x as:
 
-    ```pip install -r requirements-python2x.txt```
+    ``` pip install -r requirements-python2x.txt ```
 
   * Install the prequisites using the requirements file on python 3.x as:
 
-    ```pip3 install -r requirements-python3x.txt```
+    ``` pip3 install -r requirements-python3x.txt ```
 
 # Installation
-  * Install using pip:
+  * Install the latest stable version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
 
-    ```pip install omsdk```
+    ``` pip install omsdk ```
 
   * Install the latest development version from github:
 
