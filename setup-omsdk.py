@@ -24,7 +24,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0177',
+    version='1.0.0213',
 
     description='Dell OpenManage SDK',
     long_description='Dell OpenManage SDK for devices, consoles',
