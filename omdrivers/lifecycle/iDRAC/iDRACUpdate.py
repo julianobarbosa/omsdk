@@ -83,10 +83,10 @@ class iDRACUpdate(Update):
 
     def get_swidentity(self):
         if self.sw_inited:
-            # logger.debug("Already present")
+            logger.debug("Already present")
             return self.firmware_json
         self.entity._get_entries(self.firmware_json, self.firmware_enum)
-        # logger.debug(PrettyPrint.prettify_json(self.firmware_json))
+        logger.debug(PrettyPrint.prettify_json(self.firmware_json))
         for obj in self.firmware_json:
             self.installed_firmware[obj] = []
             for entry in self.firmware_json[obj]:

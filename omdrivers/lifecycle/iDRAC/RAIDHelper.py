@@ -88,7 +88,7 @@ class Storage:
 
     def load(self, ctree, entity):
         ejson = entity.get_json_device()
-        # logger.debug(PrettyPrint.prettify_json(ejson))
+        logger.debug(PrettyPrint.prettify_json(ejson))
         self._load_comp('Controller', self, ctree, ejson, entity)
         self.Controller.commit()
         self.inited = True
@@ -110,7 +110,7 @@ class RAIDHelper:
               self.entity.ComponentEnum.PhysicalDisk
         )
         raid_tree = self.entity.ContainmentTree
-        # logger.debug(PrettyPrint.prettify_json(raid_tree['Storage']))
+        logger.debug(PrettyPrint.prettify_json(raid_tree['Storage']))
         self.storage.load(raid_tree["Storage"], self.entity)
         if self.storage.ControllerCount <= 0:
             logger.debug("No Controllers!")

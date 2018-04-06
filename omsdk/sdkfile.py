@@ -1012,7 +1012,7 @@ class cfgprocessor:
 
 class file_share_manager:
     @staticmethod
-    def create_share_obj(share_path=None, mount_point=None, creds=None, isFolder=True):
+    def create_share_obj(share_path=None, creds=None, isFolder=True):
         #Check if local file path confirms to unix/windows file path format
         win_format = re.match(r"^[a-zA-Z]:\\(((?![<>:\"/\\|?*]).)+((?<![ .])\\)?)*$", share_path)
         unix_format = re.match(r'^(\/[^\/\\ ]*)+\/?$', share_path)
@@ -1020,4 +1020,4 @@ class file_share_manager:
         if win_format or unix_format:
             return LocalFile(local=share_path)
         else:
-            return FileOnShare(share_path, mount_point, isFolder=isFolder, creds=creds)
+            return FileOnShare(share_path,isFolder=isFolder, creds=creds)
