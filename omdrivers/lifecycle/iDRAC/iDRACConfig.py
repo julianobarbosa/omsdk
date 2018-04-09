@@ -2504,16 +2504,18 @@ class iDRACConfig(iBaseConfigApi):
         self._initialize()
 
     def set_liason_share(self, myshare):
-        if not (isinstance(myshare, FileOnShare) or isinstance(myshare, LocalFile)):
-            logger.debug("should be an instance of FileOnShare")
+        if not isinstance(myshare, (FileOnShare, LocalFile)):
+            logger.debug("should be an instance of FileOnShare or LocalFile")
             return {
                 "Status": "Failed",
-                "Message": "Invalid share. Should be an instance of FileOnShare"
+                "Message": "Invalid share. Should be an instance of FileOnShare or LocalFile"
             }
-        if isinstance(myshare, FileOnShare) and not myshare.IsValid:
+
+        if not myshare.IsValid:
             logger.debug("Share is not valid, please retry!!")
             logger.debug("You can only perform readonly operations!")
             # return False
+
         try:
             self.liason_share = myshare
             return self._initialize()

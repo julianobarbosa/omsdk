@@ -1018,6 +1018,6 @@ class file_share_manager:
         unix_format = re.match(r'^(\/[^\/\\ ]*)+\/?$', share_path)
 
         if win_format or unix_format:
-            return LocalFile(local=share_path)
+            return LocalFile(local=share_path, isFolder=isFolder)
         else:
             return FileOnShare(share_path, mount_point, isFolder=isFolder, creds=creds)
