@@ -136,9 +136,13 @@ class HttpEndPoint(object):
             try:
                 response = self.session.send(prepared_request, verify=self.pOptions.verify_ssl,
                     timeout=(self.pOptions.connection_timeout, self.pOptions.read_timeout))
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            except requests.exceptions.ConnectionError:
                 error_message = "HTTP connection error"
-                #self._logger.exception(error_message)
+                self._logger.debug(error_message)
+                raise HttpEndPointProtocolException(error_message)
+            except requests.exceptions.Timeout:
+                error_message = "HTTP Timeout error"
+                self._logger.debug(error_message)
                 raise HttpEndPointProtocolException(error_message)
             except requests.exceptions.RequestException:
                 error_message = "Error preparing HTTP request"

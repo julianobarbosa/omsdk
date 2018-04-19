@@ -85,8 +85,8 @@ class ConnectionFactory(object):
                 self.work_connection.append(spec)
                 self.work_protocols.append(spec.enumid)
                 self.isConnected = True
-                if self.pfactory.pref.mode == ProtoMethods.HuntMode:
-                    break
+                # if self.pfactory.pref.mode == ProtoMethods.HuntMode:
+                #     break
         return self.isConnected
 
     def identify(self, ejson):
@@ -121,6 +121,7 @@ class ConnectionFactory(object):
         retdoc = {}
         collector = {}
         collector_idseq = {}
+        disconnectProto = []
         for connection in self.work_connection:
             retval = connection.enumerate_view(index, True)
 
@@ -128,7 +129,7 @@ class ConnectionFactory(object):
                 not 'Data' in retval or \
                 retval['Data'] is None or \
                 len(retval['Data']) <= 0:
-                    continue
+                continue
 
             for retobj in retval['Data']:
                 if isinstance(retval['Data'][retobj], dict): 
@@ -158,7 +159,17 @@ class ConnectionFactory(object):
                             if i[ob] == "Not Available" or i[ob] == "Not Applicable":
                                 continue
                             collector[clsName][idx][ob] = i[ob]
-    
+
+            if index in self.pfactory.classifier:
+                disconnectProto.append(connection)
+                break
+
+        if disconnectProto:
+            self.work_connection = []
+            self.work_connection.append(disconnectProto[0])
+            self.work_protocols = []
+            self.work_protocols.append(disconnectProto[0].enumid)
+
         for clsName in collector:
             if not clsName in retdoc:
                 retdoc[clsName] = []

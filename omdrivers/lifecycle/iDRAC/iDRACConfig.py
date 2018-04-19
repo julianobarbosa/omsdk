@@ -28,7 +28,6 @@ import xml.etree.ElementTree as ET
 from enum import Enum
 from datetime import datetime
 from omsdk.sdkdevice import iDeviceRegistry, iDeviceDriver, iDeviceDiscovery
-from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkproto import PWSMAN, PREDFISH, PSNMP
 from omsdk.sdkfile import FileOnShare, Share, LocalFile
 from omsdk.sdkcreds import UserCredentials
@@ -2504,18 +2503,16 @@ class iDRACConfig(iBaseConfigApi):
         self._initialize()
 
     def set_liason_share(self, myshare):
-        if not isinstance(myshare, (FileOnShare, LocalFile)):
-            logger.debug("should be an instance of FileOnShare or LocalFile")
+        if not (isinstance(myshare, FileOnShare) or isinstance(myshare, LocalFile)):
+            logger.debug("should be an instance of FileOnShare")
             return {
                 "Status": "Failed",
-                "Message": "Invalid share. Should be an instance of FileOnShare or LocalFile"
+                "Message": "Invalid share. Should be an instance of FileOnShare"
             }
-
-        if not myshare.IsValid:
+        if isinstance(myshare, FileOnShare) and not myshare.IsValid:
             logger.debug("Share is not valid, please retry!!")
             logger.debug("You can only perform readonly operations!")
             # return False
-
         try:
             self.liason_share = myshare
             return self._initialize()
@@ -2602,7 +2599,7 @@ class iDRACConfig(iBaseConfigApi):
             filename = tempshare.local_full_path
 
             msg = self.scp_export(tempshare)
-            logger.debug(PrettyPrint.prettify_json(msg))
+            logger.debug(msg)
 
         if msg['Status'] == 'Success':
             if Simulator.is_recording():

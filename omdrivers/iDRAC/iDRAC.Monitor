@@ -18,7 +18,8 @@
             "MachineName",
             "iDRACURL",
             "DeviceType",
-            "LifecycleControllerVersion"
+            "LifecycleControllerVersion",
+			"SysName"
         ],
         "MainHealth"      : ["PrimaryStatus"],
         "Inventory"   : [ 

@@ -131,7 +131,9 @@ class iBaseDiscovery(object):
 
     def is_entitytype(self, pinfra, ipaddr, creds, protopref, driver_en, pOptions):
         protofactory = self.protofactory.clone()
-        if not protopref is None:
+        if self.protofactory.prefProtocol:
+            protofactory.copy(self.protofactory.prefProtocol)
+        elif protopref:
             protofactory.copy(protopref)
         entity = self.my_entitytype(pinfra, ipaddr, creds, protofactory)
         if not entity is None:
@@ -159,6 +161,7 @@ class iBaseDriver(object):
     def __init__(self, registry, protofactory, ipaddr, creds):
         self.ref = registry
         self.ipaddr = ipaddr
+        self.hostname = None
         self.creds = creds
         self.device_type = self.ref.name
 

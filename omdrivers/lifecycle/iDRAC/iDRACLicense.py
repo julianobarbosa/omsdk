@@ -26,7 +26,6 @@ import time
 import xml.etree.ElementTree as ET
 from enum import Enum
 from datetime import datetime
-from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.lifecycle.sdklicenseapi import iBaseLicenseApi
 from omdrivers.lifecycle.iDRAC.iDRACConfig import LicenseApiOptionsEnum
@@ -156,7 +155,7 @@ class iDRACLicense(iBaseLicenseApi):
                         creds = license_share_path.creds, name="Import",
                         fqdd=fqdd, options=options)
             rjson = self._job_mgr._job_wait(rjson['Message'], rjson)
-            logger.debug(PrettyPrint.prettify_json(rjson))
+            logger.debug(rjson)
             if rjson['Status'] == 'Success':
                 retval['Imported'] += 1
             else:

@@ -113,7 +113,7 @@
             "TransitioningToState"
         ],
         "MainHealth"  : [ "HealthState" ],
-        "BasicInventory"   : [ 
+        "BasicInventory"   : [
             "ClassId",
             "SystemName", 
             "Name",

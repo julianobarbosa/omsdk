@@ -102,12 +102,14 @@ class sdkinfra:
                 :rtype: object <iBaseDriver>
 
         """
+        duplicSet = set()
         for mod in self.disc_modules:
-            if str(mod) == "FileList":
+            if (self.disc_modules[mod] in duplicSet) or (str(mod) == "FileList"):
                 continue
             drv = self._create_driver(mod, ipaddr, creds, protopref, pOptions)
             if drv:
                 return drv
+            duplicSet.add(self.disc_modules[mod])
         return None
 
     # Return:
@@ -144,7 +146,7 @@ class sdkinfra:
             if ipaddress:
                 ipaddr = ipaddress
         except socket.gaierror as err:
-            print("cannot resolve hostname: ", host, err)
+            logger.debug(err)
         if not mod in self.disc_modules:
             # TODO: Change this to exception
             logger.debug(mod + " not found!")
@@ -152,6 +154,15 @@ class sdkinfra:
         try:
             logger.debug(mod + " driver found!")
             drv = self.disc_modules[mod].is_entitytype(self, ipaddr, creds, protopref, mod, pOptions)
+            if drv:
+                hostname = None
+                try:
+                    hostname, aliaslist, addresslist = socket.gethostbyaddr(ipaddr)
+                    logger.debug("Found host name for " + ipaddr+ " as "+hostname)
+                except socket.herror:
+                    hostname = None
+                    logger.debug("No host name found for " + ipaddr)
+                drv.hostname = hostname
             return drv
         except AttributeError as attrerror:
             logger.debug(mod + " is not device or console")
@@ -173,3 +184,8 @@ class sdkinfra:
             logger.debug(mod + " is not device or console")
             logger.debug(attrerror)
             return None
+
+    def setPrefProtocolDriver(self, driver_name, protopref):
+        drv = self.disc_modules.get(driver_name, None)
+        if drv:
+            drv.protofactory.prefProtocol = protopref

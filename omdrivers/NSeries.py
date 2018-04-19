@@ -47,12 +47,12 @@ class NoConfig:
 
 NSeriesCompEnum = EnumWrapper('NSeriesCompEnum', {
     "System" : "System",
-    "dellNetFanTray" : "dellNetFanTray",
-    "dellNetPowerSupply" : "dellNetPowerSupply",
-    "dellNetProcessor" : "dellNetProcessor",
-    "dellNetPort" : "dellNetPort",
-    "dellNetFan" : "dellNetFan",
-    "dellNetPowerSupplyTray" : "dellNetPowerSupplyTray",
+    "FanTray" : "FanTray",
+    "PowerSupply" : "PowerSupply",
+    "Processor" : "Processor",
+    "Port" : "Port",
+    "Fan" : "Fan",
+    "PowerSupplyTray" : "PowerSupplyTray",
 }).enum_type
 
 if PyPSNMP:
@@ -61,7 +61,7 @@ if PyPSNMP:
          'SysObjectID' : ObjectIdentity('SNMPv2-MIB', 'sysObjectID'),
          'ServiceTag' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.100.8.1.4"),
          'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.1"),
-         'Model' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.100.1"),
+         'Model': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.1.3"),
          'Description' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.100.2"),
          'FirmwareVersion' : ObjectIdentity(".1.3.6.1.4.1.674.10895.3000.1.2.100.4"),
          'Location' : ObjectIdentity("1.3.6.1.2.1.1.6"),
@@ -75,13 +75,13 @@ if PyPSNMP:
          'Hostname' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.100.7"),
          'SwitchUptime': ObjectIdentity("1.3.6.1.2.1.1.3"),
      },
-     NSeriesCompEnum.dellNetPort : { 
+     NSeriesCompEnum.Port : {
        'Description' : ObjectIdentity('IF-MIB', 'ifDescr'),
        'Type' : ObjectIdentity('IF-MIB', 'ifType'),
        'Address' : ObjectIdentity('IF-MIB', 'ifPhysAddress'),
+       'ifIndex': ObjectIdentity('IF-MIB', 'ifIndex'),
        'Class' : ObjectIdentity('ENTITY-MIB', 'entPhysicalClass'),
        'Status' : ObjectIdentity('1.3.6.1.2.1.2.2.1.7'),
-       'ifIndex' : ObjectIdentity('1.3.6.1.2.1.2.2.1.1'),
        'ifInOctets' : ObjectIdentity('1.3.6.1.2.1.2.2.1.10'),
        'ifOutOctets' : ObjectIdentity('1.3.6.1.2.1.2.2.1.16'),
        'ifInDiscards' : ObjectIdentity('1.3.6.1.2.1.2.2.1.13'),
@@ -90,10 +90,10 @@ if PyPSNMP:
        'ifOutErrors' : ObjectIdentity('1.3.6.1.2.1.2.2.1.20'),
        'ifInUnknownProtos' : ObjectIdentity('1.3.6.1.2.1.2.2.1.15'),
        'ifSpeed' : ObjectIdentity('1.3.6.1.2.1.2.2.1.5'),
-       'dellNetSysIfName' : ObjectIdentity('1.3.6.1.2.1.31.1.1.1.1'),
+       'SysIfName' : ObjectIdentity('IF-MIB', 'ifName'),
      },
-     NSeriesCompEnum.dellNetFanTray : {
-       'dellNetFanDeviceIndex' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.6.1.1"),
+     NSeriesCompEnum.FanTray : {
+       'FanDeviceIndex' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.6.1.1"),
        'PiecePartID' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.7.1.5"), 
        'Type' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.6.1.2"),
        'ExpressServiceCode' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.7.1.8"),
@@ -102,32 +102,32 @@ if PyPSNMP:
        'OperStatus' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.6.1.3"),
        'Speed' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.6.1.4"),
      },
-     NSeriesCompEnum.dellNetFan: {
-       'envMonFanStatusIndex': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.1"),
-       'envMonFanStatusDescr': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.2"),
+     NSeriesCompEnum.Fan: {
+       'Index': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.1"),
+       'Description': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.2"),
        'OperStatus': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.3"),
-       'envMonFanSpeed': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.4"),
+       'Speed': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.1.1.4"),
      },
-     NSeriesCompEnum.dellNetPowerSupply : {
-       'envMonSupplyStatusIndex' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.1"),
+     NSeriesCompEnum.PowerSupply : {
+       'Index' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.1"),
        'OperStatus' : ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.3"),
-       'envMonSupplyStatusDescr': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.2"),
-       'envMonSupplySource': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.4"),
+       'Description': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.2"),
+       'Source': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.4"),
        'envMonSupplyCurrentPower': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.5"),
        'envMonSupplyAveragePower': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.6"),
        'envMonSupplyAvgStartTime': ObjectIdentity("1.3.6.1.4.1.674.10895.3000.1.2.110.7.2.1.7"),
      },
-     NSeriesCompEnum.dellNetPowerSupplyTray: {
-       'dellNetPowerDeviceIndex': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.7.1.1"),
+     NSeriesCompEnum.PowerSupplyTray: {
+       'PowerDeviceIndex': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.7.1.1"),
        'OperStatus': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.7.1.3"),
-       'Type': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.7.1.2"),
+       'PowerDeviceType': ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.43.1.7.1.2"),
      },
-     NSeriesCompEnum.dellNetProcessor : {
+     NSeriesCompEnum.Processor : {
        'DeviceType' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.3.1.1"), 
        'Module' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.3.1.4"), 
        'Index' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.3.1.3"),
        'UpTime' : ObjectIdentity("1.3.6.1.4.1.6027.3.26.1.4.3.1.5"), 
-       'MemSize' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2")
+       'AvailableMemSize' : ObjectIdentity("1.3.6.1.4.1.674.10895.5000.2.6132.1.1.1.1.4.2")
      },
     }
     NSeriesSNMPViews_FieldSpec = {
@@ -206,7 +206,7 @@ if PyPSNMP:
                 'Macedit' : 'True'
                 }
         },
-        NSeriesCompEnum.dellNetPowerSupply : {
+        NSeriesCompEnum.PowerSupply : {
             "OperStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -218,7 +218,7 @@ if PyPSNMP:
                     "6" : "Critical"
                 }
             },
-            "envMonSupplySource" : {
+            "Source" : {
                 'Lookup'  :  'True',
                 'Values' : {
                     "1" : "Unknown",
@@ -229,7 +229,7 @@ if PyPSNMP:
                 }
             }
         },
-        NSeriesCompEnum.dellNetFanTray : {
+        NSeriesCompEnum.FanTray : {
             "OperStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -245,16 +245,16 @@ if PyPSNMP:
             "Type" : {
                 'Lookup'  :  'True',
                 'Values' : {
-			"1" : "Chassis", 
-			"2" : "Stack", 
-			"3" : "RPM", 
-			"4" : "Supervisor", 
-			"5" : "Linecard", 
-			"6" : "Port-extender" 
+                    "1": "Fixed",
+                    "2": "Removable",
+                    "3": "Fixed AC",
+                    "4": "Removable DC",
+                    "5": "Fixed DC",
+                    "6": "Removable AC"
                 }
             }
         },
-        NSeriesCompEnum.dellNetPort : {
+        NSeriesCompEnum.Port : {
             "Status" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -264,7 +264,7 @@ if PyPSNMP:
                 }
             }
         },
-        NSeriesCompEnum.dellNetPowerSupplyTray : {
+        NSeriesCompEnum.PowerSupplyTray : {
             "OperStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -277,16 +277,19 @@ if PyPSNMP:
                     "7": "Unknown"
                 }
             },
-            "Type" : {
+            "PowerDeviceType" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "Unknown",
-                    "2" : "AC",
-                    "3" : "DC"
+                    "1": "Fixed",
+                    "2": "Removable",
+                    "3": "Fixed AC",
+                    "4": "Removable DC",
+                    "5": "Fixed DC",
+                    "6": "Removable AC"
                 }
             }
         },
-        NSeriesCompEnum.dellNetFan: {
+        NSeriesCompEnum.Fan: {
             "OperStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -299,8 +302,8 @@ if PyPSNMP:
                 }
             }
         },
-        NSeriesCompEnum.dellNetProcessor : {
-            "MemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'OutUnits' : 'GB' },
+        NSeriesCompEnum.Processor : {
+            "AvailableMemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'KB', 'OutUnits' : 'GB' },
             "Module" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -329,12 +332,12 @@ else:
 NSeriesComponentTree = {
     "Full" : [ 
         NSeriesCompEnum.System,
-        NSeriesCompEnum.dellNetFanTray,
-        NSeriesCompEnum.dellNetPowerSupply,
-        NSeriesCompEnum.dellNetProcessor,
-        NSeriesCompEnum.dellNetPort,
-        NSeriesCompEnum.dellNetFan,
-        NSeriesCompEnum.dellNetPowerSupplyTray
+        NSeriesCompEnum.FanTray,
+        NSeriesCompEnum.PowerSupply,
+        NSeriesCompEnum.Processor,
+        NSeriesCompEnum.Port,
+        NSeriesCompEnum.Fan,
+        NSeriesCompEnum.PowerSupplyTray
     ],
 }
 
@@ -377,7 +380,20 @@ class NSeriesEntity(iDeviceDriver):
             return self._get_obj_index(parentClsName, parent) in \
                    self._get_obj_index(childClsName, child)
     def _should_i_include(self, component, entry):
-        if component in ["dellNetPort"]:
+        if component in ["Port"]:
             if entry["Status"] == 'Testing':
                 return False
+            if not 'Class' in entry:
+                return False
+        if component in ["System"]:
+            if 'SwitchUptime' in entry:
+                x = entry["SwitchUptime"].split()
+                if "Seconds" not in x :
+                    s = float(entry["SwitchUptime"]) / 100.0
+                    m, s = divmod(s, 60)
+                    h, m = divmod(m, 60)
+                    l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
+                    entry["SwitchUptime"] = ' '.join('{} {}'.format(value, name)
+                                        for name, value in l
+                                        if value)
         return True

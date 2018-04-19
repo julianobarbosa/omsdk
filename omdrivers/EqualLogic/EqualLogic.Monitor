@@ -10,7 +10,9 @@
       "VolumeCount",
       "GroupURL",
       "RAIDPolicy",
-      "StoragePool"
+      "StoragePool",
+      "SysName",
+      "DeviceType"
     ],
     "Metrics": []
   },  
@@ -32,7 +34,8 @@
       "GroupName",
       "GroupIP",
       "ControllerMaintenanceVersion",
-      "StoragePool"
+      "StoragePool",
+      "EqlDriveGroupStoragePoolIndex"
     ],
     "Metrics": [ "Capacity", "UsedStorage" ],
     "PrimaryStatus" : {

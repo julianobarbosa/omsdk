@@ -20,7 +20,9 @@
       "SecondaryControllerName", 
       "SecondaryControllerModel", 
       "SecondaryControllerIPAddress",
-      "SecondaryControllerServiceTag"
+      "SecondaryControllerServiceTag",
+      "SysName",
+      "IPv6MgmtIP"
     ],
     "Key" : ["SerialNumber"],
     "Metrics" : [],
@@ -44,7 +46,8 @@
       "Model", 
       "IPAddress",
       "IPv6Address", 
-      "IPv6Eth0IPPrefix"
+      "IPv6Eth0IPPrefix",
+      "URLString"
     ],
     "Key": [ "ServiceTag" ],
     "Metrics": [],

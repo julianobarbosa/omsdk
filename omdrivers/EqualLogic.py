@@ -27,6 +27,8 @@ from omsdk.sdkfile import FileOnShare, Share
 from omsdk.sdkcreds import UserCredentials
 from omsdk.sdkproto import PSNMP
 import sys
+import re
+import ipaddress
 import logging
 
 
@@ -76,10 +78,11 @@ if PyPSNMP:
          'SysObjectID' : ObjectIdentity('SNMPv2-MIB', 'sysObjectID'),
          'GroupName' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.19"),
          'GroupIP' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.20"),
+         'GroupIPv6' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.54"),
          'MemberCount' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.2.1.13"),
          'VolumeCount' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.2.1.12"), 
-         #'StoragePool' : ObjectIdentity("1.3.6.1.4.1.12740.16.1.1.1.3"),
          'RAIDPolicy' : ObjectIdentity("1.3.6.1.4.1.12740.2.1.15.1.3.1.968588590"),
+         'SysName' : ObjectIdentity("1.3.6.1.2.1.1.5")
      },
      EqualLogicCompEnum.Member : { 
          'Name' : ObjectIdentity("1.3.6.1.4.1.12740.2.1.1.1.9"),
@@ -98,7 +101,8 @@ if PyPSNMP:
          'RAIDPolicy' : ObjectIdentity("1.3.6.1.4.1.12740.2.1.15.1.3"),
          'GroupName' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.19"),
          'GroupIP' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.20"),
-         'StoragePool' : ObjectIdentity("1.3.6.1.4.1.12740.16.1.1.1.3"),
+         'GroupIPv6' : ObjectIdentity("1.3.6.1.4.1.12740.1.1.1.1.54"),
+         'EqlDriveGroupStoragePoolIndex' : ObjectIdentity("1.3.6.1.4.1.12740.2.1.15.1.2"),
      },
 
      EqualLogicCompEnum.Volume : { 
@@ -130,19 +134,22 @@ if PyPSNMP:
             "RAIDPolicy" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "0" : "unconfigured",
-                    "1" : "raid50",
-                    "2" : "raid10",
-                    "3" : "raid5",
-                    "4" : "raid50-nospares",
-                    "5" : "raid10-nospares",
-                    "6" : "raid5-nospares",
-                    "7" : "raid6",
-                    "8" : "raid6-nospares",
-                    "9" : "raid6-accelerated",
-                    "10" : "hvs-storage",
+                    "0" : "Unconfigured",
+                    "1" : "RAID 50",
+                    "2" : "RAID 10",
+                    "3" : "RAID 5",
+                    "4" : "RAID 50-nospares",
+                    "5" : "RAID 10-nospares",
+                    "6" : "RAID 5-nospares",
+                    "7" : "RAID 6",
+                    "8" : "RAID 6-nospares",
+                    "9" : "RAID 6-accelerated",
+                    "10" : "Hvs-storage",
                 }
-            }
+            },
+            "GroupIPv6" : {
+                'IPv6edit' : 'True'
+                }
         },
         EqualLogicCompEnum.Member : {
             "Capacity" : { 'Type' : 'Bytes', 'InUnits' : "MB" },
@@ -150,19 +157,22 @@ if PyPSNMP:
             "RAIDPolicy" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "0" : "unconfigured",
-                    "1" : "raid50",
-                    "2" : "raid10",
-                    "3" : "raid5",
-                    "4" : "raid50-nospares",
-                    "5" : "raid10-nospares",
-                    "6" : "raid5-nospares",
-                    "7" : "raid6",
-                    "8" : "raid6-nospares",
-                    "9" : "raid6-accelerated",
-                    "10" : "hvs-storage",
+                    "0" : "Unconfigured",
+                    "1" : "RAID 50",
+                    "2" : "RAID 10",
+                    "3" : "RAID 5",
+                    "4" : "RAID 50-nospares",
+                    "5" : "RAID 10-nospares",
+                    "6" : "RAID 5-nospares",
+                    "7" : "RAID 6",
+                    "8" : "RAID 6-nospares",
+                    "9" : "RAID 6-accelerated",
+                    "10" : "Hvs-storage",
                 }
-            }
+            },
+            "GroupIPv6" : {
+                'IPv6edit' : 'True'
+                }
         },
         EqualLogicCompEnum.Volume : {
             "TotalSize" : { 'Type' : 'Bytes', 'InUnits' : "MB", 'OutUnits' : "GB"},
@@ -275,10 +285,25 @@ class EqualLogicEntity(iDeviceDriver):
         if component == "System":
             if 'GroupIP' in entry:
                 entry['GroupURL'] = "http://"+entry['GroupIP']
-
+            if ':' in self.ipaddr:
+                if 'GroupIPv6' in entry:
+                    entry['GroupURL'] = "http://"+"["+entry['GroupIPv6']+"]"
+                    entry['GroupIP'] = entry['GroupIPv6']
+        if component == "Member":
+            if ':' in self.ipaddr:
+                if 'GroupIPv6' in entry:
+                    entry['GroupIP'] = entry['GroupIPv6']
+            if 'StoragePool' in self.entityjson:
+                storagepoolarr = self.entityjson['StoragePool']
+                if 'EqlDriveGroupStoragePoolIndex' in entry:
+                    for p in storagepoolarr:
+                        if str(entry['EqlDriveGroupStoragePoolIndex']) == str(p['_SNMPIndex'])[-1]:
+                            entry['StoragePool'] = p['StorageName']
         return True
 
     def _call_it(self,keyComp):
+        self.memid = "" 
+        sys_dict = self.entityjson[keyComp][0]
         for item in self.entityjson:
             if type(self.entityjson[item]) is list:
                 for temp in self.entityjson[item]:
@@ -289,11 +314,38 @@ class EqualLogicEntity(iDeviceDriver):
                         #get the exact member index
                         #self._get_index(self.memid)
                         #it help you to filter member specific values  
-        if (self.ipaddr == self.entityjson[keyComp][0]['GroupIP']):
-            self.entityjson[keyComp][0].update({"DeviceType" : "EqualLogic Group"})
+                    if ':' in self.ipaddr:
+                        #code is IPv6 specific
+                        if (sys.version_info > (3, 0)):
+                            u = self.ipaddr
+                        else:
+                            u = unicode(self.ipaddr, "utf-8")
+                        addr = ipaddress.ip_address(u)
+                        v = addr.exploded.replace(":", "")
+                        x = [int(v[i:i+2], 16) for i in range(0, len(v), 2)]
+                        z = ".".join(str(l) for l in x)
+                        if temp['_SNMPIndex'].find('.' + z) > 0:
+                            templist = temp['_SNMPIndex'].split(".2.16." + z)
+                            self.memid = templist[0]
+        if ':' in self.ipaddr:
+            if (sys.version_info > (3, 0)):
+                u = self.ipaddr
+            else:
+                u = unicode(self.ipaddr, "utf-8")
+            addr = ipaddress.ip_address(u)
+            ipaddr = str(addr.exploded)
+            if (ipaddr == sys_dict.get('GroupIPv6')):
+                sys_dict.update({"DeviceType" : "EqualLogic Group"})
+            else:
+                sys_dict.update({'_SNMPIndex':self.memid})
+                sys_dict.update({"DeviceType" : "EqualLogic Member"})
+        elif (self.ipaddr == sys_dict.get('GroupIP')):
+            sys_dict.update({"DeviceType" : "EqualLogic Group"})
         else:
-            self.entityjson[keyComp][0].update({'_SNMPIndex':self.memid})
-            self.entityjson[keyComp][0].update({"DeviceType" : "EqualLogic Member"})
+            sys_dict.update({'_SNMPIndex':self.memid})
+            sys_dict.update({"DeviceType" : "EqualLogic Member"})
+            for item in self.entityjson['Member']:
+                item.update({"GroupName" : self.entityjson[keyComp][0]['GroupName']})
         
     def _get_index(self,memid):
         print ("memid:", memid)

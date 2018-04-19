@@ -42,10 +42,26 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 class RedfishOptions(HttpEndPointOptions):
+    """
+           Options to establish REDFISH communication
+    """
     def __init__(
                  self, urlbase='redfish/v1', authentication = AuthenticationType.Basic, port = 443, connection_timeout = 20,
                  read_timeout = 30, max_retries = 1, verify_ssl = False, cacheTimeout=180 
                 ):
+        """
+                :param authentication: HTTP Authentication type 'Basic', 'Digest'
+                :param port: https Port number for Redfish communication
+                :param connection_timeout: time in seconds to wait for the server to connect before giving up
+                :param read_timeout: time in seconds to wait for the server to read data before giving up
+                :param max_retries: Http connection retries in case of failures
+                :param verify_ssl: SSL Certificate verification
+                :type authentication: Enum omsdk.http.sdkhttpep.AuthenticationType
+                :type port: Int
+                :type connection_timeout: Int
+                :type read_timeout: Int
+                :type verify_ssl: Boolean
+        """
         if PY2:
             super(RedfishOptions, self).__init__(
                  ProtocolEnum.REDFISH, authentication, port, connection_timeout,
@@ -56,6 +72,7 @@ class RedfishOptions(HttpEndPointOptions):
                  ProtocolEnum.REDFISH, authentication, port, connection_timeout,
                  read_timeout, max_retries, verify_ssl
                 )
+        self.enid = ProtocolEnum.REDFISH
         self.urlbase = urlbase
         self.cacheTimeout = cacheTimeout #cache timeout in seconds
 
@@ -183,10 +200,10 @@ class RedfishProtocolBase(ProtocolBase):
                             xcomp.append(compjData)
                         else:
                             retval['Status'] = 'Failure'
-                            logger.error("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(memResponse.url, memResponse.status_code, memResponse.reason))
+                            logger.debug("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(memResponse.url, memResponse.status_code, memResponse.reason))
                         memResponse.close()
                     except requests.exceptions.ConnectionError as err:
-                        logging.error(err)
+                        logger.debug(err)
             intrmOdataList = []
             for xc in xcomp:##Members flow
                 if ix < rlen:

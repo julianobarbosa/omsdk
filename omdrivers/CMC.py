@@ -199,6 +199,15 @@ CMCMergeJoinCompSpec = {
         "_overwrite" : False
    }
 }
+
+CMC_more_details_spec = {
+    "StorageModule":{
+        "_components_enum": [
+            CMCCompEnum.ComputeModule,
+            CMCCompEnum.StorageModule
+        ]
+    }
+}
 CMCWsManViews_FieldSpec = {
     CMCCompEnum.PowerSupply : {
         "HealthState":  {
@@ -324,6 +333,24 @@ CMCWsManViews_FieldSpec = {
             'Lookup' : 'True',
             'Values' : {
                 "0" : "Unknown", "1" : "Write Through", "2" : "Write Back", "4" : "Write Back Force"
+            }
+        },
+        "DiskCachePolicy":  {
+            'Lookup' : 'True',
+            'Values' : {
+                "0" : "Unknown", "256" : "Default", "512" : "Enabled", "1024" : "Disabled"
+            }
+        },
+        "LockStatus":  {
+            'Lookup' : 'True',
+            'Values' : {
+                "0" : "Unlocked", "1" : "Locked"
+            }
+        },
+        "Cachecade":  {
+            'Lookup' : 'True',
+            'Values' : {
+                "0" : "Not a Cachecade Virtual Disk", "1" : "Cachecade Virtual Disk"
             }
         }
     },
@@ -502,6 +529,7 @@ class CMCEntity(iDeviceDriver):
             super().__init__(ref, protofactory, ipaddr, creds)
         self.comp_merge_join_spec = CMCMergeJoinCompSpec
         self.comp_union_spec = CMCUnionCompSpec
+        self.more_details_spec = CMC_more_details_spec
 
     def my_fix_obj_index(self, clsName, key, js):
         retval = None
@@ -680,6 +708,19 @@ class CMCEntity(iDeviceDriver):
                 if newbladeList:
                     del finalretjson["ComputeModule"]
                     finalretjson['ComputeModule'] = newbladeList
+
+                storagelist = []
+                for m in finalretjson['ComputeModule']:
+                    if m.get('Model',"") == "PS-M4110":
+                        storagelist.append(m)
+                if storagelist:
+                    storagemod = finalretjson.get('StorageModule', None)
+                    if not storagemod:
+                        storagemod = []
+                    storagemod = storagemod + storagelist
+                    finalretjson['StorageModule'] = storagemod
+                    for x in storagelist:
+                        finalretjson['ComputeModule'].remove(x)
 
         if component == "Slots_Summary":
             if "Slots_Summary" in finalretjson:

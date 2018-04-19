@@ -31,13 +31,10 @@ from enum import Enum
 from datetime import datetime
 from omsdk.sdkdevice import iDeviceRegistry, iDeviceDriver, iDeviceDiscovery
 from omsdk.sdkdevice import iDeviceTopologyInfo
-from omsdk.sdkprint import PrettyPrint
-from omsdk.sdkproto import PWSMAN,PREDFISH, PSNMP
-from omsdk.sdkfile import FileOnShare, Share
-from omsdk.sdkcreds import UserCredentials
-from omsdk.sdkcenum import EnumWrapper, TypeHelper
+from omsdk.sdkproto import PWSMAN,PREDFISH, PSNMP, ProtocolEnum, ProtocolOptionsFactory
 from omdrivers.enums.iDRAC.iDRACEnums import *
 from omsdk.idracmsgdb import eemiregistry
+from omsdk.http.sdkredfishbase import RedfishOptions
 
 logger = logging.getLogger(__name__)
 
@@ -726,15 +723,6 @@ iDRACWsManViews_FieldSpec = {
                 '3'       :  'Critical'
             }
         },
-        "PrimaryStatus" : {
-            'Lookup'  :  'True',
-            'Values' : {
-                "0" : "Unknown",
-                "1" : "Healthy",
-                "2" : "Warning",
-                "3" : "Critical"
-            }
-        },
         "FanRollupStatus" : {
             'Lookup'  :  'True',
             'Values' : {
@@ -745,6 +733,7 @@ iDRACWsManViews_FieldSpec = {
             }
         },
         "RollupStatus" : {
+            'Rename': 'PrimaryStatus',
             'Lookup'  :  'True',
             'Values' : {
                 "0" : "Unknown",
@@ -952,7 +941,6 @@ iDRACWsManViews_FieldSpec = {
                 "iDRAC.Embedded.1#GroupManager.1#Status" : 'GroupStatus',
                 "iDRAC.Embedded.1#NIC.1#Duplex" : 'NICDuplex',
                 "iDRAC.Embedded.1#NIC.1#Speed": 'NICSpeed',
-                "iDRAC.Embedded.1#NIC.1#Enable": 'PrimaryStatus',
                 "iDRAC.Embedded.1#Lockdown.1#SystemLockdown" : 'SystemLockDown'
             }
         }
@@ -1099,7 +1087,7 @@ iDRACRedfishViews_FieldSpec = {
     iDRACCompEnum.NIC : {
         "Id" : { 'Rename' : 'FQDD'},
         "SpeedMbps" : {'Rename' : 'LinkSpeed', 'UnitScale': '0', 'UnitAppend' : 'Mbps'},
-        "Name" : {'Rename' : 'ProductName'},
+        # "Name" : {'Rename' : 'ProductName'},
         "AutoNeg" : {'Rename' : 'AutoNegotiation'},
         "MACAddress" : {'Rename' : 'CurrentMACAddress'},
         "Status" : {'Create' : {
@@ -1125,8 +1113,7 @@ iDRACRedfishViews_FieldSpec = {
         "Id" : { 'Rename' : 'FQDD'},
         "ProcessorId" : {'Create' : {
                                      'VendorId' : {'_Attribute' : 'VendorID'},
-                                     'CPUFamily': {'_Attribute' : 'EffectiveFamily'},
-                                     'Model': {'_Attribute' : 'EffectiveModel'}
+                                     'CPUFamily': {'_Attribute' : 'EffectiveFamily'}
                                     }
                          },
         "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'}}},
@@ -1138,6 +1125,7 @@ iDRACRedfishViews_FieldSpec = {
     iDRACCompEnum.Sensors_Fan : {
         "MemberID" : { 'Rename' : 'Key'},
         "MemberId" : { 'Rename' : 'Key'},
+        "FanName" : { 'Rename' : 'Location'},
         "Status" : {'Create' : {'PrimaryStatus' : {'_Attribute' : 'Health'},
                                 'State' : {'_Attribute' : 'State'}}
                    },
@@ -1191,7 +1179,8 @@ iDRACRedfishViews_FieldSpec = {
                                     'DNSRacName' : {'_Attribute' : 'NIC.1.DNSRacName'},
                                     'IPv6Address' : {'_Attribute' : 'IPv6.1.Address1'},
                                     'PermanentMACAddress': {'_Attribute' : 'NIC.1.MACAddress'},
-                                    'VirtualAddressManagementApplication' : {'_Attribute' : 'LCAttributes.1.VirtualAddressManagementApplication'}}
+                                    'VirtualAddressManagementApplication' : {'_Attribute' : 'LCAttributes.1.VirtualAddressManagementApplication'},
+                                    'ChassisServiceTag' : {'_Attribute' : 'ChassisInfo.1.ChassisServiceTag'}}
                         }
     },
     iDRACMiscEnum.ChassisRF : {
@@ -1205,6 +1194,24 @@ iDRACRedfishViews_FieldSpec = {
     #     "Links" : {'Create' : {'DellHealth' : {'Oem':{'Dell' : '@odata.type'}}}
     #               }
     # }
+}
+
+def satisfyme(myListoFDict):
+    valid = False
+    flist = []
+    for sys in myListoFDict:
+        id = sys.get('Id', 'None')
+        if 'System.Embedded' in id:
+            flist.append(sys)
+    if flist:
+        valid = True
+    return (valid, flist)
+
+classify_cond = {
+    iDRACCompEnum.System :
+    {
+        ProtocolEnum.REDFISH : satisfyme
+    }
 }
 
 if PySnmpPresent:
@@ -1250,7 +1257,8 @@ if PySnmpPresent:
             "OSName" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.3.6"),
             "iDRACURL" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.6"),
             # "RollupStatus" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.2.1"),
-            "DeviceType" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.2")
+            "DeviceType" : ObjectIdentity("1.3.6.1.4.1.674.10892.5.1.1.2"),
+			"SysName" : ObjectIdentity("1.3.6.1.2.1.1.5")
         },
         iDRACCompEnum.CPU : {
             'Index' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.1100.30.1.2"), 
@@ -2581,7 +2589,8 @@ class iDRAC(iDeviceDiscovery):
         self.protofactory.add(PREDFISH(
             views=iDRACRedfishViews,
             cmds=iDRACRedfishCmds,
-            view_fieldspec=iDRACRedfishViews_FieldSpec
+            view_fieldspec=iDRACRedfishViews_FieldSpec,
+            classifier_cond=classify_cond
         ))
         if PySnmpPresent:
             self.protofactory.add(PSNMP(
@@ -2759,11 +2768,12 @@ class iDRACEntity(iDeviceDriver):
                 # del self.entityjson['ChassisRF']
             if 'DellAttributes' in self.entityjson:
                 dellAttrList = self.entityjson['DellAttributes']
-                needAttr = ['OSName' ,'OSVersion','SystemLockDown','LifecycleControllerVersion','VirtualAddressManagementApplication']
+                needAttr = ['ChassisServiceTag', 'OSName' ,'OSVersion','SystemLockDown','LifecycleControllerVersion','VirtualAddressManagementApplication']
                 for dAttr in dellAttrList:
                     for attr in needAttr:
                         if attr in dAttr and dAttr[attr]:
                             entry.update({attr: dAttr[attr]})
+
         if component == 'iDRAC':
             if 'DellAttributes' in self.entityjson:
                 dellAttrList = self.entityjson['DellAttributes']
@@ -2773,6 +2783,20 @@ class iDRACEntity(iDeviceDriver):
                     for attr in needAttr:
                         if attr in dAttr and dAttr[attr]:
                             entry.update({attr: dAttr[attr]})
+            if self.cfactory.work_protocols[0].name == "REDFISH":
+                port = 443
+                if isinstance(self.pOptions, ProtocolOptionsFactory):
+                    pOptions = self.pOptions.get(ProtocolEnum.REDFISH)
+                    if pOptions:
+                        port = pOptions.port
+                elif isinstance(self.pOptions, RedfishOptions):
+                    port = self.pOptions.port
+                if ':' in self.ipaddr:
+                    entry['URLString'] = "https://["+str(self.ipaddr) +"]:"+str(port)
+                else:
+                    entry['URLString'] = "https://" + str(self.ipaddr) + ":" +str(port)
+                if 'System' in self.entityjson:
+                    self.entityjson["System"][0]["iDRACURL"] = entry['URLString']
 
         if component in ["Sensors_Battery"]:
            if "OtherSensorTypeDescription" in entry:
@@ -2855,8 +2879,9 @@ class iDRACTopologyInfo(iDeviceTopologyInfo):
         tbuild.add_group('Dell Servers', 'Dell', static=True)
         tbuild.add_group('Dell Rack Workstations', 'Dell', static=True)
         tbuild.add_group('Dell Modular Servers', 'Dell Servers', static=True)
-        tbuild.add_group('Dell Rack Servers', 'Dell Servers', static=True)
-        tbuild.add_group('Dell FM Servers', 'Dell Servers', static=True)
+        tbuild.add_group('Dell Monolithic Servers', 'Dell Servers', static=True)
+        tbuild.add_group('Dell Sled Servers', 'Dell Servers', static=True)
+        tbuild.add_group('Dell FM Servers', 'Dell Sled Servers', static=True)
         tbuild.add_group('Dell Unmanaged Servers', 'Dell Servers', static=True)
         tbuild.add_group('Dell iDRAC GMs', 'Dell', static=True)
 
@@ -2866,23 +2891,28 @@ class iDRACTopologyInfo(iDeviceTopologyInfo):
             return False
 
         serviceTag = self.system['ServiceTag']
+        grpname = 'Dell Unmanaged Servers'
         if 'SystemGeneration' in self.system:
-            grpname = 'Dell Unmanaged Servers'
-            if re.match('.* Modular', self.system['SystemGeneration']):
+            if 'Modular' in self.system['SystemGeneration']:
                 grpname = 'Dell Modular Servers'
-            elif re.match('.* Monolithic|DCS', self.system['SystemGeneration']):
-                grpname = 'Dell Rack Servers'
-            self._add_myself(tbuild, grpname)
+            elif 'Monolithic' or 'DCS' in self.system['SystemGeneration']:
+                grpname = 'Dell Monolithic Servers'
 
-        if 'Model' in self.system and self.system['Model'] == 'FMServer':
-            fmgrp = 'FMServer-' + serviceTag
-            tbuild.add_group(fmgrp, 'Dell FM Servers')
-            self._add_myself(tbuild, fmgrp)
+        if 'Model' in self.system:
+            if 'FM' in self.system['Model']:
+                fmgrp = 'FMServer-' + serviceTag
+                tbuild.add_group(fmgrp, 'Dell FM Servers')
+                self._add_myself(tbuild, fmgrp)
+                grpname = fmgrp
+            if 'FC' in self.system['Model']:
+                grpname = 'Dell Sled Servers'
 
-        if 'GroupManager' in self.system and self.system['GroupManager']:
-            fmgrp = 'iGM-' + self.system['GroupManager']
-            tbuild.add_group(fmgrp, 'Dell iDRAC GMs')
-            self._add_myself(tbuild, fmgrp)
+        self._add_myself(tbuild, grpname)
+
+        # if 'GroupManager' in self.system and self.system['GroupManager']:
+        #     fmgrp = 'iGM-' + self.system['GroupManager']
+        #     tbuild.add_group(fmgrp, 'Dell iDRAC GMs')
+        #     self._add_myself(tbuild, fmgrp)
 
         return True
 

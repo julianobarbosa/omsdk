@@ -2,7 +2,7 @@
   "System" : {
     "ConfigState" : [],
     "Health" : ["Status"],
-    "Inventory" : [ "ProductID", "WWID", "Name"],
+    "Inventory" : [ "ProductID", "WWID", "Name", "SysName" ],
     "Key" : ["ServiceTag"],
     "Metrics" : [],
     "Status" : {

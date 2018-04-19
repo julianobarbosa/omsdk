@@ -102,8 +102,7 @@ class ProtocolOptionsFactory:
         return self._tostr()
 
     def add(self, pOptions):
-        if isinstance(pOptions, ProtocolOptions):
-            self.pOptions[pOptions.enid] = pOptions
+        self.pOptions[pOptions.enid] = pOptions
         return self
 
     def get(self, pEnum):
@@ -112,7 +111,18 @@ class ProtocolOptionsFactory:
         return None
 
 class SNMPOptions(ProtocolOptions):
-    def __init__(self, port = 161, timeout = 30, nretries = 3):
+    """
+        Options for establishing a SNMP Communication
+    """
+    def __init__(self, port = 161, timeout = 3, nretries = 1):
+        """
+        :param port: Port number for SNMP communication
+        :param timeout: time in seconds to wait for the request to wait before giving up
+        :param nretries: The maximum number of retries each connection should attempt
+        :type port: Int
+        :type timeout: Int
+        :type nretries: Int
+        """
         if PY2:
             super(SNMPOptions, self).__init__(ProtocolEnum.SNMP)
         else:
@@ -138,6 +148,7 @@ class ProtocolWrapper(object):
         self.compmap = {}
         self.cmds = {}
         self.classifier = {}
+        self.classifier_cond = {}
         self.view_fieldspec = {}
         self.proto = None
         self.creds = None
@@ -259,6 +270,9 @@ class ProtocolWrapper(object):
             if 'Macedit' in self.view_fieldspec[en][i]:
                 s = rjson[i]
                 rjson[i] = str(':'.join([s[j]+s[j+1] for j in range(2,14,2)]))
+            if 'IPv6edit' in self.view_fieldspec[en][i]:
+                s = rjson[i]
+                rjson[i] = str(re.sub(r'(.{4})(?!$)', r'\1:', s[2:]))
 
             if 'DateTime' in self.view_fieldspec[en][i]:
                 if rjson[i]:
@@ -336,12 +350,23 @@ class ProtocolWrapper(object):
             filter = None
             if isinstance(views[index], list) and self.enumid == ProtocolEnum.WSMAN:
                 wsprof = views[index][0]
-                # filter = views[index][1]
+                filter = views[index][1]
             retval = self.proto.enumerate(clsName, wsprof, self.selectors, False, filter)
             if Simulator.is_recording():
                 Simulator.record_proto(self.ipaddr,self.enumid, clsName, retval)
         if not 'Data' in retval or retval['Data'] is None:
             return retval
+        if index in self.classifier_cond:
+            chk_func = self.classifier_cond[index].get(self.enumid, None)
+            if chk_func:
+                (valid, flist) = chk_func(retval['Data'][clsName])
+                if valid:
+                    retval['Data'][clsName] = flist
+                else:
+                    return {
+                        'Status': 'Failed',
+                        'Message': 'Classifier condition not satisfied'
+                    }
         if index in self.classifier:
             for attr in self.classifier[index]:
                 if not clsName in retval['Data']:
@@ -549,7 +574,7 @@ class PREST(ProtocolWrapper):
         return PREST(self.views, self.cmds)
 
 class PREDFISH(ProtocolWrapper):
-    def __init__(self, views, cmds={}, view_fieldspec={}):
+    def __init__(self, views, cmds={}, view_fieldspec={}, urlbase = None, classifier_cond = None):
         if PY2:
             super(PREDFISH, self).__init__(ProtocolEnum.REDFISH)
         else:
@@ -557,20 +582,23 @@ class PREDFISH(ProtocolWrapper):
         self.selectors = {}
         self.views = views
         self.view_fieldspec = view_fieldspec
-        # self.classifier = classifier
+        self.classifier_cond = classifier_cond
+        self.urlbase = urlbase
         self.cmds = cmds
         self.supported_creds = [ CredentialsEnum.User ]
 
     def my_connect(self, ipaddr, creds, pOptions):
         if pOptions is None:
             pOptions = RedfishOptions()
+        if self.urlbase:
+            pOptions.urlbase = self.urlbase
         self.proto = RedfishProtocol(ipaddr, creds, pOptions)
         if self.proto is None:
             return False
         return True
 
     def clone(self):
-        return PREDFISH(self.views, self.cmds, self.view_fieldspec)
+        return PREDFISH(self.views, self.cmds, self.view_fieldspec, self.urlbase, self.classifier_cond)
 
     def disconnect(self):
         if self.proto:
@@ -607,13 +635,19 @@ class ProtocolFactoryIterator:
         if self.current >= self.high:
             raise StopIteration
         else:
+            breakflag = False
             for i in range(self.current, self.high):
                 self.current += 1
-                if self.protocol_factory.pref.include_flag[self.current - 1]:
+                if self.protocol_factory.pref.include_flag[i]:
+                    breakflag = True
                     break
             if i >= self.high:
                 raise StopIteration
-            return self.protocol_factory.protos[self.current - 1]
+
+            if breakflag:
+                return self.protocol_factory.protos[self.current-1]
+            else:
+                raise StopIteration
 
 class ProtocolFactory(object):
     def __init__(self):
@@ -622,6 +656,7 @@ class ProtocolFactory(object):
         self.sspec = None
         self.pref = ProtoPreference()
         self.classifier = set([])
+        self.prefProtocol = None
 
     def clone(self):
         pFactory = ProtocolFactory()

@@ -34,7 +34,7 @@ DEFAULT_LOGGER_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config", "
 
 DEFAULT_LOGGER_LOG_FILE = os.path.join(tempfile.gettempdir(), "omsdk-logs", "omsdk-logs.log")
 DEFAULT_LOGGER_FORMAT = "%(asctime)s - %(levelname)-5s - %(name)s:%(lineno)d - %(message)s"
-DEFAULT_LOGGER_LEVEL = logging.DEBUG
+DEFAULT_LOGGER_LEVEL = logging.ERROR
 
 logger = logging.getLogger(__name__)
 

@@ -60,10 +60,27 @@ ReturnValue = EnumWrapper('ReturnValue', ReturnValueMap).enum_type
 
 
 class WsManOptions(HttpEndPointOptions):
+    """
+        Options to establish WSMAN communication
+    """
     def __init__(
                  self, authentication = AuthenticationType.Basic, port = 443, connection_timeout = 20,
                  read_timeout = 30, max_retries = 1, verify_ssl = False
                 ):
+        """
+        :param authentication: HTTP Authentication type 'Basic', 'Digest'
+        :param port: https Port number for WSMAN communication
+        :param connection_timeout: time in seconds to wait for the server to connect before giving up
+        :param read_timeout: time in seconds to wait for the server to read data before giving up
+        :param max_retries: Http connection retries in case of failures
+        :param verify_ssl: SSL Certificate verification
+        :type authentication: Enum omsdk.http.sdkhttpep.AuthenticationType
+        :type port: Int
+        :type connection_timeout: Int
+        :type read_timeout: Int
+        :type verify_ssl: Boolean
+        """
+
         if PY2:
             super(WsManOptions, self).__init__(
                  ProtocolEnum.WSMAN, authentication, port, connection_timeout,
@@ -74,6 +91,7 @@ class WsManOptions(HttpEndPointOptions):
                  ProtocolEnum.WSMAN, authentication, port, connection_timeout,
                  read_timeout, max_retries, verify_ssl
                 )
+        self.enid = ProtocolEnum.WSMAN
 
 class WsManProtocolBase(ProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
@@ -411,18 +429,18 @@ class WsManProtocolBase(ProtocolBase):
             out = self._parse_output(en, name)
 
             if out['Status'] != 'Success':
-                self._logger.error(PrettyPrint.prettify_json(out))
+                self._logger.debug(PrettyPrint.prettify_json(out))
 
             return out
         except Exception as ex:
-            self._logger.error(str(ex))
+            self._logger.debug(str(ex))
             # fake as if the error came from the WsMan subsystem
             sx = WsManRequest()
             sx.add_error(ex)
             self._logger.debug(sx.get_text())
             en = WsManResponse().execute_str(sx.get_text())
             out = self._parse_output(en)
-            self._logger.error(PrettyPrint.prettify_json(out))
+            self._logger.debug(PrettyPrint.prettify_json(out))
             return out
 
     def printx(self, json_object):

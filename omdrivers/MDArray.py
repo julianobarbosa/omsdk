@@ -55,7 +55,8 @@ if PySnmpPresent:
 		'WWID' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.2'),
 		'ServiceTag' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.3'),
 		'ProductID' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.5'),
-		'Status' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.7')
+		'Status' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.7'),
+		'SysName' : ObjectIdentity('1.3.6.1.2.1.1.5')
      }
     }
     MDArraySNMPClassifier = {

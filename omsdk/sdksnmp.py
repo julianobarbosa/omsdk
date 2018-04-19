@@ -316,7 +316,7 @@ class SNMPProtocol(ProtocolBase):
         except Exception as exp:
             logger.debug(clsName + " is not present!!")
             logger.debug(str(exp))
-            traceback.print_exc()
+            # traceback.print_exc()
         if (len(entity_raw[clsName]) <= 0):
             return { }
         elif (len(entity_raw[clsName]) > 1):
@@ -352,7 +352,7 @@ class SNMPProtocol(ProtocolBase):
         except Exception as exp:
             logger.debug(clsName + " is not present!!")
             logger.debug(str(exp))
-            traceback.print_exc()
+            # traceback.print_exc()
 
         if (len(entity_raw[clsName]) <= 0):
             return { }

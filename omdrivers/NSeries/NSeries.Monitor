@@ -17,7 +17,7 @@
     ],
     "Metrics": ["SwitchUptime"]
   },
-  "dellNetFanTray": {
+  "FanTray": {
     "Key": [
       "_SNMPIndex"
     ],
@@ -27,10 +27,10 @@
     "Inventory": [
       "Type",
       "Speed",
-      "dellNetFanDeviceIndex"
+      "FanDeviceIndex"
     ]
   },
-  "dellNetFan": {
+  "Fan": {
     "Key": [
       "_SNMPIndex"
     ],
@@ -38,14 +38,12 @@
       "OperStatus"
     ],
     "Inventory": [
-      "envMonFanStatusIndex",
-      "envMonFanStatusDescr"
-    ],
-    "Metrics": [
-      "envMonFanSpeed"
+      "Index",
+      "Description",
+      "Speed"
     ]
   },
-  "dellNetPort": {
+  "Port": {
     "Key": [
       "ifIndex"
     ],
@@ -55,7 +53,7 @@
       "Type",
       "Class",
       "Address",
-      "dellNetSysIfName"
+      "SysIfName"
     ],
     "Metrics": [
       "ifInOctets",
@@ -68,40 +66,35 @@
       "ifSpeed"
     ]
   },
-  "dellNetPowerSupply": {
+  "PowerSupply": {
     "Key": [
-      "envMonSupplyStatusIndex"
+      "Index"
     ],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
-      "envMonSupplyStatusDescr",
-      "envMonSupplySource"
-    ],
-    "Metrics": [
-      "envMonSupplyCurrentPower",
-      "envMonSupplyAveragePower",
-      "envMonSupplyAvgStartTime"
+      "Description",
+      "Source"
     ]
   },
-  "dellNetPowerSupplyTray": {
+  "PowerSupplyTray": {
     "Key": [
-      "dellNetPowerDeviceIndex"
+      "PowerDeviceIndex"
     ],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
-      "Type"
+      "PowerDeviceType"
     ]
   },
-  "dellNetProcessor": {
+  "Processor": {
     "Key": [
       "_SNMPIndex"
     ],
     "Inventory": [
-      "MemSize"
+      "AvailableMemSize"
     ]
   },
   "Subsystem" : {

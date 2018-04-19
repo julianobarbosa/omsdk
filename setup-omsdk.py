@@ -17,14 +17,16 @@ here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
+# Get the version from _version file 
+with open('_version.txt', 'rb') as v:
+    ver = v.read()
 
 setup(
     name='omsdk',
-
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.0.0213',
+    version=ver,
 
     description='Dell OpenManage SDK',
     long_description='Dell OpenManage SDK for devices, consoles',
@@ -45,7 +47,7 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
@@ -67,6 +69,7 @@ setup(
     # simple. Or you can use find_packages().
     packages=[
         'omsdk',
+        'omsdktest',
         'omsdk.version',
         'omsdk.catalog',
         'omsdk.http',
@@ -105,7 +108,8 @@ setup(
         'PyYAML>=3.12',
         'future>=0.16.0',
         'six>=1.11.0',
-		'pysnmp_mibs>=0',
+        'pysnmp_mibs>=0',
+        'ipaddress>=0'
     ],
 
     # List additional groups of dependencies here (e.g. development

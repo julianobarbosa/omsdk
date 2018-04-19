@@ -63,17 +63,19 @@ if PySnmpPresent:
     CompellentSNMPViews = {
      CompellentCompEnum.System : {
         'SysObjectID': ObjectIdentity('SNMPv2-MIB', 'sysObjectID'),
-        # 'SysObjectID': ObjectIdentity('1.3.6.1.4.1.8072.3.2.8'),
-		'ProductID' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.1'),
-		'Description' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.2'),
-		'Vendor' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.3'),
-		'Version' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.4'),
+        #'SysObjectID': ObjectIdentity('1.3.6.1.4.1.8072.3.2.8'),
+        'ProductID' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.1'),
+        'Description' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.2'),
+        'Vendor' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.3'),
+        'Version' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.4'),
         'ServiceTag' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.5'),
         'PrimaryStatus' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.6'),
         'ManagementIP': ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.8"),
         'URLString' : ObjectIdentity('1.3.6.1.4.1.674.11000.2000.500.1.2.8'),
         'SerialNumber': ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.9"),
-        'Name': ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.4")
+        'Name': ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.4"),
+        'IPv6MgmtIP' : ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.11"),
+        'SysName' : ObjectIdentity("1.3.6.1.2.1.1.5")
      },
      CompellentCompEnum.StorageCenter : {
        'ID' : ObjectIdentity("1.3.6.1.4.1.674.11000.2000.500.1.2.29.1.1"),
@@ -242,12 +244,27 @@ class CompellentEntity(iDeviceDriver):
         self.more_details_spec = Compellent_more_details_spec
 
     def _should_i_include(self, component, entry):
+        if component == "System":
+            if ':' in self.ipaddr:
+                if 'IPv6MgmtIP' in entry:
+                    entry["ManagementIP"] = self.entityjson["System"][0].get("IPv6MgmtIP","Not Available") 
+
         if component == "Controller":
-            mgmtIP = self.entityjson['System'][0]['ManagementIP']
+            if ':' in self.ipaddr:
+                mgmtIP = self.entityjson['System'][0].get("IPv6MgmtIP", "Not Available")
+            else:
+                mgmtIP = self.entityjson['System'][0].get("ManagementIP", "Not Available")
             if self.ipaddr == mgmtIP:
                 return True
-            if entry['IPAddress'] != self.ipaddr:
+
+            if ':' in self.ipaddr:
+                if entry.get("IPv6Address", "Not Available") != self.ipaddr:
+                    return False 
+            elif entry.get("IPAddress", "Not Available") != self.ipaddr:
                 return False
+
+            entry["URLString"] = self.entityjson["System"][0].get("URLString", "Not Available")
+
         return True
 
     def _call_it(self, keyComp):

@@ -21,7 +21,7 @@
     ],
     "Metrics": ["SwitchUptime"]
   },
-  "dellNetCard": {
+  "Card": {
     "ConfigState": [],
     "Health": [
       "Status"
@@ -48,7 +48,7 @@
     ],
     "Metrics": []
   },
-  "dellNetChassis": {
+  "Chassis": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
@@ -74,7 +74,7 @@
     ],
     "Metrics": []
   },
-  "dellNetCpuUtil": {
+  "CpuUtil": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
@@ -85,10 +85,10 @@
     "Key": [ "_SNMPIndex" ],
     "Metrics": [
       "MemUsage",
-      "dellNetCpuFlashUsage"
+      "CpuFlashUsage"
     ]
   },
-  "dellNetFanTray": {
+  "FanTray": {
     "ConfigState": [],
     "Health": [
       "OperStatus"
@@ -100,30 +100,28 @@
       "PPIDRevision",
       "Type",
       "Speed",
-      "dellNetFanDeviceIndex"
+      "FanDeviceIndex"
     ],
     "Key": [
       "_SNMPIndex"
     ],
     "Metrics": []
   },
-  "dellNetFan": {
+  "Fan": {
     "ConfigState": [],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
-      "envMonFanStatusIndex",
-      "envMonFanStatusDescr"
+      "Index",
+      "Description",
+      "Speed"
     ],
     "Key": [
       "_SNMPIndex"
-    ],
-    "Metrics": [
-      "envMonFanSpeed"
     ]
   },
-  "dellNetPort": {
+  "Port": {
     "Key": [
       "ifIndex"
     ],
@@ -131,9 +129,8 @@
     "Inventory": [
       "Description",
       "Type",
-      "Class",
       "Address",
-      "dellNetSysIfName"
+      "SysIfName"
     ],
     "Metrics": [
       "ifInOctets",
@@ -146,7 +143,7 @@
       "ifSpeed"
     ]
   },
-  "dellNetFlash": {
+  "Flash": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
@@ -160,7 +157,7 @@
     "Key": [ "_SNMPIndex" ],
     "Metrics": []
   },
-  "dellNetPE": {
+  "PE": {
     "ConfigState": [],
     "Health": [
       "Status"
@@ -191,37 +188,32 @@
     ],
     "Metrics": []
   },
-  "dellNetPEBinding": {
+  "PEBinding": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [],
     "Key": [
       "_SNMPIndex",
-      "dellNetPEBindCascadePortIfIndex",
-      "dellNetPEBindPEIndex"
+      "PEBindCascadePortIfIndex",
+      "PEBindPEIndex"
     ],
     "Metrics": []
   },
-  "dellNetPowerSupply": {
+  "PowerSupply": {
     "ConfigState": [],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
-      "envMonSupplyStatusIndex",
-      "envMonSupplyStatusDescr",
-      "envMonSupplySource"
+      "Index",
+      "Description",
+      "Source"
     ],
     "Key": [
       "_SNMPIndex"
-    ],
-    "Metrics": [
-      "envMonSupplyCurrentPower",
-      "envMonSupplyAveragePower",
-      "envMonSupplyAvgStartTime"
     ]
   },
-  "dellNetPowerSupplyTray": {
+  "PowerSupplyTray": {
     "ConfigState": [],
     "Health": [
       "OperStatus"
@@ -233,22 +225,22 @@
       "ServiceTag",
       "PiecePartID",
       "PPIDRevision",
-      "dellNetPowerDeviceType",
-      "dellNetPowerDeviceIndex"
+      "PowerDeviceType",
+      "PowerDeviceIndex"
     ],
     "Key": [
       "_SNMPIndex"
     ],
     "Metrics": []
   },
-  "dellNetProcessor": {
+  "Processor": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
       "Module",
       "UpTime",
       "DeviceType",
-      "MemSize",
+      "AvailableMemSize",
       "Index"
     ],
     "Key": [
@@ -256,7 +248,7 @@
     ],
     "Metrics": []
   },
-  "dellNetStackPort": {
+  "StackPort": {
     "ConfigState": [],
     "Health": [
       "LinkStatus"
@@ -277,7 +269,7 @@
     ],
     "Metrics": []
   },
-  "dellNetStackUnit": {
+  "StackUnit": {
     "ConfigState": [],
     "Health": [
       "MgmtStatus",
@@ -316,7 +308,7 @@
     ],
     "Metrics": []
   },
-  "dellNetSwModule": {
+  "SwModule": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
@@ -333,7 +325,7 @@
       "CurrentBootImage"
     ]
   },
-  "dellNetSysCores": {
+  "SysCores": {
     "ConfigState": [],
     "Health": [],
     "Inventory": [
@@ -346,7 +338,7 @@
     "Key": [ "_SNMPIndex" ],
     "Metrics": []
   },
-  "dellNetSysIf": {
+  "SysIf": {
     "ConfigState": [],
     "Health": [
       "AdminStatus",
@@ -607,7 +599,10 @@
         "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : [ ]
     },
-
+   "EntityPortMap": {
+       "Key" : [ "ifIndex" ],
+       "Inventory" : [ "Class" ]
+   },
    "container" : {
 		"Key" : [
            "Name"

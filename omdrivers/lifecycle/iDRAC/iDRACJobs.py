@@ -27,8 +27,7 @@ import xml.etree.ElementTree as ET
 import logging
 from enum import Enum
 from datetime import datetime
-from omsdk.sdkprint import PrettyPrint
-from omsdk.sdkproto import PWSMAN,PREDFISH, PSNMP
+from omsdk.sdkproto import PWSMAN, PREDFISH, PSNMP
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.lifecycle.sdkjobs import iBaseJobApi
 
@@ -147,7 +146,7 @@ class iDRACJobs(iBaseJobApi):
             jobs = self._get_osd_job_details()
         else:
             jobs = self.get_job_details(jobid)
-        logger.debug(PrettyPrint.prettify_json(jobs))
+        logger.debug(jobs)
         if "Status" in jobs and jobs['Status'] != "Success":
             logger.debug("ERROR: get_job_status failed: " + jobs['Status'])
             logger.debug("ERROR: get_job_status failed: " + jobs['Message'])
@@ -192,7 +191,7 @@ class iDRACJobs(iBaseJobApi):
             return (False, 'Invalid', None)
         elif retval['Status'] != 'Success':
             return (False, retval['Status'], None)
-        logger.debug(PrettyPrint.prettify_json(retval))
+        logger.debug(retval)
         if retval['Return'] != "JobCreated":
             return (False, retval['Status'], None)
         if not 'Job' in retval or not 'JobId' in retval['Job']:
@@ -243,7 +242,7 @@ class iDRACJobs(iBaseJobApi):
             if not 'Status' in status:
                 logger.debug("Invalid Status")
             else:
-                logger.debug(PrettyPrint.prettify_json(status))
+                logger.debug(status)
 
                 pcc = "0"
                 msg = ""
