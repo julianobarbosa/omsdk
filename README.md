@@ -22,10 +22,14 @@ Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
     ``` pip3 install -r requirements-python3x.txt ```
 
 # Installation
-  * Install the latest stable version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
+  * Install the latest stable omsdk version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
 
     ``` pip install omsdk ```
 
+	* Install the latest stable omsdrivers version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
+
+    ``` pip install omdrivers ```
+	
   * Install the latest development version from github:
 
     ```
