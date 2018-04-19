@@ -69,7 +69,6 @@ setup(
     # simple. Or you can use find_packages().
     packages=[
         'omsdk',
-        'omsdktest',
         'omsdk.version',
         'omsdk.catalog',
         'omsdk.http',
