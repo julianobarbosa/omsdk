@@ -102,7 +102,8 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'enum34>=1.1.6;python_version<"3.4"',
+        'enum34>=1.1.6',
+		'python_version<3.4',
         'requests>=2.12.3',
         'PyYAML>=3.12',
         'future>=0.16.0',
