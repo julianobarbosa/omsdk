@@ -26,7 +26,7 @@ Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
 
     ``` pip install omsdk ```
 
-  * Install the latest stable omsdrivers version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
+  * Install the latest stable omdrivers version from [pypi.org](https://pypi.org/project/omdrivers/) using pip:
 
     ``` pip install omdrivers ```
 	
@@ -48,7 +48,9 @@ Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
 # Uninstallation
   * Uninstall this module as follows:
 
-    ```pip uninstall omsdk```
+    ```pip uninstall omsdk
+	   pip uninstall omdrivers
+	```
 
 # Documentation
 Refer to the [documentation](./docs) for details on how to use this SDK
