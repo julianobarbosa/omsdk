@@ -40,6 +40,13 @@ Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
     pip install omsdk-1.1.223-py2.py3-none-any.whl
 	```
 	
+	omsdk installation may fail with pip version 10.0 and above, follow one of the following steps in such scenario
+	
+	* Downgrade pip version to lower than 10.0 and then install omsdk
+	* Force install omsdk using:
+      ```pip install --ignore-installed omsdk```	
+	
+	
   * Install the latest development version of omsdk drivers for storage and network switches from github:
     ```
 	pip install omdrivers-1.1.223-py2.py3-none-any.whl
