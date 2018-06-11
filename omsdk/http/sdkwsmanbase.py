@@ -422,7 +422,7 @@ class WsManProtocolBase(ProtocolBase):
     def _communicate(self, wsm, name = None):
         try :
             self._proto_connect()
-            self._logger.debug("Sending: " + wsm.get_text())
+            # self._logger.debug("Sending: " + wsm.get_text())
             result = self._proto_ship_payload(wsm.get_text())
             self._logger.debug("Received: " + str(result))
             en = WsManResponse().execute_str(result)

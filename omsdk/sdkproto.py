@@ -405,7 +405,7 @@ class ProtocolWrapper(object):
         counter = 1
         fcmd = self.cmds[cmdname]
         for name, value in kwargs.items():
-            logger.debug(str(counter) + ":"+ str(name) + "=" + str(value))
+            # logger.debug(str(counter) + ":"+ str(name) + "=" + str(value))
             counter = counter + 1
             if not name in fcmd["Args"]:
                 str_err = name + " argument is invalid!"
@@ -434,7 +434,7 @@ class ProtocolWrapper(object):
                 argval = getattr(argvals[argname], field)
             paramlist.append(argval)
 
-        logger.debug(PrettyPrint.prettify_json(paramlist))
+        # logger.debug(PrettyPrint.prettify_json(paramlist))
     
         if Simulator.is_simulating():
             str_out = cmdname + "("

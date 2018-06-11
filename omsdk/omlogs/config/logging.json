@@ -9,17 +9,17 @@
   "handlers": {
     "console": {
       "class": "logging.StreamHandler",
-      "level": "DEBUG",
+      "level": "INFO",
       "formatter": "precise",
       "stream": "ext://sys.stdout"
     },
     "file_handler": {
       "class": "logging.handlers.TimedRotatingFileHandler",
-      "level": "DEBUG",
+      "level": "INFO",
       "formatter": "precise",
       "filename": "../logs/omsdk-logs.log",
-      "when": "S",
-      "interval": 10,
+      "when": "D",
+      "interval": 7,
       "backupCount": 5,
       "encoding": "utf8",
       "delay": "False",
@@ -28,7 +28,7 @@
     }
   },
   "root": {
-    "level": "DEBUG",
+    "level": "INFO",
     "handlers": [
       "console",
       "file_handler"

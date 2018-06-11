@@ -34,7 +34,7 @@ DEFAULT_LOGGER_CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config", "
 
 DEFAULT_LOGGER_LOG_FILE = os.path.join(tempfile.gettempdir(), "omsdk-logs", "omsdk-logs.log")
 DEFAULT_LOGGER_FORMAT = "%(asctime)s - %(levelname)-5s - %(name)s:%(lineno)d - %(message)s"
-DEFAULT_LOGGER_LEVEL = logging.ERROR
+DEFAULT_LOGGER_LEVEL = logging.INFO
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ class LoggerConfiguration:
             root.addHandler(console_handler)
 
             # set up logging to file
-            file_handler = TimedRotatingFileHandler(logger_log_file, when='S', interval=10, backupCount=5,
+            file_handler = TimedRotatingFileHandler(logger_log_file, when='D', interval=7, backupCount=5,
                                                     encoding="utf8")
             file_handler.setLevel(logger_level)
             file_handler.setFormatter(formatter)

@@ -70,6 +70,6 @@ class ProtocolBase(object):
                 toargs[var] = myval
                 if dest != None:
                     toargs[var] = dest(toargs[var])
-                logger.debug(var + "<=>" + str(toargs[var]))
+                # logger.debug(self.proto.ipaddr+" : var "+var + "<=>" + str(toargs[var]))
                 counter = counter + 1
         return { 'Status' : 'Success', 'retval' : toargs }
