@@ -7,25 +7,31 @@
             "AssetTag", 
             "DNSCMCName",
             "ExpressServiceCode",
-            "Model", 
+            "Model",
             "MgmtControllerFirmwareVersion",
             "URLString",
             "IPv6URLString",
             "Location",
-            "ProdName",
-            "Description",
             "Manufacturer",
-            "iKVMFirmwareVersion",
+            "Description",
+            "PhysicalLocationDataCenter",
             "PhysicalLocationAisle",
             "PhysicalLocationRack",
-            "PhysicalLocationRackSlot"
+            "PhysicalLocationRackSlot",
+            "PhysicalLocationChassisName",
+            "IPv4Address",
+            "ProductShortName"
         ],
+        "Metrics" : ["PwrInputSystemConsumption"],
         "PrimaryStatus" : {
             "0" : "Unknown",
             "1" : "Healthy",
             "2" : "Warning",
             "3" : "Critical"
         }
+   },
+   "SystemChassis": {
+        "Key": ["Tag"]
    },
    "Subsystem" : {
         "Key" : ["Key"],
@@ -39,7 +45,7 @@
             "EnabledState",
             "RequestedState"
         ],
-        "MainHealth"      : [ "HealthState" ],
+        "MainHealth"      : [ "PrimaryStatus" ],
         "OtherHealth"     : [ "OperationalStatus" ],
         "BasicInventory"   : [ 
             "SlotNumber"
@@ -66,10 +72,12 @@
    "CMC" : {
         "Key" : [ "SerialNumber" ],
         "ConfigState" : [ ],
-        "Health"      : [ ],
+        "MainHealth"  : ["PrimaryStatus"],
         "Inventory"   : [ 
-                "Manufacturer",
-                "PartNumber"
+            "Manufacturer",
+            "PartNumber",
+            "MgmtControllerFirmwareVersion",
+            "Model"
        ]
    },
    "FanSlot" : {
@@ -112,7 +120,7 @@
             "RequestedState",
             "TransitioningToState"
         ],
-        "MainHealth"  : [ "HealthState" ],
+        "MainHealth"  : [ "PrimaryStatus" ],
         "BasicInventory"   : [
             "ClassId",
             "SystemName", 
@@ -208,7 +216,11 @@
             "PowerState",
             "ServiceTag",
             "StorageMode",
-            "SlotNumber"
+            "SlotNumber",
+            "SlotName",
+            "MasterSlotNumber",
+            "FormFactor",
+            "ExtensionSlot"
         ],
         "PrimaryStatus" : {
             "5" : "Healthy",

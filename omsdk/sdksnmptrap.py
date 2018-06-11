@@ -27,15 +27,15 @@ from pysnmp.proto import api
 
 # Protocol version to use
 pMod = api.protoModules[api.protoVersion1]
-#pMod = api.protoModules[api.protoVersion2c]
+# pMod = api.protoModules[api.protoVersion2c]
 
 # Build PDU
-trapPDU =  pMod.TrapPDU()
+trapPDU = pMod.TrapPDU()
 pMod.apiTrapPDU.setDefaults(trapPDU)
 
 # Traps have quite different semantics across proto versions
 if pMod == api.protoModules[api.protoVersion1]:
-    pMod.apiTrapPDU.setEnterprise(trapPDU, (1,3,6,1,4,1,20408,4,1,1,2))
+    pMod.apiTrapPDU.setEnterprise(trapPDU, (1, 3, 6, 1, 4, 1, 20408, 4, 1, 1, 2))
     pMod.apiTrapPDU.setGenericTrap(trapPDU, 'coldStart')
 
 # Build message
@@ -49,10 +49,10 @@ transportDispatcher = AsynsockDispatcher()
 # UDP/IPv4
 transportDispatcher.registerTransport(
     udp.domainName, udp.UdpSocketTransport().openClientMode()
-    )
+)
 transportDispatcher.sendMessage(
     encoder.encode(trapMsg), udp.domainName, ('localhost', 162)
-    )
+)
 
 # UDP/IPv6
 transportDispatcher.registerTransport(

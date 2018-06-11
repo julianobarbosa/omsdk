@@ -32,8 +32,8 @@ import xml.dom.minidom
 from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkcenum import TypeHelper, EnumWrapper
 
-
 logger = logging.getLogger(__name__)
+
 
 class VersionObj:
     def __init__(self, version):
@@ -43,28 +43,31 @@ class VersionObj:
             self.version = tuple([int(x) for x in flist])
         except Exception as ex:
             logger.debug(str(ex))
-            self.version = tuple(version,)
+            self.version = tuple(version, )
+
 
 UpdatePresenceEnum = EnumWrapper('UPE', {
-    'Present' : 'Present',
-    'Absent' : 'Absent',
+    'Present': 'Present',
+    'Absent': 'Absent',
 }).enum_type
 
 UpdateTypeEnum = EnumWrapper('UTE', {
-    'On_Par' : 'On_Par',
-    'New' : 'New',
-    'Upgrade' : 'Upgrade',
-    'Downgrade' : 'Downgrade',
-    'Absent' : 'Absent',
+    'On_Par': 'On_Par',
+    'New': 'New',
+    'Upgrade': 'Upgrade',
+    'Downgrade': 'Downgrade',
+    'Absent': 'Absent',
 }).enum_type
 
 UpdateNeededEnum = EnumWrapper('UNE', {
-    'Needed' : True,
-    'NotNeeded' : False,
-    'Unknown' : 'Unknown'
+    'Needed': True,
+    'NotNeeded': False,
+    'Unknown': 'Unknown'
 }).enum_type
 
+
 class UpdateFilterCriteria():
+
     def __init__(self):
         self.components = None
         self.presence = None
@@ -82,7 +85,7 @@ class UpdateFilterCriteria():
             self.presence = []
         self.presence.extend(presence)
         if UpdatePresenceEnum.Absent in self.presence \
-           and self.update_type is not None:
+                and self.update_type is not None:
             self.include_update_type(UpdateTypeEnum.Absent)
         return self
 
@@ -102,24 +105,26 @@ class UpdateFilterCriteria():
 
     def meets(self, update):
         if self.components is not None and \
-            update['FQDD'] not in self.components:
+                update['FQDD'] not in self.components:
             return False
 
         if self.presence is not None and \
-           update['UpdatePackage'] not in self.presence:
+                update['UpdatePackage'] not in self.presence:
             return False
 
         if self.update_needed is not None and \
-           update['UpdateNeeded'] not in self.update_needed:
+                update['UpdateNeeded'] not in self.update_needed:
             return False
 
         if self.update_type is not None and \
-           update['UpdateType'] not in self.update_type:
+                update['UpdateType'] not in self.update_type:
             return False
 
         return True
 
+
 class RepoComparator:
+
     def __init__(self, swidentity):
         self.swidentity = swidentity
         self.firmware = {}
@@ -134,25 +139,25 @@ class RepoComparator:
             fwcompare['FQDD'] = firm['FQDD']
             fwcompare['ElementName'] = firm['ElementName']
             if 'VersionString' in firm:
-                fwcompare['Server.Version']=firm['VersionString']
+                fwcompare['Server.Version'] = firm['VersionString']
             else:
-                fwcompare['Server.Version']=""
+                fwcompare['Server.Version'] = ""
             fwcompare['UpdatePackage'] = UpdatePresenceEnum.Absent
             fwcompare['UpdateNeeded'] = UpdateNeededEnum.Unknown
             fwcompare['UpdateType'] = UpdateTypeEnum.Absent
         elif 'VersionString' not in firm:
             fwcompare['FQDD'] = firm['FQDD']
             fwcompare['ElementName'] = firm['ElementName']
-            fwcompare['Catalog.Version']=node.get('vendorVersion')
-            fwcompare['Server.Version']=""
+            fwcompare['Catalog.Version'] = node.get('vendorVersion')
+            fwcompare['Server.Version'] = ""
             fwcompare['UpdatePackage'] = UpdatePresenceEnum.Present
             fwcompare['UpdateNeeded'] = TrueUpdateNeededEnum.Needed
             fwcompare['UpdateType'] = UpdateTypeEnum.New
         else:
             fwcompare['FQDD'] = firm['FQDD']
             fwcompare['ElementName'] = firm['ElementName']
-            fwcompare['Catalog.Version']=node.get('vendorVersion')
-            fwcompare['Server.Version']=firm['VersionString']
+            fwcompare['Catalog.Version'] = node.get('vendorVersion')
+            fwcompare['Server.Version'] = firm['VersionString']
             fwcompare['UpdatePackage'] = UpdatePresenceEnum.Present
 
         srv_version = VersionObj(fwcompare['Server.Version']).version
@@ -168,27 +173,25 @@ class RepoComparator:
             fwcompare['UpdateNeeded'] = UpdateNeededEnum.Needed
             fwcompare['UpdateType'] = UpdateTypeEnum.Upgrade
 
-        logger.debug(str(srv_version) + "<>" + str(cat_version) +
-                "=" + str(fwcompare['UpdateType']))
-        for i in [ 'ComponentID', 'DeviceID', 'SubDeviceID', 'SubVendorID',
-                   'VendorID', 'InstanceID', 'Updateable', 'InstallationDate',
-                   #'MajorVersion', 'MinorVersion', 'RevisionNumber', 
-                   #'RevisionString',
-                   ]:
+        logger.debug(str(srv_version) + "<>" + str(cat_version) + "=" + str(fwcompare['UpdateType']))
+        for i in ['ComponentID', 'DeviceID', 'SubDeviceID', 'SubVendorID',
+                  'VendorID', 'InstanceID', 'Updateable', 'InstallationDate',
+                  # 'MajorVersion', 'MinorVersion', 'RevisionNumber',
+                  # 'RevisionString',
+                  ]:
             if i in firm:
                 fwcompare[i] = firm[i]
             else:
                 fwcompare[i] = None
 
-        for i in [ 'hashMD5', 'packageID', 'path', 'rebootRequired',
-                    'releaseDate']:
+        for i in ['hashMD5', 'packageID', 'path', 'rebootRequired', 'releaseDate']:
             fwcompare['Catalog.' + i] = node.get(i)
 
-        for i in [ 'size' ]:
+        for i in ['size']:
             fwcompare['Catalog.' + i] = int(node.get(i))
 
-        for i in [ 'Catalog.rebootRequired', 'Updateable' ]:
-            fwcompare[i] = (fwcompare[i] and fwcompare[i].lower()=="true")
+        for i in ['Catalog.rebootRequired', 'Updateable']:
+            fwcompare[i] = (fwcompare[i] and fwcompare[i].lower() == "true")
 
         if firm['FQDD'] not in self.firmware:
             self.firmware[firm['FQDD']] = []
@@ -202,33 +205,35 @@ class RepoComparator:
             fwcompare['FQDD'] = firm['FQDD']
             fwcompare['ElementName'] = firm['ElementName']
             if 'VersionString' in firm:
-                fwcompare['Server.Version']=firm['VersionString']
+                fwcompare['Server.Version'] = firm['VersionString']
             else:
-                fwcompare['Server.Version']=""
+                fwcompare['Server.Version'] = ""
             fwcompare['UpdatePackage'] = UpdatePresenceEnum.Absent
             fwcompare['UpdateNeeded'] = UpdateNeededEnum.Unknown
             fwcompare['UpdateType'] = UpdateTypeEnum.Absent
 
-            for i in [ 'ComponentID', 'DeviceID', 'SubDeviceID', 'SubVendorID',
-                   'VendorID', 'InstanceID', 'Updateable', 'InstallationDate',
-                   #'MajorVersion', 'MinorVersion', 'RevisionNumber', 
-                   #'RevisionString',
-                   ]:
+            for i in ['ComponentID', 'DeviceID', 'SubDeviceID', 'SubVendorID',
+                      'VendorID', 'InstanceID', 'Updateable', 'InstallationDate',
+                      # 'MajorVersion', 'MinorVersion', 'RevisionNumber',
+                      # 'RevisionString',
+                      ]:
                 if i in firm:
                     fwcompare[i] = firm[i]
                 else:
                     fwcompare[i] = None
 
-            for i in [ 'hashMD5', 'packageID', 'path', 'rebootRequired',
-                       'releaseDate', 'size']:
+            for i in ['hashMD5', 'packageID', 'path', 'rebootRequired',
+                      'releaseDate', 'size']:
                 fwcompare['Catalog.' + i] = None
 
-            for i in [ 'Updateable' ]:
-                fwcompare[i] = (fwcompare[i] and fwcompare[i].lower()=="true")
+            for i in ['Updateable']:
+                fwcompare[i] = (fwcompare[i] and fwcompare[i].lower() == "true")
             self.firmware[firm['FQDD']].append(fwcompare)
         return self.firmware
 
+
 class UpdateRepo:
+
     def __init__(self, folder, catalog='Catalog.xml', source=None, mkdirs=False):
         self.tree = None
         self.root = None
@@ -274,7 +279,7 @@ class UpdateRepo:
         upd_details = []
         for path in self.path_entries:
             upd = {}
-            for (k,v) in self.path_entries[path].items():
+            for (k, v) in self.path_entries[path].items():
                 upd[k] = v
             upd_details.append(upd)
         return upd_details
@@ -309,7 +314,8 @@ class UpdateRepo:
                 logger.debug("Could not find model")
                 continue
             self.addBundle(model, node, False)
-            components = self.root.findall("./SoftwareComponent/SupportedSystems/Brand/Model[@systemID='{0}']/.../.../...".format(model))
+            components = self.root.findall(
+                "./SoftwareComponent/SupportedSystems/Brand/Model[@systemID='{0}']/.../.../...".format(model))
             for comp in components:
                 self.addComponent(model, comp, None, False)
 
@@ -341,7 +347,7 @@ class UpdateRepo:
             rnode.insert(cnt_index, mynode)
         else:
             mynode = ET.SubElement(rnode, node.tag)
-        for (k,v) in node.items():
+        for (k, v) in node.items():
             mynode.set(k, v)
         for subnode in node:
             self._copynode(mynode, subnode)
@@ -349,10 +355,10 @@ class UpdateRepo:
     def _copynode(self, rnode, node):
         if node.tag == "Package":
             if not node.get("path") in self.entries:
-                return 
+                return
             self.wcompinbundle[node.get("path")] = "done"
         mynode = ET.SubElement(rnode, node.tag)
-        for (k,v) in node.items():
+        for (k, v) in node.items():
             mynode.set(k, v)
         for subnode in node:
             self._copynode(mynode, subnode)
@@ -362,7 +368,7 @@ class UpdateRepo:
         insertnode = rnode.find("./Contents")
         for node in packages:
             if not node.get("path") in self.wcompinbundle and \
-               node.get("path") in self.entries:
+                    node.get("path") in self.entries:
                 self._copynode(insertnode, node)
 
     def filter_by_model(self, model, ostype="WIN"):
@@ -371,10 +377,10 @@ class UpdateRepo:
             logger.debug('filtered bundle ' + str(count))
         return self.source.filter_by_model(model, ostype, firm=None, tosource=self)
 
-    def filter_by_component(self, model,swidentity, compfqdd=None,ostype="WIN", compare=None):
+    def filter_by_component(self, model, swidentity, compfqdd=None, ostype="WIN", compare=None):
         if compfqdd and len(compfqdd) <= 0: compfqdd = None
         logger.debug('filter_by_component::compfqdd=' + str(compfqdd))
-        logger.debug(PrettyPrint.prettify_json(swidentity))
+        logger.debug(swidentity)
         if self.source:
             count = self.source.filter_bundle(model, ostype, tosource=self)
             logger.debug('filtered bundle ' + str(count))
@@ -388,7 +394,7 @@ class UpdateRepo:
             logger.debug(firm['FQDD'])
             if 'ComponentID' in firm and firm['ComponentID']:
                 count += self.source.filter_by_compid(model,
-                             firm['ComponentID'], ostype, firm, tosource=source)
+                                                      firm['ComponentID'], ostype, firm, tosource=source)
                 continue
             pcispec = {}
             if 'VendorID' in firm and firm['VendorID']:
@@ -401,7 +407,7 @@ class UpdateRepo:
                 pcispec['subDeviceID'] = firm['SubDeviceID']
             if len(pcispec) > 0:
                 count += self.source.filter_by_pci(model, pcispec,
-                                    ostype, firm, tosource=source)
+                                                   ostype, firm, tosource=source)
                 continue
         logger.debug('Filtered ' + str(count) + ' entries!')
         return count
@@ -436,19 +442,19 @@ class UpdateRepo:
 
     # version = -1 : latest
     # version =  0 : n-1
-    def store(self, version = -1, target=None):
+    def store(self, version=-1, target=None):
         if not target:
             target = self.catalog
         self.root.set('baseLocation', '')
         # insert new bundles
         for model in self.bundles:
-            self.bundles[model].sort(key = lambda x: x.get("vendorVersion"))
+            self.bundles[model].sort(key=lambda x: x.get("vendorVersion"))
             self._copybundle(self.root, self.bundles[model][version])
         # Insert new components into existing bundles
         for model in self.exist_bundles:
             for bundle in self.exist_bundles[model]:
                 if bundle.get("bundleID") in self.exist_bundles_source:
-                    node=self.exist_bundles_source[bundle.get("bundleID")]
+                    node = self.exist_bundles_source[bundle.get("bundleID")]
                     self._copypackage(bundle, node)
         # Add new components
         for node in self.components:

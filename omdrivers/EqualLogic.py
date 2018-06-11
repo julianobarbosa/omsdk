@@ -288,7 +288,7 @@ class EqualLogicEntity(iDeviceDriver):
             if ':' in self.ipaddr:
                 if 'GroupIPv6' in entry:
                     entry['GroupURL'] = "http://"+"["+entry['GroupIPv6']+"]"
-                    entry['GroupIP'] = entry['GroupIPv6']
+                    entry['GroupIP'] = entry['GroupIPv6'] 
         if component == "Member":
             if ':' in self.ipaddr:
                 if 'GroupIPv6' in entry:

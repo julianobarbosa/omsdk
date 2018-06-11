@@ -26,8 +26,8 @@ from pyasn1.codec.ber import decoder
 from pysnmp.proto import api
 import logging
 
-
 logger = logging.getLogger(__name__)
+
 
 def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
     while wholeMsg:
@@ -39,34 +39,34 @@ def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             return
         reqMsg, wholeMsg = decoder.decode(
             wholeMsg, asn1Spec=pMod.Message(),
-            )
+        )
         logger.debug('Notification message from %s:%s: ' % (
             transportDomain, transportAddress
-            )
         )
+                     )
         reqPDU = pMod.apiMessage.getPDU(reqMsg)
         if reqPDU.isSameTypeWith(pMod.TrapPDU()):
             if msgVer == api.protoVersion1:
                 logger.debug('Enterprise: %s' % (
                     pMod.apiTrapPDU.getEnterprise(reqPDU).prettyPrint()
-                    )
                 )
+                             )
                 logger.debug('Agent Address: %s' % (
                     pMod.apiTrapPDU.getAgentAddr(reqPDU).prettyPrint()
-                    )
                 )
+                             )
                 logger.debug('Generic Trap: %s' % (
                     pMod.apiTrapPDU.getGenericTrap(reqPDU).prettyPrint()
-                    )
                 )
+                             )
                 logger.debug('Specific Trap: %s' % (
                     pMod.apiTrapPDU.getSpecificTrap(reqPDU).prettyPrint()
-                    )
                 )
+                             )
                 logger.debug('Uptime: %s' % (
                     pMod.apiTrapPDU.getTimeStamp(reqPDU).prettyPrint()
-                    )
                 )
+                             )
                 varBinds = pMod.apiTrapPDU.getVarBindList(reqPDU)
             else:
                 varBinds = pMod.apiPDU.getVarBindList(reqPDU)
@@ -74,6 +74,7 @@ def cbFun(transportDispatcher, transportDomain, transportAddress, wholeMsg):
             for oid, val in varBinds:
                 logger.debug('%s = %s' % (oid.prettyPrint(), val.prettyPrint()))
     return wholeMsg
+
 
 transportDispatcher = AsynsockDispatcher()
 

@@ -23,6 +23,7 @@
 import sys
 import json
 import os
+
 sys.path.append(os.getcwd())
 
 from pprint import pprint
@@ -34,8 +35,8 @@ from omsdk.sdkenum import MonitorScopeFilter, MonitorScope
 from omsdk.sdkinfra import sdkinfra
 import logging
 
-
 logger = logging.getLogger(__name__)
+
 
 class XMLFormatter:
     def __init__(self):
@@ -51,8 +52,8 @@ class XMLFormatter:
             self.mystring += '    <instance>\n'
 
     def append_nvpair(self, name, value):
-        self.mystring += '      <attribute name="'+name+'">'+value+'</attribute>\n'
-        self.comma = ", " 
+        self.mystring += '      <attribute name="' + name + '">' + value + '</attribute>\n'
+        self.comma = ", "
 
     def end(self, comp):
         self.mystring += "    </instance>\n"
@@ -60,8 +61,9 @@ class XMLFormatter:
     def finish(self):
         self.mystring += "  </component>"
 
+
 class StringFormatter:
-    def __init__(self, eol = "\n"):
+    def __init__(self, eol="\n"):
         self.eol = eol
 
     def init(self, comp):
@@ -74,13 +76,14 @@ class StringFormatter:
 
     def append_nvpair(self, name, value):
         self.mystring += self.comma + name + " = " + value
-        self.comma = ", " 
+        self.comma = ", "
 
     def end(self, comp):
         self.mystring += self.eol
 
     def finish(self):
         pass
+
 
 class SDKVisitor(object):
     def __init__(self, entity, mfilter=None):
@@ -93,7 +96,7 @@ class SDKVisitor(object):
     def _do_continue(self, comp, obj):
         return True
 
-    def _process(self, comp, obj, index = -1):
+    def _process(self, comp, obj, index=-1):
         pass
 
     def _end(self, comp):
@@ -109,32 +112,34 @@ class SDKVisitor(object):
         self._start(comp)
         for index in range(0, len(self.data[comp])):
             if self._do_continue(comp, self.data[comp][index]):
-                self._process(comp, self.data[comp][index], index+1)
+                self._process(comp, self.data[comp][index], index + 1)
         self._end(comp)
         return self
+
 
 class EntitySerializer(SDKVisitor):
     def __init__(self, entity, formatter):
         super(EntitySerializer, self).__init__(entity)
         self.formatter = formatter
-        
+
     def _start(self, comp):
         self.formatter.init(comp)
-        
-    def _process(self, comp, obj, index = -1):
+
+    def _process(self, comp, obj, index=-1):
         self.formatter.start(index)
         defs = self.entity.ref.defs
         for field in ["MainHealth", "Key", "BasicInventory", "Inventory"]:
             if field not in defs[comp]:
                 continue
-            if not isinstance(defs[comp][field],list):
+            if not isinstance(defs[comp][field], list):
                 continue
             for field_name in defs[comp][field]:
                 self.formatter.append_nvpair(field_name, obj[field_name])
         self.formatter.end(comp)
 
-    def _end(self,comp):
+    def _end(self, comp):
         self.formatter.finish()
+
 
 class HealthStateMachine:
     def __init__(self):
@@ -158,24 +163,27 @@ class HealthStateMachine:
         return self
 
     def transition(self, comp, curstate, instate):
-        #logger.debug("[{0}] curstate={1} instate={2}".format(comp,curstate,instate))
+        # logger.debug("[{0}] curstate={1} instate={2}".format(comp,curstate,instate))
         if curstate not in self.algo:
             return curstate
         if instate not in self.algo[curstate]:
             return curstate
         return self.algo[curstate][instate]
 
+
 class WorstCaseHealth:
     Algorithm = HealthStateMachine().worstCase()
 
+
 class SDKHealthVisitor(SDKVisitor):
     health_states = {
-        'Healthy'  : 0,
-        'Warning'  : 1,
-        'Critical' : 2,
-        'Unknown'  : 3
+        'Healthy': 0,
+        'Warning': 1,
+        'Critical': 2,
+        'Unknown': 3
     }
     HealthFilter = MonitorScopeFilter(MonitorScope.MainHealth)
+
     def __init__(self, entity):
         super(SDKHealthVisitor, self).__init__(entity, self.HealthFilter)
         self.health = {}
@@ -186,8 +194,8 @@ class SDKHealthVisitor(SDKVisitor):
                 if cjson['Key'] == comp and 'PrimaryStatus' in cjson:
                     return cjson['PrimaryStatus']
         return None
-        
-    def _start(self,comp):
+
+    def _start(self, comp):
         self.subsystem_health = self._get_subsystem_health(comp)
         self.health[comp] = 'Unknown'
 
@@ -196,19 +204,19 @@ class SDKHealthVisitor(SDKVisitor):
             return False
         return True
 
-    def _process(self, comp, obj, index = -1):
+    def _process(self, comp, obj, index=-1):
         if self.subsystem_health:
             return False
 
         comp_health = 'Unknown'
         for health_field in obj:
-            if health_field == 'Key' : continue
+            if health_field == 'Key': continue
             comp_health = obj[health_field]
             if comp_health not in self.health_states:
                 comp_health = 'Unknown'
 
         self.health[comp] = WorstCaseHealth.Algorithm.transition(comp,
-                    self.health[comp], comp_health)
+                                                                 self.health[comp], comp_health)
         return True
 
     def _health_code(self, comp):

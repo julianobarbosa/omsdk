@@ -20,21 +20,21 @@
 #
 # Authors: Vaideeswaran Ganesan
 #
+
+import re
+import sys
+import logging
 from enum import Enum
 from omsdk.sdkcenum import EnumWrapper, TypeHelper, PY2Enum
 
 if PY2Enum:
     from enum import EnumValue
 
-import re
-import sys
-import logging
-
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+
 
 class AutoNumber(Enum):
     def __new__(cls):
@@ -43,6 +43,7 @@ class AutoNumber(Enum):
         obj._value_ = value
         return obj
 
+
 class Filter(object):
     def check(self, scopeType):
         not_implemented
@@ -50,25 +51,24 @@ class Filter(object):
     def allowedtype(self, scopeType):
         not_implemented
 
-    def add(self,scopeType):
+    def add(self, scopeType):
         if self.check(scopeType):
             self.mix = self.mix | TypeHelper.resolve(scopeType)
         else:
             raise AttributeError("Filter can only take Flag in argument")
 
     def __init__(self, *args):
-        self.mix =  0
+        self.mix = 0
         for scopeType in args:
             self.add(scopeType)
 
-    def isset(self,scopeType):
+    def isset(self, scopeType):
         n = TypeHelper.resolve(scopeType)
-        return ((self.mix & n)  == n)
+        return ((self.mix & n) == n)
 
-    def unset(self,scopeType):
+    def unset(self, scopeType):
         n = TypeHelper.resolve(scopeType)
-        self.mix = (~(self.mix & n)  & self.mix)
-
+        self.mix = (~(self.mix & n) & self.mix)
 
     def _all(self, enumtype):
         if self.allowedtype(enumtype):
@@ -85,19 +85,20 @@ class Filter(object):
         else:
             logger.debug(str(enumtype) + " is not allowed for " + str(self))
 
-MonitorScopeMap = {
-    "Key"            : 1 << 0,
-    "Metrics"        : 1 << 1,
-    "ConfigState"    : 1 << 2,
-    # Inventory includes all
-    "BasicInventory" : 1 << 3,
-    "OtherInventory" : 1 << 4,
-    "Inventory"      : 1 << 3 | 1 << 4,
 
-    "MainHealth"     : 1 << 10, # Main component health
-    "OtherHealth"    : 1 << 11, # other health component
+MonitorScopeMap = {
+    "Key": 1 << 0,
+    "Metrics": 1 << 1,
+    "ConfigState": 1 << 2,
+    # Inventory includes all
+    "BasicInventory": 1 << 3,
+    "OtherInventory": 1 << 4,
+    "Inventory": 1 << 3 | 1 << 4,
+
+    "MainHealth": 1 << 10,  # Main component health
+    "OtherHealth": 1 << 11,  # other health component
     # Health includes all health
-    "Health"         : 1 << 10 | 1 << 11,
+    "Health": 1 << 10 | 1 << 11,
 }
 MonitorScope = EnumWrapper("MS", MonitorScopeMap).enum_type
 
@@ -109,33 +110,39 @@ class MonitorScopeFilter(Filter):
         else:
             super().__init__(*args)
         self.monitorScopedefaultMap = {
-            MonitorScope.Key : "Not Available",
-            MonitorScope.Metrics : None,
-            MonitorScope.ConfigState : "Not Available",
-            MonitorScope.BasicInventory : "Not Available",
-            MonitorScope.OtherInventory : "Not Available",
-            MonitorScope.Inventory : "Not Available",
-            MonitorScope.MainHealth : None,  # Main component health
-            MonitorScope.OtherHealth : None,  # other health component
-            MonitorScope.Health : None
+            MonitorScope.Key: "Not Available",
+            MonitorScope.Metrics: None,
+            MonitorScope.ConfigState: "Not Available",
+            MonitorScope.BasicInventory: "Not Available",
+            MonitorScope.OtherInventory: "Not Available",
+            MonitorScope.Inventory: "Not Available",
+            MonitorScope.MainHealth: None,  # Main component health
+            MonitorScope.OtherHealth: None,  # other health component
+            MonitorScope.Health: None
         }
+
     def allowedtype(self, scopeType):
         return type(scopeType) == type(MonitorScope)
+
     def check(self, scopeEnum):
         return TypeHelper.belongs_to(MonitorScope, scopeEnum)
+
     def all(self):
         return self._all(MonitorScope)
+
     def getdefaultMap(self, mscope):
         if mscope in self.monitorScopedefaultMap:
             return self.monitorScopedefaultMap[mscope]
         else:
             return None
+
     def setdefaultMap(self, mscope, ndefval):
         self.monitorScopedefaultMap[mscope] = ndefval
 
-def CreateMonitorScopeFilter(argument = ""):
+
+def CreateMonitorScopeFilter(argument=""):
     if argument == "":
-        argument  = "Health+Inventory+Metrics+ConfigState"
+        argument = "Health+Inventory+Metrics+ConfigState"
     monitorfilter = MonitorScopeFilter()
     for i in argument.split("+"):
         for j in MonitorScope:
@@ -143,7 +150,9 @@ def CreateMonitorScopeFilter(argument = ""):
                 monitorfilter.add(j)
     return monitorfilter
 
+
 MonitorScopeFilter_All = MonitorScopeFilter().all()
+
 
 class ComponentScope:
     def __init__(self, *args):
@@ -156,7 +165,7 @@ class ComponentScope:
             except:
                 pass
 
-            if isinstance(comp,Enum):
+            if isinstance(comp, Enum):
                 self.comps[comp.value] = True
             else:
                 self.comps[comp] = True
@@ -166,7 +175,8 @@ class ComponentScope:
 
     def printx(self):
         for i in self.comps:
-            print (i)
+            print(i)
+
 
 class RegExpFilter:
     def __init__(self, *args):
@@ -180,9 +190,10 @@ class RegExpFilter:
                 return True
         return False
 
+
 class DeviceGroupFilter(RegExpFilter):
     pass
 
+
 class DeviceFilter(RegExpFilter):
     pass
-

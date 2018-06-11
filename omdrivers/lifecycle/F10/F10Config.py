@@ -43,23 +43,24 @@ try:
     from pysnmp.entity.rfc3413.oneliner import cmdgen
     from pysnmp.proto import rfc1902
     from pysnmp import debug
+
     PySnmpPresent = True
 except ImportError:
     PySnmpPresent = False
 
-ConfigFileTypeEnum = EnumWrapper("CFT",  { "FTOS" : 1,
-            "RunningConfig" : 2,
-            "StartupConfig" : 3,
-        }).enum_type
+ConfigFileTypeEnum = EnumWrapper("CFT", {"FTOS": 1,
+                                         "RunningConfig": 2,
+                                         "StartupConfig": 3,
+                                         }).enum_type
 
-ConfigFileLocationEnum = EnumWrapper("CFLE",  {
-    "Flash" : 1,
-    "Slot0" : 2,
-    "Tftp" : 3,
-    "FTP" : 4,
-    "SCP" : 5,
-    "USBFlash" : 6
-    }).enum_type
+ConfigFileLocationEnum = EnumWrapper("CFLE", {
+    "Flash": 1,
+    "Slot0": 2,
+    "Tftp": 3,
+    "FTP": 4,
+    "SCP": 5,
+    "USBFlash": 6
+}).enum_type
 
 if PySnmpPresent:
     F10SNMPCmds = {
@@ -67,25 +68,25 @@ if PySnmpPresent:
         ## Config Export
         #######
         "config_export": {
-            "ResourceURI" : None,
-            "Action" :  None,
-            "SelectorSet" : {
-                "indexField" : '1.3.6.1.4.1.6027.3.5.1.1.1.1.15', #rfc1902.Integer(6)
-                "defaultIdx" : '5', 
-                "startIdx" : '1', 
-                "endIdx" : '10', 
-                "cleanupAfterCreate" : True, 
+            "ResourceURI": None,
+            "Action": None,
+            "SelectorSet": {
+                "indexField": '1.3.6.1.4.1.6027.3.5.1.1.1.1.15',  # rfc1902.Integer(6)
+                "defaultIdx": '5',
+                "startIdx": '1',
+                "endIdx": '10',
+                "cleanupAfterCreate": True,
             },
-            "Args" : {
-                "share" : FileOnShare,
-                "creds" : UserCredentials,
-                "srcType" : ConfigFileTypeEnum,
-                "destType" : ConfigFileTypeEnum,
+            "Args": {
+                "share": FileOnShare,
+                "creds": UserCredentials,
+                "srcType": ConfigFileTypeEnum,
+                "destType": ConfigFileTypeEnum,
             },
-            "Return" : {
-                "File" : "file"
+            "Return": {
+                "File": "file"
             },
-            "Parameters" : [
+            "Parameters": [
                 # copySrcFileType :: ConfigFileType
                 ('1.3.6.1.4.1.6027.3.5.1.1.1.1.2', "srcType", None, ConfigFileTypeEnum, rfc1902.Integer),
                 # copyDestFileType :: ConfigFileType
@@ -101,12 +102,13 @@ if PySnmpPresent:
                 # copyUserPAssword :: password
                 ('1.3.6.1.4.1.6027.3.5.1.1.1.1.10', "creds", "password", str, rfc1902.OctetString),
                 # TODO cpyServerInetAddressType :: 
-#                ('1.3.6.1.4.1.6027.3.5.1.1.1.1.16', "share", "remote_iptype", Share.IPAddressTypeEnum, rfc1902.Integer),
+                #                ('1.3.6.1.4.1.6027.3.5.1.1.1.1.16', "share", "remote_iptype", Share.IPAddressTypeEnum, rfc1902.Integer),
                 # cpyServerInetAddress :: 
-#                ('1.3.6.1.4.1.6027.3.5.1.1.1.1.17', "share", "remote_ipaddr", str, rfc1902.IpAddress),
+                #                ('1.3.6.1.4.1.6027.3.5.1.1.1.1.17', "share", "remote_ipaddr", str, rfc1902.IpAddress),
             ]
         },
     }
+
 
 class F10Config(iBaseConfigApi):
     def __init__(self, entity):
@@ -115,11 +117,11 @@ class F10Config(iBaseConfigApi):
         else:
             super().__init__(entity)
 
-    def config_export_async(self, myshare, 
-             srcType = ConfigFileTypeEnum.StartupConfig,
-             destType = ConfigFileTypeEnum.FTOS):
-        share = myshare.format(ip = self.entity.ipaddr)
+    def config_export_async(self, myshare,
+                            srcType=ConfigFileTypeEnum.StartupConfig,
+                            destType=ConfigFileTypeEnum.FTOS):
+        share = myshare.format(ip=self.entity.ipaddr)
         rjson = self.entity.config_export(share=share, creds=myshare.creds,
-                    srcType = srcType, destType = destType)
+                                          srcType=srcType, destType=destType)
         rjson['file'] = str(share)
         return rjson

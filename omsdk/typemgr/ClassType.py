@@ -31,6 +31,7 @@ import io
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 # private
 #
 # def __init__(self, fname, alias, parent=None, volatile=False)
@@ -64,9 +65,10 @@ PY3 = sys.version_info[0] == 3
 #
 # def get_root(self)
 
+
 class ClassType(TypeBase):
 
-    def __init__(self, fname, alias, parent = None, volatile=False, modifyAllowed = True, deleteAllowed = True):
+    def __init__(self, fname, alias, parent=None, volatile=False, modifyAllowed=True, deleteAllowed=True):
         if PY2:
             super(ClassType, self).__init__()
         else:
@@ -105,15 +107,15 @@ class ClassType(TypeBase):
 
         # allow updates to other fields except _value
         # should we allow updates to  '_type', '_alias', '_fname'?
-        if name in [ '_alias', '_fname', '_volatile', '_parent',
-                     '_composite', '_index', '_freeze',
-                     '_modifyAllowed', '_deleteAllowed', '_attribs']:
+        if name in ['_alias', '_fname', '_volatile', '_parent',
+                    '_composite', '_index', '_freeze',
+                    '_modifyAllowed', '_deleteAllowed', '_attribs']:
             self.__dict__[name] = value
             return
 
         # Does it make sense to have create-only attribute!
         # Create-only attribute : No updates allowed
-        #if not self._modifyAllowed and \
+        # if not self._modifyAllowed and \
         #   self._state in [TypeState.Committed, TypeState.Changing]:
         #    raise ValueError('updates not allowed to this object')
 
@@ -124,8 +126,8 @@ class ClassType(TypeBase):
         # value is None, object was committed; ==> no change
         # value is actually a object!!
         if value is None and \
-           self._state in [TypeState.Committed, TypeState.Changing]:
-            return 
+                self._state in [TypeState.Committed, TypeState.Changing]:
+            return
 
         if name not in self.__dict__:
             if not isinstance(value, TypeBase):
@@ -214,13 +216,13 @@ class ClassType(TypeBase):
 
     # State : to Committed
     # allowed even during freeze
-    def commit(self, loading_from_scp = False):
+    def commit(self, loading_from_scp=False):
         if self.is_changed():
             if not self._composite:
                 if '_orig_value' not in self.__dict__:
                     self.__dict__['_orig_value'] = {}
-                self._copy_state(source = self.__dict__,
-                                 dest = self.__dict__['_orig_value'])
+                self._copy_state(source=self.__dict__,
+                                 dest=self.__dict__['_orig_value'])
                 for i in self.Properties:
                     self.__dict__[i].commit(loading_from_scp)
             if loading_from_scp:
@@ -239,8 +241,8 @@ class ClassType(TypeBase):
                         del self.__dict__[i]
                     self.__dict__['_state'] = TypeState.UnInitialized
                 else:
-                    self._copy_state(source = self.__dict__['_orig_value'],
-                                 dest = self.__dict__)
+                    self._copy_state(source=self.__dict__['_orig_value'],
+                                     dest=self.__dict__)
                     self.__dict__['_state'] = TypeState.Committed
                     for i in self.Properties:
                         self.__dict__[i].reject()
@@ -284,9 +286,9 @@ class ClassType(TypeBase):
                             ", " + type(other).__name__)
         combined_props = self._get_combined_properties(self, other)
         for i in combined_props:
-            if  i not in self.__dict__:
+            if i not in self.__dict__:
                 return True
-            if  i not in other.__dict__:
+            if i not in other.__dict__:
                 return False
             if self.__dict__[i].__lt__(other.__dict__[i]):
                 return True
@@ -302,9 +304,9 @@ class ClassType(TypeBase):
                             ", " + type(other).__name__)
         combined_props = self._get_combined_properties(self, other)
         for i in combined_props:
-            if  i not in self.__dict__:
+            if i not in self.__dict__:
                 return True
-            if  i not in other.__dict__:
+            if i not in other.__dict__:
                 return False
             if self.__dict__[i].__lt__(other.__dict__[i]):
                 return True
@@ -320,9 +322,9 @@ class ClassType(TypeBase):
                             ", " + type(other).__name__)
         combined_props = self._get_combined_properties(self, other)
         for i in combined_props:
-            if  i not in self.__dict__:
+            if i not in self.__dict__:
                 return False
-            if  i not in other.__dict__:
+            if i not in other.__dict__:
                 return True
             if self.__dict__[i].__lt__(other.__dict__[i]):
                 return False
@@ -338,9 +340,9 @@ class ClassType(TypeBase):
                             ", " + type(other).__name__)
         combined_props = self._get_combined_properties(self, other)
         for i in combined_props:
-            if  i not in self.__dict__:
+            if i not in self.__dict__:
                 return False
-            if  i not in other.__dict__:
+            if i not in other.__dict__:
                 return True
             if self.__dict__[i].__lt__(other.__dict__[i]):
                 return False
@@ -355,9 +357,9 @@ class ClassType(TypeBase):
                             ", " + type(other).__name__)
         combined_props = self._get_combined_properties(self, other)
         for i in combined_props:
-            if  i not in self.__dict__:
+            if i not in self.__dict__:
                 return False
-            if  i not in other.__dict__:
+            if i not in other.__dict__:
                 return False
             if self.__dict__[i].__ne__(other.__dict__[i]):
                 return False
@@ -399,9 +401,9 @@ class ClassType(TypeBase):
 
     def _get_fields(self, obj):
         if PY2:
-            return {k: v for k,v in obj.iteritems() if not k.startswith('_')}
+            return {k: v for k, v in obj.iteritems() if not k.startswith('_')}
         if PY3:
-            return {k: v for k,v in obj.items() if not k.startswith('_')}
+            return {k: v for k, v in obj.items() if not k.startswith('_')}
 
     def _clear_duplicates(self):
         for i in self.Properties:
@@ -446,22 +448,22 @@ class ClassType(TypeBase):
     def ModifiedXML(self):
         return self._get_xml_string(False)
 
-    def _get_xml_string(self, everything = True, space='', deleted=False):
+    def _get_xml_string(self, everything=True, space='', deleted=False):
         s = UnicodeStringWriter()
         if not self._fname:
             # group object!!
             for i in self.Properties:
                 if not self.__dict__[i].is_changed() and not everything:
-                        continue
+                    continue
                 attr_name = i
                 if attr_name in self._ign_fields:
                     continue
                 if '_' in attr_name:
                     attr_name = re.sub('_.*', '', attr_name)
-                    attr_name ="{0}.{1}#{2}".format(self._alias,
-                                    self._index, attr_name)
+                    attr_name = "{0}.{1}#{2}".format(self._alias,
+                                                     self._index, attr_name)
                 else:
-                    attr_name ="{0}".format(attr_name)
+                    attr_name = "{0}".format(attr_name)
                 if isinstance(self.__dict__[i], FieldType):
                     if self.__dict__[i]._composite:
                         continue
@@ -478,7 +480,7 @@ class ClassType(TypeBase):
         s._write_output(space + '<{0}'.format(self._fname))
         for i in self._attribs:
             if i not in self._ign_attribs:
-                s._write_output(' {0}="{1}"'.format(i,self._attribs[i]))
+                s._write_output(' {0}="{1}"'.format(i, self._attribs[i]))
         s._write_output('>\n')
 
         orig_len = len(s.getvalue())
@@ -498,9 +500,9 @@ class ClassType(TypeBase):
                     if self.__dict__[i]._list:
                         values = value.split(',')
                     for val in values:
-                        s._write_output(space+
-                        '  <Attribute Name="{0}">{1}</Attribute>\n'.format(
-                        attr_name, val))
+                        s._write_output(space +
+                                        '  <Attribute Name="{0}">{1}</Attribute>\n'.format(
+                                            attr_name, val))
             else:
                 s._write_output(self.__dict__[i]._get_xml_string(everything, space + '  ', deleted))
         new_len = len(s.getvalue())

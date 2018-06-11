@@ -36,7 +36,6 @@ import requests.packages.urllib3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from requests.auth import HTTPBasicAuth
 
-
 from omsdk.sdkprotobase import ProtocolBase
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.http.sdkwsmanpdu import WsManRequest, WsManResponse
@@ -44,16 +43,17 @@ from omsdk.http.sdkhttpep import HttpEndPoint, HttpEndPointOptions, Authenticati
 from omsdk.sdkprotopref import ProtoPreference, ProtocolEnum
 from omsdk.sdkprint import PrettyPrint
 import logging
+
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 ReturnValueMap = {
-    'Success' : 0,
-    'Error' : 2,
-    'JobCreated' : 4096,
-    'Invalid' : -1
+    'Success': 0,
+    'Error': 2,
+    'JobCreated': 4096,
+    'Invalid': -1
 }
 
 ReturnValue = EnumWrapper('ReturnValue', ReturnValueMap).enum_type
@@ -63,10 +63,11 @@ class WsManOptions(HttpEndPointOptions):
     """
         Options to establish WSMAN communication
     """
+
     def __init__(
-                 self, authentication = AuthenticationType.Basic, port = 443, connection_timeout = 20,
-                 read_timeout = 30, max_retries = 1, verify_ssl = False
-                ):
+            self, authentication=AuthenticationType.Basic, port=443, connection_timeout=20,
+            read_timeout=30, max_retries=1, verify_ssl=False
+    ):
         """
         :param authentication: HTTP Authentication type 'Basic', 'Digest'
         :param port: https Port number for WSMAN communication
@@ -83,17 +84,19 @@ class WsManOptions(HttpEndPointOptions):
 
         if PY2:
             super(WsManOptions, self).__init__(
-                 ProtocolEnum.WSMAN, authentication, port, connection_timeout,
-                 read_timeout, max_retries, verify_ssl
-                )
+                ProtocolEnum.WSMAN, authentication, port, connection_timeout,
+                read_timeout, max_retries, verify_ssl
+            )
         else:
             super().__init__(
-                 ProtocolEnum.WSMAN, authentication, port, connection_timeout,
-                 read_timeout, max_retries, verify_ssl
-                )
+                ProtocolEnum.WSMAN, authentication, port, connection_timeout,
+                read_timeout, max_retries, verify_ssl
+            )
         self.enid = ProtocolEnum.WSMAN
 
+
 class WsManProtocolBase(ProtocolBase):
+
     def __init__(self, ipaddr, creds, pOptions):
         if PY2:
             super(WsManProtocolBase, self).__init__()
@@ -111,10 +114,10 @@ class WsManProtocolBase(ProtocolBase):
         wsm.identify()
         return self._communicate(wsm)
 
-    def enumerate(self, clsName, resource, select = {}, resetTransport = False, filter = None):
+    def enumerate(self, clsName, resource, select={}, resetTransport=False, filter=None):
         wsm = WsManRequest()
-        wsm.enumerate(to = self._proto_endpoint(), ruri=resource,
-                      selectors = select, filter = filter)
+        wsm.enumerate(to=self._proto_endpoint(), ruri=resource,
+                      selectors=select, filter=filter)
         return self._communicate(wsm)
 
     # Operation Invoke
@@ -136,7 +139,7 @@ class WsManProtocolBase(ProtocolBase):
         sset = {}
         tset = wsmancmds[cmdname]["SelectorSet"]
         for i in tset["w:Selector"]:
-            sset[i['@Name']]= i['#text']
+            sset[i['@Name']] = i['#text']
         toargs = self._build_ops(wsmancmds, cmdname, *args)
 
         wsm = WsManRequest()
@@ -145,13 +148,13 @@ class WsManProtocolBase(ProtocolBase):
         wsm.add_body(ruri, act, toargs['retval'])
         return self._communicate(wsm)
 
-##########################Below are redfish codes, need to be moved once prtocol issue is addressed#####################
+    ##########################Below are redfish codes, need to be moved once prtocol issue is addressed#####################
     def _build_attribute_config_payload(self, toargs_dict):
         if not toargs_dict:
             return None
-        payload ={}
+        payload = {}
         if toargs_dict.__contains__("parentattr"):
-            payload[toargs_dict["parentattr"]]=toargs_dict["payload_param"]
+            payload[toargs_dict["parentattr"]] = toargs_dict["payload_param"]
         else:
             if not toargs_dict["payload_param"]:
                 return None
@@ -166,7 +169,7 @@ class WsManProtocolBase(ProtocolBase):
         :returns: returns a json/dict body for http method
 
         """
-        #status = toargs_dict['Status']
+        # status = toargs_dict['Status']
         retval = toargs_dict['retval']
         if not retval:
             return None
@@ -178,15 +181,15 @@ class WsManProtocolBase(ProtocolBase):
                 ''' right now implementation is only for params containing single "/", it will be extented for generic numbers of "/"'''
                 if not tokens[0] in payload:
                     param_key = tokens[0]
-                    param_val ={}
-                    param_val[tokens[1]]=val
-                    payload[param_key]=param_val
+                    param_val = {}
+                    param_val[tokens[1]] = val
+                    payload[param_key] = param_val
                 else:
                     param_key = payload[tokens[0]]
-                    param_key[tokens[1]]=val
+                    param_key[tokens[1]] = val
 
             else:
-                payload[key]=val
+                payload[key] = val
         return payload
 
     def _pack_http_method_args(self, resource_path, http_headers, http_body=None, http_args=None):
@@ -208,7 +211,8 @@ class WsManProtocolBase(ProtocolBase):
         if not http_body is None:
             method_args['body'] = http_body
         return method_args
-    def _pack_rest_method_args(self, auth, verify = False, data=None, headers=None):
+
+    def _pack_rest_method_args(self, auth, verify=False, data=None, headers=None):
         """Pack the arguments required for the rest methods (post/get/put/patch ...) as a key value pair in a dictionary
 
         :param auth: authentication object.
@@ -231,8 +235,8 @@ class WsManProtocolBase(ProtocolBase):
             method_args['data'] = json.dumps(data)
         return method_args
 
-    def _get_base_url(self, ipaddr, resouce_path, port = 443):
-        baseurl = "https://" + ipaddr + ':' + str(port)+resouce_path
+    def _get_base_url(self, ipaddr, resouce_path, port=443):
+        baseurl = "https://" + ipaddr + ':' + str(port) + resouce_path
         return baseurl
 
     def _get_redfish_jobid(self, headers):
@@ -245,7 +249,7 @@ class WsManProtocolBase(ProtocolBase):
         """
         joblocation = headers['Location']
         tokens = joblocation.split("/")
-        if tokens and tokens.__len__()>0:
+        if tokens and tokens.__len__() > 0:
             return tokens[-1]
         return None
 
@@ -265,15 +269,15 @@ class WsManProtocolBase(ProtocolBase):
         dummyargs = redfish_cmdlist[redfish_cmdname]['DummyParams']
         paramtuples = redfish_cmdlist[redfish_cmdname]['Parameters']
         newargdict = argdict['retval']
-        uriarg=''
+        uriarg = ''
         for i in range(0, dummyargs):
             key = paramtuples[i][0]
             val = newargdict[key]
             newargdict.pop(key)
             if val.startswith("/"):
-                uriarg = uriarg+val
+                uriarg = uriarg + val
             else:
-                uriarg=uriarg+'/'+val
+                uriarg = uriarg + '/' + val
         argdict['retval'] = newargdict
         return (argdict, uriarg)
 
@@ -291,7 +295,7 @@ class WsManProtocolBase(ProtocolBase):
         """
         resource_uri = redfish_cmdlist[redfish_cmdname]["ResourceURI"]
         action = redfish_cmdlist[redfish_cmdname]["Action"]
-        http_method=redfish_cmdlist[redfish_cmdname]["HttpMethod"]
+        http_method = redfish_cmdlist[redfish_cmdname]["HttpMethod"]
 
         if "SuccessCode" in redfish_cmdlist[redfish_cmdname]:
             success_code = redfish_cmdlist[redfish_cmdname]["SuccessCode"]
@@ -309,7 +313,8 @@ class WsManProtocolBase(ProtocolBase):
 
         toargs = self._build_ops(redfish_cmdlist, redfish_cmdname, *args)
 
-        if redfish_cmdlist[redfish_cmdname].__contains__("DummyParams") and redfish_cmdlist[redfish_cmdname]['DummyParams'] > 0:
+        if redfish_cmdlist[redfish_cmdname].__contains__("DummyParams") and redfish_cmdlist[redfish_cmdname][
+            'DummyParams'] > 0:
             (toargs, uriarg) = self._remove_dummyparams(redfish_cmdlist, redfish_cmdname, toargs)
             rpath = rpath + uriarg
         if redfish_cmdname.endswith("attributes_redfish") and toargs['retval']:
@@ -319,18 +324,18 @@ class WsManProtocolBase(ProtocolBase):
         else:
             redfish_payload = self._build_redfish_payload(toargs)
 
-        url = self._get_base_url(ipaddr= self.proto.ipaddr, resouce_path = rpath, port=self.proto.pOptions.port)
+        url = self._get_base_url(ipaddr=self.proto.ipaddr, resouce_path=rpath, port=self.proto.pOptions.port)
         auth = HTTPBasicAuth(self.proto.creds.username, self.proto.creds.password)
         cert_verify = False
         headers = {'content-type': 'application/json'}
-        kwargs = self._pack_rest_method_args(auth = auth, verify = cert_verify, data = redfish_payload, headers = headers)
-        retval={}
+        kwargs = self._pack_rest_method_args(auth=auth, verify=cert_verify, data=redfish_payload, headers=headers)
+        retval = {}
         try:
-            response = requests.request(method = http_method, url = url, **kwargs)
+            response = requests.request(method=http_method, url=url, **kwargs)
         except Exception as exp:
-            logger.debug("Exception while executing redfish request: {}".format(exp))
-            retval["Status"]="Failed"
-            retval["Data"]={"Status":"Failed", "Message":"Failed to execute resfish request"}
+            logger.error(self.proto.ipaddr+" : Exception while executing redfish request: {}".format(exp))
+            retval["Status"] = "Failed"
+            retval["Data"] = {"Status": "Failed", "Message": "Failed to execute resfish request"}
             return retval
         retval = self._parse_redfish_output(response, success_code, returns_job_id)
         return retval
@@ -343,10 +348,10 @@ class WsManProtocolBase(ProtocolBase):
         :returns: returns a json/dict
 
         """
-        retval ={}
+        retval = {}
         Data = {}
         if response == None:
-            logger.debug("redfish response is None")
+            logger.error(self.proto.ipaddr+" : redfish response is None")
             retval["Status"] = "Failed"
             retval["Data"] = {"Status": "Failed",
                               "Message": "redfish response is None"}
@@ -354,12 +359,13 @@ class WsManProtocolBase(ProtocolBase):
         headers = response.headers
         retval["StatusCode"] = response.status_code
         if response.status_code not in success_code:
-            print("response.status_code:"+str(response.status_code)+", success_code:"+str(success_code))
-            logger.debug("returned status code doesn't match with the expected success code")
-            logger.debug("Expected:"+str(success_code)+", returned status code:"+str(response.status_code))
-            retval["Status"]="Failed"
-            retval["Data"]={"Status":"Failed", "Message":"returned status code doesn't match with the expected success code"}
-            retval["Data"]['StatusCode']=response.status_code
+            print("response.status_code:" + str(response.status_code) + ", success_code:" + str(success_code))
+            logger.debug(self.proto.ipaddr+" : returned status code doesn't match with the expected success code")
+            logger.debug(self.proto.ipaddr+" : Expected:" + str(success_code) + ", returned status code:" + str(response.status_code))
+            retval["Status"] = "Failed"
+            retval["Data"] = {"Status": "Failed",
+                              "Message": "returned status code doesn't match with the expected success code"}
+            retval["Data"]['StatusCode'] = response.status_code
             if 'Content-Length' in headers and int(headers['Content-Length']) > 0:
                 if 'application/json' in headers['Content-Type']:
                     error = response.json()
@@ -367,26 +373,26 @@ class WsManProtocolBase(ProtocolBase):
                     error = response.text
                 retval['error'] = error
             return retval
-        retval["Status"]="Success"
+        retval["Status"] = "Success"
 
-        if 'Content-Length' in headers and int(headers['Content-Length'])>0:
+        if 'Content-Length' in headers and int(headers['Content-Length']) > 0:
             if 'application/json' in headers['Content-Type']:
                 body = response.json()
             else:
                 body = response.text
             Data['body'] = body
-        #Data['headers']=headers
-        Data['StatusCode']=response.status_code
+        # Data['headers']=headers
+        Data['StatusCode'] = response.status_code
         if 'Location' in headers:
-            Data['next_ruri']=headers['Location']
+            Data['next_ruri'] = headers['Location']
         if returns_jobid:
             jobid = self._get_redfish_jobid(headers)
             if jobid:
-                Data['jobid']=jobid
-                job={'JobId':jobid, 'ResourceURI':headers['Location']}
-                retval['Job']=job
+                Data['jobid'] = jobid
+                job = {'JobId': jobid, 'ResourceURI': headers['Location']}
+                retval['Job'] = job
                 retval['Return'] = 'JobCreated'
-        retval['Data']=Data
+        retval['Data'] = Data
         return retval
 
     def _get_redfish_jobid(self, headers):
@@ -399,13 +405,11 @@ class WsManProtocolBase(ProtocolBase):
         """
         joblocation = headers['Location']
         tokens = joblocation.split("/")
-        if tokens and tokens.__len__()>0:
+        if tokens and tokens.__len__() > 0:
             return tokens[-1]
         return None
 
-
-
-##########################Above are redfish codes, need to be moved once prtocol issue is addressed#####################
+    ##########################Above are redfish codes, need to be moved once prtocol issue is addressed#####################
 
     def _proto_connect(self):
         pass
@@ -419,17 +423,17 @@ class WsManProtocolBase(ProtocolBase):
     def _proto_reset(self):
         pass
 
-    def _communicate(self, wsm, name = None):
-        try :
+    def _communicate(self, wsm, name=None):
+        try:
             self._proto_connect()
-            self._logger.debug("Sending: " + wsm.get_text())
+            #self._logger.debug("Sending: " + wsm.get_text())
             result = self._proto_ship_payload(wsm.get_text())
             self._logger.debug("Received: " + str(result))
             en = WsManResponse().execute_str(result)
             out = self._parse_output(en, name)
 
             if out['Status'] != 'Success':
-                self._logger.debug(PrettyPrint.prettify_json(out))
+                self._logger.debug(out)
 
             return out
         except Exception as ex:
@@ -440,7 +444,7 @@ class WsManProtocolBase(ProtocolBase):
             self._logger.debug(sx.get_text())
             en = WsManResponse().execute_str(sx.get_text())
             out = self._parse_output(en)
-            self._logger.debug(PrettyPrint.prettify_json(out))
+            self._logger.debug(out)
             return out
 
     def printx(self, json_object):
@@ -448,7 +452,7 @@ class WsManProtocolBase(ProtocolBase):
             logger.debug("<empty json>")
             return False
         logger.debug(json.dumps(json_object, sort_keys=True, indent=4, \
-              separators=(',', ': ')))
+                                separators=(',', ': ')))
 
     # retVal['Status'] = Success, Failed, Invalid JSON,
     # retval['Data'][component] = {}
@@ -464,7 +468,7 @@ class WsManProtocolBase(ProtocolBase):
             if "Action" in en["Header"] and en["Header"]["Action"] == rgsp:
                 retval['Status'] = 'Success'
                 retval['Data'] = en['Body']
-            rfault="http://schemas.xmlsoap.org/ws/2004/08/addressing/fault"
+            rfault = "http://schemas.xmlsoap.org/ws/2004/08/addressing/fault"
             if "Action" in en["Header"] and en["Header"]["Action"] == rfault:
                 retval['Status'] = 'Failed'
         if not "Body" in en:
@@ -473,7 +477,7 @@ class WsManProtocolBase(ProtocolBase):
             retval['Status'] = 'Found Client (SDK) Side Fault'
             retval['Fault.Data'] = en["Body"]["ClientFault"]
             if "Reason" in en["Body"]["ClientFault"] and \
-               "Text" in en["Body"]["ClientFault"]["Reason"]:
+                    "Text" in en["Body"]["ClientFault"]["Reason"]:
                 retval['Message'] = WsManResponse().get_message(en["Body"]["ClientFault"]["Reason"])
         elif "Fault" in en["Body"]:
             retval['Status'] = 'Found Fault'
@@ -495,8 +499,8 @@ class WsManProtocolBase(ProtocolBase):
                 retval['Data'] = en["Body"]
                 retval['Status'] = 'Not understood the message. Sorry!'
                 if "Message" in en["Body"][entry]:
-                     retval['Status'] = en["Body"][entry]["Message"]
-                     retval['Message'] = en["Body"][entry]["Message"]
+                    retval['Status'] = en["Body"][entry]["Message"]
+                    retval['Message'] = en["Body"][entry]["Message"]
                 if "MessageID" in en["Body"][entry]:
                     retval['MessageID'] = en["Body"][entry]["MessageID"]
                 if "ReturnValue" in en["Body"][entry]:
@@ -504,7 +508,7 @@ class WsManProtocolBase(ProtocolBase):
                     retval['Return'] = TypeHelper.get_name(ret, ReturnValueMap)
                     retval['Status'] = retval['Return']
                     if ret == TypeHelper.resolve(ReturnValue.JobCreated):
-                        retval['Job'] = { "ResourceURI" : "", "JobId" : "" }
+                        retval['Job'] = {"ResourceURI": "", "JobId": ""}
                         ss = en["Body"][entry]
                         if "Job" in ss:
                             ss = ss["Job"]
@@ -521,7 +525,7 @@ class WsManProtocolBase(ProtocolBase):
                         if "Selector" in ss:
                             ss = ss["Selector"]
                         if len(ss) >= 1:
-                            retval['Job']['JobId'] = ss[0] 
+                            retval['Job']['JobId'] = ss[0]
                             retval['Job']['JobIdRest'] = [ss[i] for i in range(1, len(ss))]
                         else:
                             retval['Job']['JobId'] = 'Unknown'

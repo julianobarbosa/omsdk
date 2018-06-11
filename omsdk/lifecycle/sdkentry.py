@@ -28,18 +28,17 @@ from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkcenum import EnumWrapper
 
 RowStatus = EnumWrapper("MS", {
-    'Row_With_Valid_Key' : 1,
-    'Partial' : 2,
-    'Row_With_Invalid_Key' : 3,
+    'Row_With_Valid_Key': 1,
+    'Partial': 2,
+    'Row_With_Invalid_Key': 3,
 }).enum_type
-
 
 
 class ConfigEntries(object):
     def __init__(self, keyfield):
         self.valuemap = {}
         self.compmap = {}
-        self.slotmap = { }
+        self.slotmap = {}
         self.keyfield = keyfield
         self.loaded = False
 
@@ -55,7 +54,7 @@ class ConfigEntries(object):
             if fqdd not in self.compmap:
                 self.compmap[fqdd] = {}
             for attribute in component.findall("./Attribute"):
-                self.compmap[fqdd][attribute.get("Name")]= attribute.text
+                self.compmap[fqdd][attribute.get("Name")] = attribute.text
 
         for component in system.findall("./Component"):
             for attribute in component.findall("./Attribute"):
@@ -63,7 +62,7 @@ class ConfigEntries(object):
                     pattern = self.keyfield[comp]['Pattern']
                     result = re.search(pattern, attribute.get("Name"))
                     if not result: continue
-                    index = 1 
+                    index = 1
                     if len(result.groups()) == 1:
                         field = result.group(1)
                     if len(result.groups()) == 2:
@@ -81,8 +80,8 @@ class ConfigEntries(object):
         n = len(valuemap[comp])
         if n < index:
             valuemap[comp].extend([{} for i in range(n, index)])
-        valuemap[comp][index-1][field] = value
-        valuemap[comp][index-1]['_slot'] = index
+        valuemap[comp][index - 1][field] = value
+        valuemap[comp][index - 1]['_slot'] = index
 
     def _locate(self, valuemap, entry):
         for v in valuemap:
@@ -112,7 +111,7 @@ class ConfigEntries(object):
                 loc = self._locate(self.valuemap[comp], entry)
                 nret = RowStatus.Row_With_Invalid_Key
                 if comp in self.keyfield and \
-                    'Validate' in self.keyfield[comp]:
+                        'Validate' in self.keyfield[comp]:
                     nret = self.keyfield[comp]['Validate'](entry)
                 if loc is None:
                     if nret == RowStatus.Row_With_Valid_Key:
@@ -131,48 +130,48 @@ class ConfigEntries(object):
     def find_existing(self, comp, key):
         if key is None: key = ""
         if comp not in self.valuemap:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
         if comp not in self.slotmap:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
         if comp not in self.keyfield:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
-        if 'Key'not in self.keyfield[comp]:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component does not have specification' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
+        if 'Key' not in self.keyfield[comp]:
+            return {'Status': 'Failed',
+                    'Message': 'This component does not have specification'}
         for entry in self.valuemap[comp]:
             if self.keyfield[comp]['Key'] in entry and \
-                entry[self.keyfield[comp]['Key']] == key:
-                return { 'Status' : 'Success', 'retval' : entry }
-        return { 'Status' : 'Failed',
-                 'Message' : 'Entry does not exists' }
+                    entry[self.keyfield[comp]['Key']] == key:
+                return {'Status': 'Success', 'retval': entry}
+        return {'Status': 'Failed',
+                'Message': 'Entry does not exists'}
 
     def check_and_get_empty_slot(self, comp, key):
         if key is None: key = ""
         if comp not in self.valuemap:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
         if comp not in self.slotmap:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
         if comp not in self.keyfield:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component is not supported by the SDK' }
-        if 'Key'not in self.keyfield[comp]:
-            return { 'Status' : 'Failed',
-                     'Message' : 'This component does not have specification' }
+            return {'Status': 'Failed',
+                    'Message': 'This component is not supported by the SDK'}
+        if 'Key' not in self.keyfield[comp]:
+            return {'Status': 'Failed',
+                    'Message': 'This component does not have specification'}
         for entry in self.valuemap[comp]:
             if self.keyfield[comp]['Key'] in entry and \
-                entry[self.keyfield[comp]['Key']] == key:
-                return { 'Status' : 'Failed',
-                         'Message' : 'Existing entry' }
+                    entry[self.keyfield[comp]['Key']] == key:
+                return {'Status': 'Failed',
+                        'Message': 'Existing entry'}
         if len(self.slotmap[comp]) > 0:
-            return { 'Status' : 'Success',
-                     'retval' : self.slotmap[comp][0] }
+            return {'Status': 'Success',
+                    'retval': self.slotmap[comp][0]}
 
-        return { 'Status' : 'Failed', 'Message' : 'No empty slot found'}
+        return {'Status': 'Failed', 'Message': 'No empty slot found'}
 
     def get_component(self, comp):
         if comp in self.valuemap:

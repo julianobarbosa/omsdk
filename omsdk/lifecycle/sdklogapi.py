@@ -25,9 +25,10 @@ import sys
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 class iBaseLogApi(object):
 
-    def __init__(self, entity, logenum, logtypesen = None):
+    def __init__(self, entity, logenum, logtypesen=None):
         self.entity = entity
         self.logenum = logenum
         self.logs_json = {}

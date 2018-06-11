@@ -26,9 +26,10 @@ import logging
 import socket
 import sys, glob
 from collections import OrderedDict
-from omsdk.sdkcenum import EnumWrapper,TypeHelper
+from omsdk.sdkcenum import EnumWrapper, TypeHelper
 
 logger = logging.getLogger(__name__)
+
 
 class sdkinfra:
     """
@@ -41,15 +42,15 @@ class sdkinfra:
     
     def load_from_file(self, filepath):
         mod_name = None
-        mod_name,file_ext = os.path.splitext(os.path.split(filepath)[-1])
+        mod_name, file_ext = os.path.splitext(os.path.split(filepath)[-1])
         logger.debug("Loading " + filepath + "...")
         if file_ext.lower() == '.py':
             py_mod = imp.load_source(mod_name, filepath)
         elif file_ext.lower() == '.pyc':
             py_mod = imp.load_compiled(mod_name, filepath)
-        return { "name" : mod_name, "module" : py_mod }
+        return {"name": mod_name, "module": py_mod}
     
-    def importPath(self, srcdir = None):
+    def importPath(self, srcdir=None):
         oldpaths = sys.path
         if not srcdir is None:
             oldpaths = [srcdir]
@@ -87,7 +88,7 @@ class sdkinfra:
         self.disc_modules = tempdict
         self.driver_enum = EnumWrapper("Driver", self.driver_names).enum_type
     
-    def find_driver(self, ipaddr, creds, protopref = None, pOptions = None):
+    def find_driver(self, ipaddr, creds, protopref=None, pOptions=None):
         """Find a device driver for the given IPAddress or host name
 
                 :param ipaddr: ipaddress or hostname of the device
@@ -115,7 +116,7 @@ class sdkinfra:
     # Return:
     #    None - if driver not found, not classifed
     #    instance of iBaseEntity  - if device of the proper type
-    def get_driver(self, driver_en, ipaddr, creds, protopref = None, pOptions = None):
+    def get_driver(self, driver_en, ipaddr, creds, protopref=None, pOptions=None):
         """Get a device driver for the given IPAddress or host name, also checking for a particular device type
 
             :param ipaddr: ipaddress or hostname of the device
@@ -140,13 +141,13 @@ class sdkinfra:
         logger.debug("get_driver(): Asking for " + mod)
         ipaddr = host
         try:
-            result = socket.getaddrinfo(host, None);
+            result = socket.getaddrinfo(host, None)
             lastuple = result[-1]
             ipaddress = lastuple[-1][0]
             if ipaddress:
                 ipaddr = ipaddress
         except socket.gaierror as err:
-            logger.debug(err)
+            print("cannot resolve hostname: ", host, err)
         if not mod in self.disc_modules:
             # TODO: Change this to exception
             logger.debug(mod + " not found!")
@@ -158,7 +159,7 @@ class sdkinfra:
                 hostname = None
                 try:
                     hostname, aliaslist, addresslist = socket.gethostbyaddr(ipaddr)
-                    logger.debug("Found host name for " + ipaddr+ " as "+hostname)
+                    logger.debug("Found host name for " + ipaddr + " as "+hostname)
                 except socket.herror:
                     hostname = None
                     logger.debug("No host name found for " + ipaddr)

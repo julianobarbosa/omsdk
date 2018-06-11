@@ -33,32 +33,32 @@ import xml.etree.ElementTree as ET
 import sys
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 class WsManRequest:
     envAttrs = {
-       'xmlns:enc' : 'http://www.w3.org/2003/05/soap-encoding',
-       'xmlns:env': 'http://www.w3.org/2003/05/soap-envelope',
-       'xmlns:tns' : 'http://schemas.microsoft.com/wmx/2005/06',
-       # xmlns:a = xmlns:wsa
-       'xmlns:a': 'http://schemas.xmlsoap.org/ws/2004/08/addressing',
-       'xmlns:wse' : 'http://schemas.xmlsoap.org/ws/2004/08/eventing',
-       # xmlns:n = xmlns:wsen
-       'xmlns:n': 'http://schemas.xmlsoap.org/ws/2004/09/enumeration',
-       # xmlns:w = xmlns:wsman
-       'xmlns:w': 'http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd',
-       # xmlns:b = xmlns:wsmb
-       'xmlns:b': 'http://schemas.dmtf.org/wbem/wsman/1/cimbinding.xsd',
-       'xmlns:wsmid':'http://schemas.dmtf.org/wbem/wsman/identity/1/wsmanidentity.xsd',
-       # xmlns:x = xmlns:wxf
-       'xmlns:x': 'http://schemas.xmlsoap.org/ws/2004/09/transfer',
-       'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema',
-       'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
-       'xmlns:p': 'http://schemas.microsoft.com/wbem/wsman/1/wsman.xsd',
+        'xmlns:enc': 'http://www.w3.org/2003/05/soap-encoding',
+        'xmlns:env': 'http://www.w3.org/2003/05/soap-envelope',
+        'xmlns:tns': 'http://schemas.microsoft.com/wmx/2005/06',
+        # xmlns:a = xmlns:wsa
+        'xmlns:a': 'http://schemas.xmlsoap.org/ws/2004/08/addressing',
+        'xmlns:wse': 'http://schemas.xmlsoap.org/ws/2004/08/eventing',
+        # xmlns:n = xmlns:wsen
+        'xmlns:n': 'http://schemas.xmlsoap.org/ws/2004/09/enumeration',
+        # xmlns:w = xmlns:wsman
+        'xmlns:w': 'http://schemas.dmtf.org/wbem/wsman/1/wsman.xsd',
+        # xmlns:b = xmlns:wsmb
+        'xmlns:b': 'http://schemas.dmtf.org/wbem/wsman/1/cimbinding.xsd',
+        'xmlns:wsmid': 'http://schemas.dmtf.org/wbem/wsman/identity/1/wsmanidentity.xsd',
+        # xmlns:x = xmlns:wxf
+        'xmlns:x': 'http://schemas.xmlsoap.org/ws/2004/09/transfer',
+        'xmlns:xsd': 'http://www.w3.org/2001/XMLSchema',
+        'xmlns:xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+        'xmlns:p': 'http://schemas.microsoft.com/wbem/wsman/1/wsman.xsd',
     }
 
     def __init__(self):
@@ -67,49 +67,50 @@ class WsManRequest:
         self.body = ET.SubElement(self.root, 'env:Body')
         self.selector = None
 
-    def enumerate(self, to, ruri, selectors, filter=None, envSize = 512000, mid= None, opTimeout = 60):
-        self.set_header(to,ruri, "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate",envSize,mid,opTimeout)
+    def enumerate(self, to, ruri, selectors, filter=None, envSize=512000, mid=None, opTimeout=60):
+        self.set_header(to, ruri, "http://schemas.xmlsoap.org/ws/2004/09/enumeration/Enumerate", envSize, mid,
+                        opTimeout)
         if (len(selectors) > 0):
             self.add_selectors(selectors)
         selset = ET.SubElement(self.body, 'n:Enumerate')
-        args = { 'OptimizeEnumeration' : '', 'MaxElements' : 32000 }
+        args = {'OptimizeEnumeration': '', 'MaxElements': 32000}
         for i in args:
             myto = ET.SubElement(selset, 'w:' + i)
             myto.text = str(args[i])
 
         if filter:
-            myto = ET.SubElement(selset, 'w:Filter', \
+            myto = ET.SubElement(selset, 'w:Filter',
                                  {'Dialect': 'http://schemas.microsoft.com/wbem/wsman/1/WQL'})
             myto.text = str(filter)
 
         return self
 
-    def set_header(self, to, ruri, action, envSize = 512000, mid= None, opTimeout = 60):
+    def set_header(self, to, ruri, action, envSize=512000, mid=None, opTimeout=60):
         myto = ET.SubElement(self.header, 'a:To')
         myto.text = to
-        myto = ET.SubElement(self.header, 'w:ResourceURI', \
-            { 'env:mustUnderstand' : 'true' })
+        myto = ET.SubElement(self.header, 'w:ResourceURI',
+                             {'env:mustUnderstand': 'true'})
         myto.text = ruri
         myto = ET.SubElement(self.header, 'a:ReplyTo')
-        myto = ET.SubElement(myto, 'a:Address', \
-            { 'env:mustUnderstand' : 'true' })
+        myto = ET.SubElement(myto, 'a:Address',
+                             {'env:mustUnderstand': 'true'})
         myto.text = "http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous"
-        myto = ET.SubElement(self.header, 'a:Action', \
-            { 'env:mustUnderstand' : 'true' })
+        myto = ET.SubElement(self.header, 'a:Action',
+                             {'env:mustUnderstand': 'true'})
         myto.text = action
-        myto = ET.SubElement(self.header, 'w:MaxEnvelopeSize', \
-            { 'env:mustUnderstand' : 'true' })
+        myto = ET.SubElement(self.header, 'w:MaxEnvelopeSize',
+                             {'env:mustUnderstand': 'true'})
         myto.text = str(envSize)
         if not mid:
             mid = uuid.uuid4()
         myto = ET.SubElement(self.header, 'a:MessageID')
         myto.text = 'uuid:{0}'.format(mid)
-        myto = ET.SubElement(self.header, 'w:Locale', \
-            { 'env:mustUnderstand' : 'false' ,
-             'xml:lang' : 'en-US' })
-        myto = ET.SubElement(self.header, 'p:DataLocale', \
-            { 'env:mustUnderstand' : 'false' ,
-             'xml:lang' : 'en-US' })
+        myto = ET.SubElement(self.header, 'w:Locale',
+                             {'env:mustUnderstand': 'false',
+                              'xml:lang': 'en-US'})
+        myto = ET.SubElement(self.header, 'p:DataLocale',
+                             {'env:mustUnderstand': 'false',
+                              'xml:lang': 'en-US'})
         myto = ET.SubElement(self.header, 'w:OperationTimeout')
         myto.text = 'PT{0}.000S'.format(int(opTimeout))
         return self
@@ -118,12 +119,12 @@ class WsManRequest:
         if self.selector is None:
             self.selector = ET.SubElement(self.header, 'w:SelectorSet')
         for i in selectors:
-            myto = ET.SubElement(self.selector, 'w:Selector', { 'Name' : i })
+            myto = ET.SubElement(self.selector, 'w:Selector', {'Name': i})
             myto.text = selectors[i]
         return self
 
     def add_body(self, ruri, action, args):
-        selset = ET.SubElement(self.body, 'p:' + action + "_INPUT", { 'xmlns:p' : ruri })
+        selset = ET.SubElement(self.body, 'p:' + action + "_INPUT", {'xmlns:p': ruri})
         for i in args:
             myto = ET.SubElement(selset, 'p:' + i)
             myto.text = str(args[i])
@@ -151,7 +152,7 @@ class WsManRequest:
 
     def printx(self):
         logger.debug(ET.dump(self.root))
-    
+
 
 class WsManResponse:
     def __init__(self):
@@ -160,11 +161,11 @@ class WsManResponse:
     def strip_ns(self, s, stripNS):
         return (re.sub(".*:", "", s) if stripNS else s)
 
-    def execute_str(self, value, stripNS = True):
+    def execute_str(self, value, stripNS=True):
         domtree = xml.dom.minidom.parseString(value)
         return self._xmltojson(domtree, stripNS)
 
-    def execute(self, fname, stripNS = True):
+    def execute(self, fname, stripNS=True):
         domtree = xml.dom.minidom.parse(fname)
         return self._xmltojson(domtree, stripNS)
 
@@ -175,7 +176,7 @@ class WsManResponse:
             for (attrname, attrvalue) in domobj.items():
                 data_json[self.strip_ns(attrname, stripNS)] = attrvalue
         for obj in domobj.find("."):
-            data_json[obj.tag] =  self.data_depth(obj, stripNS)
+            data_json[obj.tag] = self.data_depth(obj, stripNS)
         return data_json
 
     def data_depth(self, domobj, stripNS):
@@ -207,7 +208,7 @@ class WsManResponse:
         for obj in collection.childNodes:
             if obj.nodeType == obj.TEXT_NODE:
                 if obj.nodeValue.strip() == "":
-                    continue;
+                    continue
             value = self.print_objx(obj, stripNS)
             data_json[self.strip_ns(obj.nodeName, stripNS)] = value
 
@@ -229,7 +230,7 @@ class WsManResponse:
                 if objns.firstChild == None:
                     value = objns.firstChild
                 elif objns.firstChild.nodeType == objns.firstChild.TEXT_NODE \
-                     and len(objns.childNodes) <= 1:
+                        and len(objns.childNodes) <= 1:
                     value = objns.firstChild.data
                 else:
                     value = self.print_objx(objns, stripNS)
@@ -248,7 +249,7 @@ class WsManResponse:
             else:
                 logger.debug(">>> not element>>" + str(objns.nodeType))
         return tst
-    
+
     def get_message(self, fault):
         msg = None
         while fault != None and msg == None:

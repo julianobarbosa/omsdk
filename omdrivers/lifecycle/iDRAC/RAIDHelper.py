@@ -23,19 +23,21 @@
 from omsdk.sdkinfra import sdkinfra
 from omsdk.sdkcreds import UserCredentials
 from omsdk.simulator.devicesim import Simulator
+from omsdk.sdkprint import PrettyPrint
 from omdrivers.types.iDRAC.RAID import *
-from omsdk.typemgr.ArrayType import ArrayType,FQDDHelper
+from omsdk.typemgr.ArrayType import ArrayType, FQDDHelper
 import re
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Storage:
     def __init__(self, loading_from_scp=True):
-        self.Controller = ArrayType(Controller, parent = None, 
-                              index_helper=FQDDHelper(),
-                              loading_from_scp=loading_from_scp)
+        self.Controller = ArrayType(Controller, parent=None,
+                                    index_helper=FQDDHelper(),
+                                    loading_from_scp=loading_from_scp)
         self.inited = False
 
     @property
@@ -58,14 +60,14 @@ class Storage:
         if not component in ctree:
             return False
         count = 0
-        for count in range(1, len(ejson[component])+1):
-            comp = ejson[component][count-1]
+        for count in range(1, len(ejson[component]) + 1):
+            comp = ejson[component][count - 1]
             for field in ['EncryptionMode']:
                 if field in comp:
                     del comp[field]
             for field in ['BlockSize', 'FreeSize', 'Size']:
                 if field in comp:
-                    try :
+                    try:
                         comp[field] = int(float(comp[field]))
                     except Exception as ex:
                         print(str(ex))
@@ -92,6 +94,7 @@ class Storage:
         self.Controller.commit()
         self.inited = True
 
+
 class RAIDHelper:
     def __init__(self, entity):
         self.entity = entity
@@ -103,10 +106,10 @@ class RAIDHelper:
             return self.storage
 
         self.entity.get_partial_entityjson(
-              self.entity.ComponentEnum.Controller,
-              self.entity.ComponentEnum.Enclosure,
-              self.entity.ComponentEnum.VirtualDisk,
-              self.entity.ComponentEnum.PhysicalDisk
+            self.entity.ComponentEnum.Controller,
+            self.entity.ComponentEnum.Enclosure,
+            self.entity.ComponentEnum.VirtualDisk,
+            self.entity.ComponentEnum.PhysicalDisk
         )
         raid_tree = self.entity.ContainmentTree
         logger.debug(raid_tree['Storage'])
@@ -114,9 +117,9 @@ class RAIDHelper:
         if self.storage.ControllerCount <= 0:
             logger.debug("No Controllers!")
             return self.storage
-        self.storage.Controller.remove(PrimaryStatus = '0')
+        self.storage.Controller.remove(PrimaryStatus='0')
         for controller in self.storage.Controller:
-            controller.Enclosure.remove(PrimaryStatus = '0')
+            controller.Enclosure.remove(PrimaryStatus='0')
             for encl in controller.Enclosure:
                 encl.PhysicalDisk.remove_matching("entry.RaidStatus != 'Ready' and entry.FreeSize._value == 0")
             controller.PhysicalDisk.remove_matching("entry.RaidStatus != 'Ready' and entry.FreeSize._value == 0")
@@ -150,7 +153,7 @@ class RAIDHelper:
         if self.storage.ControllerCount <= 0:
             print("No Healthy Controllers found!")
             return s_disks
-        criteria = re.sub('(^|[^0-9a-zA-Z])disk([^0-9a-zA-Z])','\\1entry\\2',criteria)
+        criteria = re.sub('(^|[^0-9a-zA-Z])disk([^0-9a-zA-Z])', '\\1entry\\2', criteria)
         for controller in self.storage.Controller:
             s_disks = controller.PhysicalDisk.find_matching(criteria)
             if len(s_disks) >= n_disks:
@@ -166,20 +169,20 @@ class RAIDHelper:
                   'NumberDedicatedHotSpare', 'NumberGlobalHotSpare']:
             if i not in kwargs:
                 return {
-                    'Status' : 'Failed',
-                    'Message' : 'Parameter ' + i + ' is missing' }
+                    'Status': 'Failed',
+                    'Message': 'Parameter ' + i + ' is missing'}
 
         ndisks = self.compute_disk_count(kwargs['SpanLength'], kwargs['SpanDepth'],
-                               kwargs['NumberDedicatedHotSpare'],
-                               kwargs['NumberGlobalHotSpare'])
+                                         kwargs['NumberDedicatedHotSpare'],
+                                         kwargs['NumberGlobalHotSpare'])
         if 'PhysicalDiskFilter' in kwargs:
             disks = self.filter_disks(ndisks, kwargs['PhysicalDiskFilter'])
         else:
             disks = self.get_disks(ndisks)
         if len(disks) <= 0:
             logger.debug("No sufficient disks found in Controller!")
-            return { 'Status' : 'Failed',
-                     'Message' : 'No sufficient disks found in controller!' }
+            return {'Status': 'Failed',
+                    'Message': 'No sufficient disks found in controller!'}
         # Assumption: All disks are part of same enclosure or direct attached!
         controller = None
         enclosure = disks[0]._parent._parent
@@ -189,34 +192,34 @@ class RAIDHelper:
         else:
             controller = enclosure._parent._parent
 
-        cntrl = sysconfig.Controller.find_first(FQDD = controller.FQDD)
+        cntrl = sysconfig.Controller.find_first(FQDD=controller.FQDD)
         if cntrl is None:
             logger.debug("No such controller found!")
-            return { 'Status' : 'Failed',
-                     'Message' : 'No such controller found!' }
+            return {'Status': 'Failed',
+                    'Message': 'No such controller found!'}
         vdindex = cntrl.VirtualDisk.Length + 1
         vdfqdd = "Disk.Virtual.{0}:{1}".format(vdindex, controller.FQDD)
         for i in kwargs:
             if i in cntrl.__dict__:
                 cntrl.__dict__[i]._value = kwargs[i]
-        vdisk = cntrl.VirtualDisk.new(index = vdindex)
+        vdisk = cntrl.VirtualDisk.new(index=vdindex)
         # pass virtual disk attributes to vdisk
         for i in kwargs:
             if i in vdisk.__dict__:
                 if i == 'StripeSize':
-                    kwargs[i] = int(kwargs[i]/512)
+                    kwargs[i] = int(kwargs[i] / 512)
                 vdisk.__dict__[i]._value = kwargs[i]
         vdisk._attribs['FQDD'] = vdfqdd
         target = cntrl
         if enclosure:
-            tgt_encl = cntrl.Enclosure.find_first(FQDD = enclosure.FQDD)
+            tgt_encl = cntrl.Enclosure.find_first(FQDD=enclosure.FQDD)
             if tgt_encl is None:
-                tgt_encl = cntrl.Enclosure.new(index = cntrl.Enclosure.Length+1)
+                tgt_encl = cntrl.Enclosure.new(index=cntrl.Enclosure.Length + 1)
                 tgt_encl._attribs['FQDD'] = enclosure.FQDD
             target = tgt_encl
         counter = 0
         (n_dhs, n_ghs) = (kwargs['NumberDedicatedHotSpare'],
-                               kwargs['NumberGlobalHotSpare'])
+                          kwargs['NumberGlobalHotSpare'])
         raid_disks = ndisks - (n_dhs + n_ghs)
 
         for disk in disks:
@@ -229,15 +232,15 @@ class RAIDHelper:
             else:
                 state = RAIDHotSpareStatusTypes.No
                 vdisk.IncludedPhysicalDiskID = disk.FQDD._value
-            tgt_disk = target.PhysicalDisk.find_first(FQDD = disk.FQDD)
+            tgt_disk = target.PhysicalDisk.find_first(FQDD=disk.FQDD)
             if tgt_disk is None:
-                tgt_disk = target.PhysicalDisk.new(index = target.PhysicalDisk.Length+1)
+                tgt_disk = target.PhysicalDisk.new(index=target.PhysicalDisk.Length + 1)
                 tgt_disk._attribs['FQDD'] = disk.FQDD
             tgt_disk.RAIDHotSpareStatus.nullify_value()
             tgt_disk.RAIDHotSpareStatus.commit()
             tgt_disk.RAIDHotSpareStatus = state
 
-        return self.entity.config_mgr.apply_changes(reboot = True)
+        return self.entity.config_mgr.apply_changes(reboot=True)
 
     def delete_virtual_disk(self, **kwargs):
         vdselect = None
@@ -247,13 +250,13 @@ class RAIDHelper:
             if not vdselect:
                 continue
             vdselect.RAIDaction = "Delete"
-            msg = self.entity.config_mgr.apply_changes(reboot = True)
+            msg = self.entity.config_mgr.apply_changes(reboot=True)
             if msg['Status'] == 'Success':
                 controller.VirtualDisk._remove_selected([vdselect])
                 sysconfig.commit()
             return msg
-        return { 'Status' : 'Success',
-                 'Message' : 'Unable to find the virtual disk' }
+        return {'Status': 'Success',
+                'Message': 'Unable to find the virtual disk'}
 
     def find_first_virtual_disk(self, **kwargs):
         vdselect = None

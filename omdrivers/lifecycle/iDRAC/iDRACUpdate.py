@@ -29,6 +29,7 @@ import glob
 import xml.etree.ElementTree as ET
 from enum import Enum
 from datetime import datetime
+from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.lifecycle.sdkupdate import Update
 from omsdk.catalog.sdkupdatemgr import UpdateManager
@@ -284,7 +285,7 @@ class iDRACUpdate(Update):
 
         """
         catalog_path_str = catalog_dir.remote_full_path
-        scp_file = 'scp_'+self.entity.ServiceTag+'_'+ datetime.now().strftime('%Y%m%d_%H%M%S') + ".xml"
+        scp_file = 'scp_' + self.entity.ServiceTag + '_' + datetime.now().strftime('%Y%m%d_%H%M%S') + ".xml"
         scp_path = catalog_path_str + os.path.sep + scp_file
         return (scp_path, scp_file)
 
@@ -305,8 +306,8 @@ class iDRACUpdate(Update):
         myshare = FileOnShare(scp_path).addcreds(catalog_dir.creds)
         # exports only that component which contains RepositoryUpdate attribute
         rjson = self.entity.config_mgr.scp_export(share_path=myshare, target='System.Embedded.1')
-        if 'Status' not in rjson or rjson['Status']!='Success':
-            return {'Status':'Failed', 'Message':'Export of scp failed for firmware update'}
+        if 'Status' not in rjson or rjson['Status'] != 'Success':
+            return {'Status': 'Failed', 'Message': 'Export of scp failed for firmware update'}
         scpattrval = {'RepositoryUpdate': catalog_file}
         localfile = mount_point + os.path.sep + scp_file
         self.edit_xml_file(localfile, scpattrval)
@@ -368,4 +369,3 @@ class iDRACUpdate(Update):
             output._write_output('        </Device>\n')
         output._write_output('    </System>\n')
         output._write_output('</SVMInventory>\n')
-

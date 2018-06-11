@@ -34,7 +34,6 @@ from omsdk.sdkfile import LocalFile
 import sys
 import logging
 
-
 logger = logging.getLogger(__name__)
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -42,11 +41,13 @@ PY3 = sys.version_info[0] == 3
 try:
     from pysnmp.hlapi import *
     from pysnmp.smi import *
+
     PySnmpPresent = True
 except ImportError:
     PySnmpPresent = False
 
 from omdrivers.enums.iDRAC.iDRACEnums import *
+
 
 class iDRACLogs(iBaseLogApi):
     def __init__(self, entity):

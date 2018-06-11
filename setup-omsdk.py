@@ -18,7 +18,7 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 # Get the version from _version file 
-with open('_version.txt', 'rb') as v:
+with open('/tmp/_version.txt', 'r') as v:
     ver = v.read()
 
 setup(
@@ -103,7 +103,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         'enum34>=1.1.6',
-		'python_version<3.4',
+        'python_version<3.4',
         'requests>=2.12.3',
         'PyYAML>=3.12',
         'future>=0.16.0',

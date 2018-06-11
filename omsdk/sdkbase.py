@@ -36,8 +36,8 @@ from omsdk.sdkconnfactory import ConnectionFactory
 from omsdk.sdkprotopref import ProtoMethods
 import sys
 
-
 logger = logging.getLogger(__name__)
+
 
 class iBaseRegistry(object):
 
@@ -49,7 +49,7 @@ class iBaseRegistry(object):
 
     def print_components(self):
         for comp in self.ComponentEnum:
-            print (TypeHelper.resolve(comp))
+            print(TypeHelper.resolve(comp))
 
     def convert_comp_to_enum(self, comps, comp_union_spec, merge_join_spec, misc_join_spec, more_details_spec):
         en = []
@@ -62,9 +62,10 @@ class iBaseRegistry(object):
                     break
             if not found:
                 en.append(i)
-        processedComp = self.find_merge_components(en, comp_union_spec, merge_join_spec, misc_join_spec, more_details_spec)
+        processedComp = self.find_merge_components(en, comp_union_spec, merge_join_spec, misc_join_spec,
+                                                   more_details_spec)
         return processedComp
-    
+
     def find_merge_components(self, comps, comp_union_spec, merge_join_spec, misc_join_spec, more_details_spec):
         tempList = []
         for i in comps:
@@ -92,11 +93,12 @@ class iBaseRegistry(object):
                     xComp = misc_join_spec[str]
                     myList = xComp['_components_enum']
                     tempList = tempList + myList
-                    #Not replacing just addition of the new profiles
+                    # Not replacing just addition of the new profiles
                     replacedFlag = False
             if more_details_spec:
-                for str in more_details_spec:
-                    myList = more_details_spec[str]['_components_enum']               
+                if str in more_details_spec:
+                # for str in more_details_spec:
+                    myList = more_details_spec[str]['_components_enum']
                     tempList = tempList + myList
                     replacedFlag = False
             if not replacedFlag:
@@ -111,23 +113,26 @@ class iBaseRegistry(object):
                 self.defs = json.load(enum_data)
         else:
             logger.info(fname + " does not exist!!")
-        #comps = {}
-        #for comp in self.defs:
+        # comps = {}
+        # for comp in self.defs:
         #    comps[comp] = comp
 
     def Translate(self, component, field, value):
+        if isinstance(value, list):
+            value = ','.join(map(str, value))
         if (component in self.defs):
             if (field in self.defs[component]):
                 if (str(value) in self.defs[component][field]):
                     return self.defs[component][field][str(value).strip()]
         return str(value).strip()
 
+
 class iBaseDiscovery(object):
     def __init__(self, registry):
         # TODO: Pass srcdir so we can add it to entitytype
         self.ref = registry
         self.protofactory = ProtocolFactory()
-        self.prefDiscOrder = 999 #default
+        self.prefDiscOrder = 999  # default
 
     def is_entitytype(self, pinfra, ipaddr, creds, protopref, driver_en, pOptions):
         protofactory = self.protofactory.clone()
@@ -139,7 +144,7 @@ class iBaseDiscovery(object):
         if not entity is None:
             entity.driver_en = driver_en
             entity.pOptions = pOptions
-            if entity.connect() :
+            if entity.connect():
                 return entity
         return None
 
@@ -153,8 +158,10 @@ class iBaseDiscovery(object):
     def my_aliases(self):
         return []
 
+
 class RegistryDefs:
     pass
+
 
 class iBaseDriver(object):
 
@@ -196,7 +203,6 @@ class iBaseDriver(object):
 
         # Reset
         self.reset()
-
 
     def get_facts(self):
         return self.facts
@@ -266,6 +272,7 @@ class iBaseDriver(object):
     def reconnect(self, pOptions=None):
         self.disconnect()
         return self.connect(pOptions)
+
     # End Connection APIs
 
     # Containment Tree APIs
@@ -318,7 +325,7 @@ class iBaseDriver(object):
                 toadd = comp_tree[c]
             n = self._populate_component_tree(comp, toadd, device_json)
             if self._is_comp_in_subsystem(device_json, c):
-                counter = n+1
+                counter = n + 1
             if counter > 0 and c not in comp_tree:
                 comp_tree[c] = toadd
         return counter
@@ -330,7 +337,7 @@ class iBaseDriver(object):
         if not clsName in self.ref.defs:
             return retval
         if not 'Key' in self.ref.defs[clsName] \
-           or len(self.ref.defs[clsName]['Key']) <= 0:
+                or len(self.ref.defs[clsName]['Key']) <= 0:
             return "[" + clsName + "]"
         retval = ""
         comma = ""
@@ -339,12 +346,11 @@ class iBaseDriver(object):
                 js[key] = self.my_fix_obj_index(clsName, key, js)
             if js[key] is None:
                 js[key] = clsName + "_" + key + "_null"
-            retval = retval + comma + js[key]
+            retval = retval + comma + str(js[key])
             comma = ","
         if retval == "":
             retval = self.my_get_key_index(clsName, js)
         return retval
-
 
     def my_get_key_index(self, clsName, js):
         # Redfish specific code - need to handle Key renames before merges
@@ -366,8 +372,8 @@ class iBaseDriver(object):
     def _isin(self, parentClsName, parent, childClsName, child):
         not_implemented
 
-    def _build_tree(self, mTree, device_json, ctree, parent = None, parentClsName = None):
-    
+    def _build_tree(self, mTree, device_json, ctree, parent=None, parentClsName=None):
+
         comp_tree = {}
         if not ctree in mTree:
             return comp_tree
@@ -379,15 +385,15 @@ class iBaseDriver(object):
             # Enum
             enname = TypeHelper.resolve(entry)
             if not enname in device_json:
-                logger.debug("Component " +enname+ " is not present in device!")
+                logger.debug("Component " + enname + " is not present in device!")
                 continue
-    
+
             if isinstance(device_json[enname], dict):
                 if len(device_json[enname]) <= 0:
                     # Empty entry
                     continue
                 child_index = self._get_obj_index(enname, device_json[enname])
-    
+
                 if parent == None or self._isin(parentClsName, parent, enname, device_json[enname]):
                     if not entry in mTree:
                         # entry is a leaf node
@@ -395,14 +401,14 @@ class iBaseDriver(object):
                     else:
                         # entry is not a leaf node
                         comp_tree[enname] = {
-                            child_index : self._build_tree(mTree, device_json, entry, device_json[enname], enname)
+                            child_index: self._build_tree(mTree, device_json, entry, device_json[enname], enname)
                         }
-    
+
             elif isinstance(device_json[enname], list):
                 if len(device_json[enname]) <= 0:
                     # Empty entry
                     continue
-    
+
                 dict_list = {}
                 list_list = []
                 for tt in device_json[enname]:
@@ -424,11 +430,13 @@ class iBaseDriver(object):
             else:
                 logger.debug("Unexpected format!")
         return comp_tree
+
     # End Containment Tree APIs
 
     # Entity JSON APIs
     def _get_entries(self, json, en):
-        comps = self.ref.convert_comp_to_enum(en, self.comp_union_spec,self.comp_merge_join_spec, self.comp_misc_join_spec, self.more_details_spec)
+        comps = self.ref.convert_comp_to_enum(en, self.comp_union_spec, self.comp_merge_join_spec,
+                                              self.comp_misc_join_spec, self.more_details_spec)
         return self.cfactory.enumerate_all(json, comps)
 
     # Consoles should override this!
@@ -446,18 +454,19 @@ class iBaseDriver(object):
         :return: json only the components passed in en
         :rtype: JSON
         """
-        #Components with Sensors_*
-        comps = self.ref.convert_comp_to_enum(en, self.comp_union_spec,self.comp_merge_join_spec, self.comp_misc_join_spec, self.more_details_spec)
-        #Sensor_* replaced with Sensor enum ServerSensor, NumericSensor, PSNumericSensor 
+        # Components with Sensors_*
+        comps = self.ref.convert_comp_to_enum(en, self.comp_union_spec, self.comp_merge_join_spec,
+                                              self.comp_misc_join_spec, self.more_details_spec)
+        # Sensor_* replaced with Sensor enum ServerSensor, NumericSensor, PSNumericSensor
         enjson = self.cfactory.enumerate_list(self.entityjson, *comps)
-        #json with ServerSensor, NumericSensor, PSNumericSensor
+        # json with ServerSensor, NumericSensor, PSNumericSensor
         self._misc_join_component(enjson, self.comp_misc_join_spec)
         self._merge_join_component(enjson, self.comp_merge_join_spec)
         self._union_component(enjson, self.comp_union_spec)
-        #json with One Sensors replacing ServerSensor, NumericSensor, PSNumericSensor
+        # json with One Sensors replacing ServerSensor, NumericSensor, PSNumericSensor
         self._pivot_component(enjson, self.comp_union_spec)
-        #call to collect more details 
-        self._get_more_details(enjson,self.more_details_spec)
+        # call to collect more details
+        self._get_more_details(enjson, self.more_details_spec)
         return enjson
 
     def _get_more_details(self, entityjson, more_details_spec):
@@ -477,7 +486,7 @@ class iBaseDriver(object):
         :rtype: bool
         """
         if self.inited == False and self.connect():
-            if not self.my_get_entityjson() :
+            if not self.my_get_entityjson():
                 return False
             self._build_device_map()
             self.inited = True
@@ -486,6 +495,14 @@ class iBaseDriver(object):
         else:
             logger.debug("failed to connect to device!")
         return self.inited
+
+    def get_basic_entityjson(self):
+        plist = []
+        for comp in self.protofactory.classifier:
+            plist.append(comp)
+        if self.get_partial_entityjson(*plist):
+            return True
+        return False
 
     def _build_device_map(self):
         return True
@@ -499,10 +516,10 @@ class iBaseDriver(object):
     def _should_i_modify_component(self, finalretjson, component):
         return
 
-    def _call_it(self,more_details_spec):
+    def _call_it(self, more_details_spec):
         pass
 
-    def _get_json_for_device(self, devicejson, monitorfilter = None, compScope = None):
+    def _get_json_for_device(self, devicejson, monitorfilter=None, compScope=None):
         toret = devicejson
         if (monitorfilter is None):
             monitorfilter = MonitorScopeFilter_All
@@ -510,8 +527,8 @@ class iBaseDriver(object):
         #                     monitorfilter.isset(MonitorScope.Health)
 
         invconfig_attrs = monitorfilter.isset(MonitorScope.Key) or \
-                               monitorfilter.isset(MonitorScope.Inventory) or \
-                               monitorfilter.isset(MonitorScope.ConfigState)
+                          monitorfilter.isset(MonitorScope.Inventory) or \
+                          monitorfilter.isset(MonitorScope.ConfigState)
 
         finalret = {}
         for component in devicejson:
@@ -542,7 +559,7 @@ class iBaseDriver(object):
                                 tgtentry[attr] = xval
                 tgtentry["Key"] = entry["Key"]
                 if '_Type' in entry:
-                    if invconfig_attrs: 
+                    if invconfig_attrs:
                         tgtentry["_Type"] = entry["_Type"]
                 if not invconfig_attrs:
                     # clean dummy entries
@@ -558,25 +575,26 @@ class iBaseDriver(object):
         return finalret
 
     def _get_topology_info(self):
-        return { }
+        return {}
 
     def _get_topology_influencers(self):
         return []
+
     # End Entity JSON APIs
 
     # Entity JSON/Member APIs
     # for members with multiple instances
     def _union_component(self, entityjson, comp_union_spec):
-        #Remove duplicates not considered yet
+        # Remove duplicates not considered yet
         if comp_union_spec:
-            for target_comp,value in comp_union_spec.items():
+            for target_comp, value in comp_union_spec.items():
                 tempCompGroup = []
                 compTypes = value['_components']
                 for compProfileType in compTypes:
                     if compProfileType in entityjson:
-                        if isinstance(entityjson[compProfileType],dict):
+                        if isinstance(entityjson[compProfileType], dict):
                             x = entityjson[compProfileType]
-                            #This renaming can be moved to func _pivot_component
+                            # This renaming can be moved to func _pivot_component
                             if '_pivot' in value:
                                 typen = value['_pivot']
                                 if typen in value and x[typen] in value[typen]:
@@ -597,15 +615,15 @@ class iBaseDriver(object):
                     entityjson[target_comp] = tempCompGroup
 
     def _pivot_component(self, entityjson, comp_union_spec):
-        #already changed to list in union component function, so no need of dict check
+        # already changed to list in union component function, so no need of dict check
         if comp_union_spec:
-            for target_comp,value in comp_union_spec.items():
+            for target_comp, value in comp_union_spec.items():
                 if target_comp in entityjson:
-                    if '_pivot' in value:     
+                    if '_pivot' in value:
                         classifier = value['_pivot']
                         classifieDict = {}
                         for i in entityjson[target_comp]:
-                            keyBuilt = target_comp+'_'+i[classifier]
+                            keyBuilt = target_comp + '_' + i[classifier]
                             if keyBuilt not in classifieDict:
                                 classifieDict[keyBuilt] = []
                             classifieDict[keyBuilt].append(i)
@@ -614,11 +632,10 @@ class iBaseDriver(object):
 
     def _merge_join_component(self, entityjson, comp_merge_join_spec):
         if comp_merge_join_spec:
-            for key,value in comp_merge_join_spec.items():
+            for key, value in comp_merge_join_spec.items():
                 compTypes = value['_components']
-                overwrite = True
-                if '_overwrite' in value:
-                    overwrite = value['_overwrite']
+                overwrite = value.get('_overwrite', True)
+                del_misc = value.get('_delmisc', True)
                 target_comp = compTypes[0][0]
                 target_key = compTypes[0][1]
                 tempList = []
@@ -633,27 +650,28 @@ class iBaseDriver(object):
                             else:
                                 for slot in entityjson[keylist[2]]:
                                     temp[slot[keylist[3]]] = slot
-                            del entityjson[keylist[2]]
+                            if del_misc:
+                                del entityjson[keylist[2]]
                             if temp:
                                 tempList.append(temp)
-                    # logger.debug(PrettyPrint.prettify_json(tempList))
+                    logger.debug(tempList)
                     if isinstance(entityjson[target_comp], dict):
                         fan = entityjson[target_comp]
                         for tmp in tempList:
                             if fan[target_key] in tmp:
-                                if overwrite:                              
+                                if overwrite:
                                     fan.update(tmp[fan[target_key]])
                                 else:
-                                    #a bit complex logic required here 
+                                    # a bit complex logic required here
                                     fan = tmp[fan[target_key]].update(fan)
                     else:
                         for fan in entityjson[target_comp]:
                             for tmp in tempList:
                                 if fan[target_key] in tmp:
-                                    if overwrite:                              
+                                    if overwrite:
                                         fan.update(tmp[fan[target_key]])
                                     else:
-                                        #a bit complex logic required here
+                                        # a bit complex logic required here
                                         xd = tmp[fan[target_key]]
                                         fan.update({k: v for k, v in xd.items() if not k in fan})
                                         # fan = tmp[fan[target_key]].update(fan)
@@ -662,7 +680,7 @@ class iBaseDriver(object):
     def _misc_join_component(self, entityjson, comp_misc_join_spec):
         if comp_misc_join_spec:
             compDelList = []
-            for key,value in comp_misc_join_spec.items():
+            for key, value in comp_misc_join_spec.items():
                 if '_createFlag' in value:
                     if value['_createFlag'] == True:
                         entityjson[key] = []
@@ -683,12 +701,12 @@ class iBaseDriver(object):
                                     myDict[attrInst[attrName]] = attrInst[ckeys[2]]
                                 else:
                                     for attrInst in entityjson[comp]:
-                                        #This check is avoided to accomodate iDRAVcardView FQDD issue
-                                        #if(myDict[k] == attrInst[k]):
+                                        # This check is avoided to accomodate iDRAVcardView FQDD issue
+                                        # if(myDict[k] == attrInst[k]):
                                         myDict[attrInst[attrName]] = attrInst[ckeys[2]]
-                                #del entityjson[comp]
+                                # del entityjson[comp]
                                 compDelList.append(comp)
-                    else:#assuming list
+                    else:  # assuming list
                         myList = entityjson[key]
                         for comp, ckeys in keytripletsdict.items():
                             if comp in entityjson:
@@ -697,27 +715,29 @@ class iBaseDriver(object):
                                 if isinstance(entityjson[comp], dict):
                                     attrInst = entityjson[comp]
                                     for compInst in myList:
-                                        if(compInst[k] == attrInst[k]):
-                                            compInst[attrInst[attrName]] = attrInst[ckeys[2]]    
+                                        if (compInst[k] == attrInst[k]):
+                                            compInst[attrInst[attrName]] = attrInst[ckeys[2]]
                                 else:
                                     for attrInst in entityjson[comp]:
                                         for compInst in myList:
                                             if k is None:
                                                 compInst[attrInst[attrName]] = attrInst[ckeys[2]]
                                             else:
-                                                if(compInst[k] == attrInst[k]) or (attrInst[k] in compInst[k]):#to accomodate iDRACCArdView and iDRACCardString issue iDRAC.Embedded.1-1 and iDRAC.Embedded.1
-                                                    if ckeys[2] in attrInst:#Added because iDRACString in one of firmware 3.11.11.11(14G) did not have attribute CurrentValue(SystemLockDown)
+                                                if (compInst[k] == attrInst[k]) or (attrInst[k] in compInst[
+                                                    k]):  # to accomodate iDRACCArdView and iDRACCardString issue iDRAC.Embedded.1-1 and iDRAC.Embedded.1
+                                                    if ckeys[
+                                                        2] in attrInst:  # Added because iDRACString in one of firmware 3.11.11.11(14G) did not have attribute CurrentValue(SystemLockDown)
                                                         compInst[attrInst[attrName]] = attrInst[ckeys[2]]
-                                #del entityjson[comp]
+                                # del entityjson[comp]
                                 compDelList.append(comp)
             for dlcomp in compDelList:
                 if dlcomp in entityjson:
                     del entityjson[dlcomp]
 
-    def _get_field(self, myjson, component_en, fieldname, idx = 0):
+    def _get_field(self, myjson, component_en, fieldname, idx=0):
         compfilter = ComponentScope(component_en)
         compname = TypeHelper.resolve(component_en)
-        json = self._get_json_for_device(myjson, compScope = compfilter)
+        json = self._get_json_for_device(myjson, compScope=compfilter)
         if (compname in json):
             entry = None
             if (isinstance(json[compname], list)):
@@ -733,7 +753,7 @@ class iBaseDriver(object):
         retval = []
         compfilter = ComponentScope(component_en)
         compname = TypeHelper.resolve(component_en)
-        json = self._get_json_for_device(myjson, compScope = compfilter)
+        json = self._get_json_for_device(myjson, compScope=compfilter)
         if (compname in json):
             entry = None
             if (isinstance(json[compname], list)):
@@ -781,7 +801,7 @@ class iBaseDriver(object):
                             if inited:
                                 logger.debug("ERROR: " + cmd + " has additional arg" + arg)
                             else:
-                                arg_counter= arg_counter+1
+                                arg_counter = arg_counter + 1
                                 args[arg] = proto_cmd['Args'][arg]
                         if arg in args and args[arg] != proto_cmd['Args'][arg]:
                             logger.debug("ERROR: " + cmd + " different argument type")
@@ -799,12 +819,13 @@ class iBaseDriver(object):
         def func1(**kwargs):
             myname = func1.__name__
             if not hasattr(self, 'cfactory') or self.cfactory == None:
-                logger.debug("Protocol not initialized!")
-                return { 'Status' : 'Failed', 'Message' : 'Protocol not initialized' }
+                logger.error(self.ipaddr+" : Protocol not initialized!")
+                return {'Status': 'Failed', 'Message': 'Protocol not initialized'}
             return self.cfactory.operation(fname, **kwargs)
 
         func1.__name__ = fname
         setattr(self, fname, func1)
+
 
 class iBaseTopologyInfo:
     def __init__(self, mytype, json):

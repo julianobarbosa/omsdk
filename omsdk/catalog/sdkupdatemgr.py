@@ -21,8 +21,8 @@
 # Authors: Vaideeswaran Ganesan
 #
 from omsdk.catalog.pdkcatalog import DellPDKCatalog
-from omsdk.catalog.updaterepo import UpdateRepo,RepoComparator
-from omsdk.catalog.sdkhttpsrc import DownloadHelper,DownloadProtocolEnum
+from omsdk.catalog.updaterepo import UpdateRepo, RepoComparator
+from omsdk.catalog.sdkhttpsrc import DownloadHelper, DownloadProtocolEnum
 from omsdk.sdkprint import PrettyPrint
 
 import threading
@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 
 
 class UpdateManager(object):
-
     _update_store = None
     _update_store_lock = threading.Lock()
+
     @staticmethod
-    def configure(update_share, site = 'downloads.dell.com',
-                  protocol = DownloadProtocolEnum.HTTP):
+    def configure(update_share, site='downloads.dell.com',
+                  protocol=DownloadProtocolEnum.HTTP):
         if not update_share.IsValid:
             logger.debug("Update Share is not valid")
             return False
@@ -47,38 +47,39 @@ class UpdateManager(object):
             with UpdateManager._update_store_lock:
                 if UpdateManager._update_store is None:
                     UpdateManager._update_store = \
-                         _UpdateCacheManager(update_share, site, protocol)
+                        _UpdateCacheManager(update_share, site, protocol)
         return (UpdateManager._update_store is not None)
 
     @staticmethod
     def update_catalog():
         if UpdateManager._update_store:
             return UpdateManager._update_store.update_catalog()
-        return { 'Status' : 'Failed', 'Message' : 'Update Manager is not initialized' }
+        return {'Status': 'Failed', 'Message': 'Update Manager is not initialized'}
 
     @staticmethod
-    def update_cache(catalog = 'Catalog'):
+    def update_cache(catalog='Catalog'):
         if UpdateManager._update_store:
-            return UpdateManager._update_store.update_cache(catalog = 'Catalog')
-        return { 'Status' : 'Failed', 'Message' : 'Update Manager is not initialized' }
+            return UpdateManager._update_store.update_cache(catalog='Catalog')
+        return {'Status': 'Failed', 'Message': 'Update Manager is not initialized'}
 
     @staticmethod
     def get_instance():
         return UpdateManager._update_store
 
+
 class _UpdateCacheManager(object):
 
     def __init__(self, update_share, site, protocol):
         self._update_share = update_share
-        self._master_share = update_share.makedirs("_master")\
-                                             .new_file('Catalog.xml')
-        self._master= MasterCatalog(self._master_share)
+        self._master_share = update_share.makedirs("_master") \
+            .new_file('Catalog.xml')
+        self._master = MasterCatalog(self._master_share)
 
         self._inventory_share = update_share.makedirs("_inventory")
         self._cache_catalogs = {}
 
         self._initialize()
-        self._conn = DownloadHelper(site = site, protocol = protocol)
+        self._conn = DownloadHelper(site=site, protocol=protocol)
 
     def _initialize(self):
         self._master.load()
@@ -90,17 +91,17 @@ class _UpdateCacheManager(object):
         self._cache_catalogs['Catalog'] = None
 
     def _randomCatalogScoper(self):
-        fname= self._update_share.mkstemp(prefix='upd', suffix='.xml').local_full_path
+        fname = self._update_share.mkstemp(prefix='upd', suffix='.xml').local_full_path
         self.getCatalogScoper(os.path.basename(fname).replace('.xml', ''))
 
-    def getCatalogScoper(self, name = 'Catalog'):
+    def getCatalogScoper(self, name='Catalog'):
         if name not in self._cache_catalogs:
             self._cache_catalogs[name] = None
 
         if not self._cache_catalogs[name]:
             cache_share = self._update_share.new_file(name + '.xml')
             self._cache_catalogs[name] = (cache_share,
-                 CatalogScoper(self._master, cache_share))
+                                          CatalogScoper(self._master, cache_share))
 
         return self._cache_catalogs[name]
 
@@ -112,10 +113,10 @@ class _UpdateCacheManager(object):
         c = 'catalog/Catalog.gz'
         retval = self._conn.download_newerfiles([c], folder)
         logger.debug("Download Success = {0}, Failed = {1}"
-                .format(retval['success'], retval['failed']))
+                     .format(retval['success'], retval['failed']))
         if retval['failed'] == 0 and \
-           self._conn.unzip_file(os.path.join(folder, c),
-                          os.path.join(folder, 'Catalog.xml')):
+                self._conn.unzip_file(os.path.join(folder, c),
+                                      os.path.join(folder, 'Catalog.xml')):
             retval['Status'] = 'Success'
         else:
             logger.debug("Unable to download and extract " + c)
@@ -124,11 +125,11 @@ class _UpdateCacheManager(object):
         self._initialize()
         return retval
 
-    def update_cache(self, catalog = 'Catalog'):
+    def update_cache(self, catalog='Catalog'):
         (cache_share, cache) = self.getCatalogScoper(catalog)
         retval = self._conn.download_newerfiles(cache.UpdateFileDetails,
-                        self._update_share.local_full_path)
-        logger.debug("Download Success = {0}, Failed = {1}".\
+                                                self._update_share.local_full_path)
+        logger.debug("Download Success = {0}, Failed = {1}". \
                      format(retval['success'], retval['failed']))
         if retval['failed'] == 0:
             retval['Status'] = 'Success'
@@ -136,6 +137,7 @@ class _UpdateCacheManager(object):
             retval['Status'] = 'Failed'
         self._conn.disconnect()
         return retval
+
 
 class MasterCatalog(object):
     def __init__(self, master_share):
@@ -147,6 +149,7 @@ class MasterCatalog(object):
         with self.cache_lock:
             self.cmaster = DellPDKCatalog(self._master_share.local_full_path)
 
+
 class CatalogScoper(object):
 
     def __init__(self, master_catalog, cache_share):
@@ -156,8 +159,8 @@ class CatalogScoper(object):
         logger.debug("cache:" + self._cache_share.local_folder_path)
         logger.debug("cache:" + self._cache_share.local_file_name)
         self._rcache = UpdateRepo(self._cache_share.local_folder_path,
-                            catalog=self._cache_share.local_file_name,
-                            source=self._master_catalog.cmaster, mkdirs=True)
+                                  catalog=self._cache_share.local_file_name,
+                                  source=self._master_catalog.cmaster, mkdirs=True)
 
     @property
     def UpdateFilePaths(self):
@@ -167,7 +170,7 @@ class CatalogScoper(object):
     def UpdateFileDetails(self):
         return self._rcache.UpdateFileDetails
 
-    def add_to_scope(self, model, swidentity = None, *components):
+    def add_to_scope(self, model, swidentity=None, *components):
         count = 0
         with self.cache_lock:
             comps = [i for i in components]
@@ -175,7 +178,7 @@ class CatalogScoper(object):
                 logger.error('Software Identity must be given when scoping updates to components')
             if swidentity:
                 count = self._rcache.filter_by_component(model,
-                            swidentity, compfqdd=comps)
+                                                         swidentity, compfqdd=comps)
             else:
                 count = self._rcache.filter_by_model(model)
         return count
@@ -196,4 +199,3 @@ class CatalogScoper(object):
                 self._cache_share.dispose()
             else:
                 logger.debug("Not a temporary cache")
-

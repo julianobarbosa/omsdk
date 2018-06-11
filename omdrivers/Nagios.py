@@ -35,16 +35,19 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
+
+
 class Nagios(iConsoleDiscovery):
     def __init__(self, srcdir):
         if PY2:
             super(Nagios, self).__init__(iConsoleRegistry("Nagios", srcdir, None))
         else:
             super().__init__(iConsoleRegistry("Nagios", srcdir, None))
-        self.protofactory.add(PCONSOLE( obj = self))
+        self.protofactory.add(PCONSOLE(obj=self))
 
     def my_entitytype(self, pinfra, ipaddr, creds, protofactory):
         return NagiosEntity(self.ref, protofactory, ipaddr, creds)
+
 
 class NagiosEntity(iConsoleDriver):
     def __init__(self, ref, protofactory, ipaddr, creds):
@@ -56,7 +59,7 @@ class NagiosEntity(iConsoleDriver):
 
     def my_connect(self, pOptions):
         status = False
-        try :
+        try:
             if os.path.isfile("d\\" + self.ipaddr + "\\nagios.topology"):
                 status = True
         except:
@@ -92,7 +95,7 @@ class NagiosEntity(iConsoleDriver):
             f.write("}\n")
         return True
 
-    def my_add_or_update_device(self, device, devmap, groupname = None):
+    def my_add_or_update_device(self, device, devmap, groupname=None):
         svctag = device
         ipaddr = device
         if not devmap is None:

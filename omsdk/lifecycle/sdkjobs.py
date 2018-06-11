@@ -25,6 +25,7 @@ import sys
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 class iBaseJobApi(object):
 
     def __init__(self, entity, jobenum):
@@ -47,6 +48,7 @@ class iBaseJobApi(object):
 
     def get_job_status(self, jobid):
         pass
+
 
 class iBaseLogApi(object):
 

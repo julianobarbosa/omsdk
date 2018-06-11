@@ -13,66 +13,52 @@ All Dell EMC PowerEdge 12th and above Generation of PowerEdge Servers, and Chass
 # Prerequisites
 Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
 
-  * Install the prequisites using the requirements file on python 2.x as:
+  * Install the prerequisites using the requirements file on python 2.x as:
 
     ``` pip install -r requirements-python2x.txt ```
 
-  * Install the prequisites using the requirements file on python 3.x as:
+  * Install the prerequisites using the requirements file on python 3.x as:
 
     ``` pip3 install -r requirements-python3x.txt ```
 
 # Installation
-  * Install the latest stable omsdk version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
-
-    ``` pip install omsdk ```
-
-  * Install the latest stable omdrivers version from [pypi.org](https://pypi.org/project/omdrivers/) using pip:
-
-    ``` pip install omdrivers ```
-	
   * Install the latest development version from github:
 
-    ```
-    git clone https://github.com/dell/omsdk.git
-    cd omsdk
-    sh build.sh 1.1 223
-    cd dist
-    pip install omsdk-1.1.223-py2.py3-none-any.whl
+	```
+	git clone https://github.com/dell/omsdk.git
+	cd omsdk
+	sh build.sh 1.1 266
+	cd dist
+	pip install omsdk-1.1.266-py2.py3-none-any.whl
 	```
 	
-	omsdk installation may fail with pip version 10.0 and above, follow one of the following steps in such scenario
+	* Upgrading to latest version of python setuptools is recommended.
+	* omsdk installation may fail with pip version 10.0 and above, follow one of the following steps in such scenario
 	
-	* Downgrade pip version to lower than 10.0 and then install omsdk
-	* Force install omsdk using:
-      ```pip install --ignore-installed omsdk```	
-	
-	
-  * Install the latest development version of omsdk drivers for storage and network switches from github:
-    ```
-	pip install omdrivers-1.1.223-py2.py3-none-any.whl
-    ```
-
+		* Downgrade pip version to lower than 10.0 and then install omsdk
+		* Force install omsdk using:
+		  ```pip install --ignore-installed omsdk-1.1.266-py2.py3-none-any.whl```
+		  
 # Uninstallation
   * Uninstall this module as follows:
 
     ```
 	   pip uninstall omsdk
-	   pip uninstall omdrivers
 	```
 
 # Documentation
 Refer to the [documentation](./docs) for details on how to use this SDK
 
 # Licensing
-Licensed under the Appache Software License, version 2.0 (the "License"); you may not use this file except in compliance with the License.
+Licensed under the Apache Software License, version 2.0 (the "License"); you may not use this file except in compliance with the License.
 
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 # Support
-  * Dell EMC OpenManage Python SDK is supported by OpenManage developers team.
-  * In addition, if you want to report any issue, then please report it by creating a new issue [here](https://github.com/dell/omsdk/issues)
+  * This devel branch corresponds to the release actively under development.
+  * If you want to report any issue, then please report it by creating a new issue [here](https://github.com/dell/omsdk/issues)
   * If you have any requirements that is not currently addressed, then please let us know by creating a new issue [here](https://github.com/dell/omsdk/issues)
-  * If you want to provide any feedback to the development team, then you can do so by sending an email to OpenManageAnsibleEval@Dell.com
+  * If you want to provide any feedback to the development team, then you can do so by sending an email to OpenManageSDK@Dell.com
 
 # Authors
-Vaideeswaran Ganesan (vaideeswaran_ganesan@dell.com)
+OpenManageSDK (OpenManageSDK@Dell.com)

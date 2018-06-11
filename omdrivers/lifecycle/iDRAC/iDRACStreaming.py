@@ -40,6 +40,7 @@ PY3 = sys.version_info[0] == 3
 if PY2:
     from StringIO import StringIO
 
+
 class iDRACStreaming():
     def __init__(self, entity):
         # if PY2:
@@ -168,9 +169,10 @@ class iDRACStreaming():
         :rtype: json
 
         """
-        if not self._config_mgr.entity.ServerGeneration.startswith(TypeHelper.resolve(ServerGenerationEnum.Generation_14)):
+        if not self._config_mgr.entity.ServerGeneration.startswith(
+                TypeHelper.resolve(ServerGenerationEnum.Generation_14)):
             logger.error("Cannot perform import operation. Importing Data from Local Share is supported only on "
-                           "14th Generation of PowerEdge Servers.")
+                         "14th Generation of PowerEdge Servers.")
             return {
                 "Status": "Failure",
                 "Message": "Cannot perform export operation. Exporting Data to Local Share is supported only on "
@@ -180,7 +182,7 @@ class iDRACStreaming():
         # Maximum allowed value for chunk size(512KB)
         chunk_size = 122280 if file_type == FileTypeEnum.LCLogs or file_type == FileTypeEnum.LCFullLogs or \
                                file_type == FileTypeEnum.BootVideoLogs or file_type == FileTypeEnum.CrashVideoLogs \
-                    else 524286
+            else 524286
 
         export_response = ""
 
@@ -240,7 +242,7 @@ class iDRACStreaming():
             in_session_id=session_id, in_chunk_size=chunk_size, file_offset=file_offset, tx_data_size=tx_data_size,
             payload_encoding=PayLoadEncodingEnum.Text)
 
-        logger.debug(Prettifyer().prettify_json(export_data_resp))
+        logger.debug(export_data_resp)
 
         if export_data_resp["Status"] != "Success":
             logger.error(export_data_resp["Status"] + ":" + export_data_resp["Message"])
@@ -334,9 +336,10 @@ class iDRACStreaming():
     # TODO: config xml should be passed as file/string
     def import_data(self, import_file_type=FileTypeEnum.SystemConfigXML, import_file=None,
                     **kwargs):
-        if not self._config_mgr.entity.ServerGeneration.startswith(TypeHelper.resolve(ServerGenerationEnum.Generation_14)):
+        if not self._config_mgr.entity.ServerGeneration.startswith(
+                TypeHelper.resolve(ServerGenerationEnum.Generation_14)):
             logger.error("Cannot perform import operation. Importing Data from Local Share is supported only on "
-                           "14th Generation of PowerEdge Servers.")
+                         "14th Generation of PowerEdge Servers.")
             return {
                 "Status": "Failure",
                 "Message": "Cannot perform import operation. Importing Data from Local Share is supported only on "
@@ -410,7 +413,7 @@ class iDRACStreaming():
                 base64_data = "\n".join(self.__recursive_append_char__(base64_payload.decode(), 64))
 
                 payload_data = str(base64_data if count == number_of_chunks and payload_size % 64 is not 0 \
-                    else base64_data + "\n")
+                                       else base64_data + "\n")
 
                 # Import the first chunk
                 if count == 1:
@@ -424,7 +427,7 @@ class iDRACStreaming():
                         payload=payload_data,
                         payload_encoding=PayLoadEncodingEnum.Base64)
 
-                    logger.debug(Prettifyer().prettify_json(import_chunk_resp))
+                    logger.debug(import_chunk_resp)
 
                     if import_chunk_resp["Status"] != "Success":
                         logger.error(import_chunk_resp["Status"] + ":" + import_chunk_resp["Message"])
@@ -448,7 +451,7 @@ class iDRACStreaming():
                         payload=payload_data,
                         payload_encoding=PayLoadEncodingEnum.Base64)
 
-                    logger.debug(Prettifyer().prettify_json(import_chunk_resp))
+                    logger.debug(import_chunk_resp)
 
                     if import_chunk_resp["Status"] != "Success":
                         logger.error(import_chunk_resp["Status"] + ":" + import_chunk_resp["Message"])
@@ -470,7 +473,7 @@ class iDRACStreaming():
                         txfr_descriptor=TxfrDescriptorEnum.NormalTransmission,
                         payload_encoding=PayLoadEncodingEnum.Base64)
 
-                    logger.debug(Prettifyer().prettify_json(import_chunk_resp))
+                    logger.debug(import_chunk_resp)
 
                     if import_chunk_resp["Status"] != "Success":
                         logger.error(import_chunk_resp["Status"] + ":" + import_chunk_resp["Message"])
@@ -482,7 +485,7 @@ class iDRACStreaming():
 
             import_data_resp = self.__import_data_to_local_share(import_file_type=import_file_type, **kwargs)
 
-            logger.debug(Prettifyer().prettify_json(import_data_resp))
+            logger.debug(import_data_resp)
 
             if import_data_resp["Status"] != "Success":
                 logger.error(import_data_resp["Status"] + ":" + import_data_resp["Message"])
@@ -494,6 +497,6 @@ class iDRACStreaming():
 
         except IOError as e:
             logger.error("I/O error({0}): {1}".format(e.errno, e.strerror))
-            import_data_resp = {"Status": "Failure", "Message": "Unable to import file. "+e.strerror}
+            import_data_resp = {"Status": "Failure", "Message": "Unable to import file. " + e.strerror}
 
         return import_data_resp

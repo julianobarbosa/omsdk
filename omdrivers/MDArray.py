@@ -31,33 +31,32 @@ import sys
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
-
 try:
     from pysnmp.hlapi import *
     from pysnmp.smi import *
     from pysnmp.entity.rfc3413.oneliner import cmdgen
     from pysnmp.proto import rfc1902
     from pysnmp import debug
+
     PySnmpPresent = True
 except ImportError:
     PySnmpPresent = False
 
-
 MDArrayCompEnum = EnumWrapper('MDArrayCompEnum', {
-    "System" : "System",
+    "System": "System",
 }).enum_type
 
 if PySnmpPresent:
     MDArraySNMPViews = {
-     MDArrayCompEnum.System : {
-        'SysObjectID' : ObjectIdentity('SNMPv2-MIB', 'sysObjectID'),
-		'Name' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.1'),
-		'WWID' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.2'),
-		'ServiceTag' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.3'),
-		'ProductID' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.5'),
-		'Status' : ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.7'),
-		'SysName' : ObjectIdentity('1.3.6.1.2.1.1.5')
-     }
+        MDArrayCompEnum.System: {
+            'SysObjectID': ObjectIdentity('SNMPv2-MIB', 'sysObjectID'),
+            'Name': ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.1'),
+            'WWID': ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.2'),
+            'ServiceTag': ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.3'),
+            'ProductID': ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.5'),
+            'Status': ObjectIdentity('1.3.6.1.4.1.674.10893.2.31.500.1.7'),
+            'SysName': ObjectIdentity('1.3.6.1.2.1.1.5')
+        }
     }
     MDArraySNMPClassifier = {
         MDArrayCompEnum.System: {
@@ -66,7 +65,7 @@ if PySnmpPresent:
     }
 
     MDArrayComponentTree = {
-        "Full" : [ 
+        "Full": [
             MDArrayCompEnum.System
         ]
     }
@@ -74,6 +73,7 @@ else:
     MDArraySNMPViews = {}
     MDArrayComponentTree = {}
     MDArraySNMPClassifier = {}
+
 
 class MDArray(iDeviceDiscovery):
     def __init__(self, srcdir):
@@ -83,13 +83,12 @@ class MDArray(iDeviceDiscovery):
             super().__init__(iDeviceRegistry("MDArray", srcdir, MDArrayCompEnum))
         if PySnmpPresent:
             self.protofactory.add(PSNMP(
-                views = MDArraySNMPViews,
-                classifier = MDArraySNMPClassifier,
-                useSNMPGetFlag = True
+                views=MDArraySNMPViews,
+                classifier=MDArraySNMPClassifier,
+                useSNMPGetFlag=True
             ))
         self.protofactory.addCTree(MDArrayComponentTree)
-        self.protofactory.addClassifier([ MDArrayCompEnum.System ])
+        self.protofactory.addClassifier([MDArrayCompEnum.System])
 
     def my_entitytype(self, pinfra, ipaddr, creds, protofactory):
         return iDeviceDriver(self.ref, protofactory, ipaddr, creds)
-

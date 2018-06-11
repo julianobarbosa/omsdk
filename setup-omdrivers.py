@@ -17,7 +17,7 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 # Get the version from _version file 
-with open('_version.txt', 'rb') as v:
+with open('/tmp/_version.txt', 'r') as v:
     ver = v.read()
 setup(
     name='omdrivers',
@@ -106,6 +106,7 @@ setup(
                 'Compellent/*.Monitor',
                 'EqualLogic/*.Monitor',
                 'MDArray/*.Monitor',
+                'NGM/*.Monitor'
         ],
     },
 

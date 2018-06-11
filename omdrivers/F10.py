@@ -485,7 +485,7 @@ if PyPSNMP:
             }
         },
         F10CompEnum.Processor : {
-            "AvailableMemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'OutUnits' : 'GB' },
+            "AvailableMemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'KB', 'OutUnits' : 'GB' },
             "Module" : {
                 'Lookup'  :  'True',
                 'Values' : {

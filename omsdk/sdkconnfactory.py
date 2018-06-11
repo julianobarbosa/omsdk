@@ -220,7 +220,7 @@ class ConnectionFactory(object):
         retdoc = {}
         for connection in self.work_connection:
             if connection.isOpSupported(fname, **kwargs):
-                logger.debug("Operation being done by " + str(connection))
+                logger.debug(self.ipaddr+" : Operation being done by " + str(connection))
                 retval = connection.operation(fname, **kwargs)
                 return retval
 

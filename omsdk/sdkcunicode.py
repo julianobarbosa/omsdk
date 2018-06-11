@@ -26,6 +26,7 @@ import io
 if PY2UC:
     import codecs
 
+
 class UnicodeHelper(object):
     @staticmethod
     def is_string(ustring):
@@ -38,6 +39,7 @@ class UnicodeHelper(object):
             ustring = ustring.encode('ascii', 'ignore')
         return ustring
 
+
 class UnicodeWriter(object):
     def __init__(self, name):
         self.name = name
@@ -46,7 +48,7 @@ class UnicodeWriter(object):
     def __enter__(self):
         if PY2UC:
             self.output = open(self.name, "w")
-            #self.output = codecs.open(self.name, encoding='utf-8', mode='w')
+            # self.output = codecs.open(self.name, encoding='utf-8', mode='w')
         else:
             self.output = open(self.name, "w")
         return self
@@ -61,6 +63,7 @@ class UnicodeWriter(object):
         if self.output:
             self.output.close()
         return isinstance(value, TypeError)
+
 
 class UnicodeStringWriter(object):
     def __init__(self):

@@ -31,14 +31,13 @@ from omsdk.sdkproto import PCONSOLE
 import sys
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 
-#logging.basicConfig(level=logging.DEBUG,
+# logging.basicConfig(level=logging.DEBUG,
 #    format='[%(levelname)s] (%(threadName)-10s) %(message)s',)
 
 
@@ -49,10 +48,11 @@ class FileList(iConsoleDiscovery):
             super(FileList, self).__init__(iConsoleRegistry("FileList", srcdir, None))
         else:
             super().__init__(iConsoleRegistry("FileList", srcdir, None))
-        self.protofactory.add(PCONSOLE( obj = self))
+        self.protofactory.add(PCONSOLE(obj=self))
 
     def my_entitytype(self, pinfra, listfile, creds, protofactory):
         return FileListEntity(self.ref, pinfra, protofactory, listfile, creds)
+
 
 class FileListEntity(iConsoleDriver):
     def __init__(self, ref, pinfra, protofactory, listfile, creds):
@@ -75,9 +75,9 @@ class FileListEntity(iConsoleDriver):
         with self.myentitylistlock:
             if not devEntity is None:
                 self.entitylist.append(devEntity)
-        #if devEntity is None:
+        # if devEntity is None:
         #    logger.debug("None is  " + device)
-        #else:
+        # else:
         #    devEntity.get_entityjson()
         logger.debug("Exiting")
 
@@ -87,7 +87,7 @@ class FileListEntity(iConsoleDriver):
             for line in mylist:
                 device = line.rstrip()
                 thr = threading.Thread(name=device, \
-                          target=self._worker, args=(device,))
+                                       target=self._worker, args=(device,))
                 self.threadlist.append(thr)
                 thr.start()
         logger.debug('Waiting for _worker threads')
@@ -108,13 +108,12 @@ class FileListEntity(iConsoleDriver):
             for device in self.entityjson["devices"]["Devices"]:
                 logger.debug("-======" + str(device) + "----------")
                 if not device is None:
-                    logger.debug(PrettyPrint.prettify_json(device.entityjson))
+                    logger.debug(device.entityjson)
                 logger.debug("-==================-------")
-
 
     def my_connect(self, pOptions):
         status = False
-        try :
+        try:
             if os.path.isfile(self.listfile):
                 status = True
         except:
@@ -136,7 +135,7 @@ class FileListEntity(iConsoleDriver):
         else:
             with self.myentitylistlock:
                 self.failed[function] = self.failed[function] + 1
-            logger.debug(PrettyPrint.prettify_json(msg))
+            logger.debug(msg)
             logger.debug("ERROR: factory_config_export failed with message: " + msg['Message'])
 
     def runit(self, function, *arguments):
@@ -149,8 +148,8 @@ class FileListEntity(iConsoleDriver):
             self.failed[function] = 0
         for entity in self.entitylist:
             thr = threading.Thread(name=entity.ipaddr, \
-                     target=self._do_function,\
-                     args=(entity, function, arguments))
+                                   target=self._do_function, \
+                                   args=(entity, function, arguments))
             self.threadlist.append(thr)
             thr.start()
         for t in self.threadlist:
@@ -166,8 +165,7 @@ class FileListEntity(iConsoleDriver):
             msg = msg + str(self.failed[function]) + " failed."
             del self.success[function]
             del self.failed[function]
-        return (retval, fname, { 'Status' : status, 'Message' : msg})
+        return (retval, fname, {'Status': status, 'Message': msg})
 
     def get_service_tag(self):
         return "TEST-FileList"
-

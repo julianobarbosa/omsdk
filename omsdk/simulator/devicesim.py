@@ -33,24 +33,31 @@ PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
 
+
 class Simulation:
     def __init__(self):
         self.record = False
         self.simulate = False
+
     def start_recording(self):
         self.record = True
         self.simulate = False
+
     def end_recording(self):
         self.record = False
         self.simulate = False
+
     def start_simulating(self):
         self.simulate = True
         self.record = False
+
     def end_simulating(self):
         self.record = False
         self.simulate = False
+
     def is_recording(self):
         return self.record
+
     def is_simulating(self):
         return self.simulate
 
@@ -71,7 +78,7 @@ class Simulation:
                 os.mkdir(mypath)
         mypath = os.path.join(mypath, name)
         with open(mypath, 'w') as myconfig:
-                myconfig.write(config)
+            myconfig.write(config)
         return mypath
 
     def simulate_proto(self, ipaddr, enumid, clsName):
@@ -79,7 +86,7 @@ class Simulation:
         for i in ["simulator", ipaddr, str(enumid)]:
             mypath = os.path.join(mypath, i)
         mypath = os.path.join(mypath, clsName + ".json")
-        retval = {'Data' : {}, 'Status' : 'Failed', 'Message' : 'No file found'}
+        retval = {'Data': {}, 'Status': 'Failed', 'Message': 'No file found'}
         if os.path.exists(mypath) and not os.path.isdir(mypath):
             with open(mypath) as enum_data:
                 retval = json.load(enum_data)
@@ -92,8 +99,8 @@ class Simulation:
             if not os.path.exists(mypath):
                 os.mkdir(mypath)
         with open(os.path.join(mypath, clsName + ".json"), "w") as f:
-            json.dump(retval, f, sort_keys=True, indent=4, \
-                 separators=(',', ': '))
+            json.dump(retval, f, sort_keys=True, indent=4,
+                      separators=(',', ': '))
 
     def simulator_connect(self, ipaddr, enumid, protoobj):
         mypath = "."
@@ -112,9 +119,9 @@ class Simulation:
                 with open(sjson, 'r') as endata:
                     _s = json.load(endata)
                     if _s and 'Data' in _s and \
-                       _s['Data'] and simspec in _s['Data']:
+                            _s['Data'] and simspec in _s['Data']:
                         return protoobj
         return None
 
-Simulator = Simulation()
 
+Simulator = Simulation()

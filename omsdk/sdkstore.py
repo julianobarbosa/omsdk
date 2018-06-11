@@ -31,11 +31,11 @@ from omsdk.sdkdelta import DeltaComputer
 from omsdk.sdkenum import CreateMonitorScopeFilter, MonitorScope
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+
 
 class BaseStore(object):
     def __init__(self):
@@ -60,6 +60,7 @@ class BaseStore(object):
             directory = "."
         return directory
 
+
 class EntityStore(BaseStore):
     def __init__(self, *path_args):
         if PY2:
@@ -83,7 +84,7 @@ class EntityStore(BaseStore):
         master_scope_file = os.path.join(master_scope_file, fname)
         # Load the original json file
         orig_json = {}
-        if self.save_delta: 
+        if self.save_delta:
             # Compute delta and store them!!
             delta_scope_file = self.delta_dir
             if relpath and len(relpath) > 0:
@@ -100,7 +101,7 @@ class EntityStore(BaseStore):
 
             with open(delta_scope_file, 'w') as f:
                 json.dump(diff_json, f, sort_keys=True, indent=4,
-                      separators=(',', ': '))
+                          separators=(',', ': '))
                 f.flush()
 
         # now write to master file
@@ -125,6 +126,7 @@ class EntityStore(BaseStore):
                 delta_json = json.load(f)
         return delta_json
 
+
 class DeviceStore(EntityStore):
     def __init__(self, *path_args):
         if PY2:
@@ -132,13 +134,12 @@ class DeviceStore(EntityStore):
         else:
             super().__init__(*path_args)
 
-
     def has_topology_info_changes(self, entity):
         updateGroupsNeeded = True
         for scope in ["Key+Inventory+ConfigState"]:
             fname = scope.replace('+', '_') + ".json"
             old_json = self.load_master(entity.device_type,
-                            entity._DeviceKey, fname)
+                                        entity._DeviceKey, fname)
             new_json = entity.entityjson
             if ('System' not in old_json) or (len(old_json['System']) <= 0):
                 return updateGroupsNeeded
@@ -148,10 +149,10 @@ class DeviceStore(EntityStore):
             for comp in influencers:
                 # build a hashmap of old keys
                 hmap = {}
-                for comp_inst in old_json[comp]:
+                for comp_inst in old_json.get(comp, []):
                     hmap[comp_inst['Key']] = comp_inst
 
-                for comp_inst in new_json[comp]:
+                for comp_inst in new_json.get(comp, []):
                     # check if new key is present in old map
                     # if not present, new entry
                     if comp_inst['Key'] not in hmap:
@@ -163,13 +164,13 @@ class DeviceStore(EntityStore):
 
                     for field in influencers[comp]:
                         if field not in comp_inst or \
-                           field not in hmap[comp_inst['Key']]:
+                                field not in hmap[comp_inst['Key']]:
                             continue
                         if comp_inst[field] != hmap[comp_inst['Key']][field]:
                             return updateGroupsNeeded
                     # visited node
                     hmap[comp_inst['Key']] = None
-                for comp_inst in old_json[comp]:
+                for comp_inst in old_json.get(comp, []):
                     if hmap[comp_inst['Key']]:
                         return updateGroupsNeeded
         return False
@@ -185,11 +186,11 @@ class DeviceStore(EntityStore):
             diff_filter = DiffFilter(scope=dscope, style=DiffStyle.Standard)
             fname = scope.replace('+', '_') + ".json"
             self.store(entity.get_json_device(monitorfilter),
-                               diff_filter, fname, DeltaComputer.device_json,
-                               [entity.device_type, entity._DeviceKey])
+                       diff_filter, fname, DeltaComputer.device_json,
+                       [entity.device_type, entity._DeviceKey])
         ctree = entity.ContainmentTree
         if 'System' in ctree:
-            self.store({ 'System' : ctree['System']} ,
+            self.store({'System': ctree['System']},
                        None, 'ContainmentTree.json',
                        DeltaComputer.tree_with_instances,
                        [entity.device_type, entity._DeviceKey])

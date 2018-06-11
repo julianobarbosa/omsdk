@@ -21,7 +21,7 @@
 # Authors: Vaideeswaran Ganesan
 #
 from omsdk.typemgr.ClassType import ClassType
-from omsdk.typemgr.TypeState import TypeState,TypeBase
+from omsdk.typemgr.TypeState import TypeState, TypeBase
 from omsdk.typemgr.BuiltinTypes import StringField, IntField
 from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkcunicode import UnicodeStringWriter
@@ -29,10 +29,13 @@ import sys
 import io
 import re
 import logging
+
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
+
+
 # private
 #
 # >>def __init__(self, mode, fname, alias, parent=None, volatile=False)
@@ -61,6 +64,7 @@ logger = logging.getLogger(__name__)
 #
 # def get_root(self)
 
+
 class ArrayType(TypeBase):
     def __init__(self, clsname, parent=None, index_helper=None, loading_from_scp=False):
         if PY2:
@@ -78,7 +82,7 @@ class ArrayType(TypeBase):
         if index_helper is None:
             index_helper = IndexHelper(1, 20)
         self._index_helper = index_helper
-        #self._modifyAllowed = True
+        # self._modifyAllowed = True
 
         self._cls = clsname
         self._entries = []
@@ -166,13 +170,13 @@ class ArrayType(TypeBase):
 
     # State : to Committed
     # allowed even during freeze
-    def commit(self, loading_from_scp = False):
+    def commit(self, loading_from_scp=False):
         if self.is_changed():
             if not self._composite:
-                self._copy_state(source = self._entries,
-                                 dest = self.__dict__['_orig_value'])
+                self._copy_state(source=self._entries,
+                                 dest=self.__dict__['_orig_value'])
                 self.__dict__['_orig_value'] = \
-                    sorted(self.__dict__['_orig_value'], key = lambda entry: entry._index)
+                    sorted(self.__dict__['_orig_value'], key=lambda entry: entry._index)
                 for entry in self._entries:
                     entry.commit(loading_from_scp)
             if loading_from_scp:
@@ -190,8 +194,8 @@ class ArrayType(TypeBase):
                     for i in self._entries:
                         del self._entries
                 else:
-                    self._copy_state(source = self.__dict__['_orig_value'],
-                                 dest = self._entries)
+                    self._copy_state(source=self.__dict__['_orig_value'],
+                                     dest=self._entries)
                     for entry in self._entries:
                         entry.reject()
                         self._index_helper.restore_index(entry._index)
@@ -305,7 +309,7 @@ class ArrayType(TypeBase):
             raise ValueError('key not provided')
         key = self._get_key(entry)
         if index is None and (key and key in self._keys):
-            raise ValueError(self._cls.__name__ +" key "+str(key)+' already exists')
+            raise ValueError(self._cls.__name__ + " key " + str(key) + ' already exists')
 
         if index is None:
             index = self._index_helper.next_index()
@@ -417,19 +421,19 @@ class ArrayType(TypeBase):
         return entries
 
     def _sort(self):
-        self._entries = sorted(self._entries, key = lambda entry: entry._index)
+        self._entries = sorted(self._entries, key=lambda entry: entry._index)
 
-    def _find(self, all_entries = True, **kwargs):
+    def _find(self, all_entries=True, **kwargs):
         output = []
         for entry in self._entries:
             found = True
             for field in kwargs:
                 if field in entry.__dict__ and \
-                   entry.__dict__[field]._value != kwargs[field]:
+                        entry.__dict__[field]._value != kwargs[field]:
                     found = False
                     break
                 if field in entry._attribs and \
-                   entry._attribs[field] != kwargs[field]:
+                        entry._attribs[field] != kwargs[field]:
                     found = False
                     break
             if found:
@@ -473,7 +477,7 @@ class ArrayType(TypeBase):
     def ModifiedXML(self):
         return self._get_xml_string(False)
 
-    def _get_xml_string(self, everything = True, space='', deleted=False):
+    def _get_xml_string(self, everything=True, space='', deleted=False):
         s = UnicodeStringWriter()
         for entry in self._entries:
             if not entry.is_changed() and not everything:
@@ -486,7 +490,9 @@ class ArrayType(TypeBase):
     def __iter__(self):
         return ArrayTypeIterator(self)
 
+
 class ArrayTypeIterator:
+
     def __init__(self, array):
         self.array = array
         self.current = -1
@@ -502,10 +508,10 @@ class ArrayTypeIterator:
         if self.current >= self.high:
             raise StopIteration
         else:
-           self.current += 1
-           if self.current >= self.high:
-               raise StopIteration
-           return self.array._entries[self.current]
+            self.current += 1
+            if self.current >= self.high:
+                raise StopIteration
+            return self.array._entries[self.current]
 
 
 class IndexHelper(object):
@@ -516,7 +522,7 @@ class IndexHelper(object):
             super().__init__()
         self.min_value = min_value
         self.max_value = max_value
-        self.indexes_free = [i for i in range(self.min_value, self.max_value+1)]
+        self.indexes_free = [i for i in range(self.min_value, self.max_value + 1)]
         self.reserve = []
 
     def next_index(self):
@@ -536,21 +542,21 @@ class IndexHelper(object):
             self.indexes_free.remove(index)
 
     def restore_index(self, index):
-        if  index not in self.reserve and \
-            index not in self.indexes_free:
+        if index not in self.reserve and \
+                index not in self.indexes_free:
             self.indexes_free.append(index)
             self.indexes_free = sorted(self.indexes_free)
-
 
     def has_indexes(self):
         return len(self.indexes_free) > 0
 
     def printx(self):
-        print(PrettyPrint.prettify_json(self.__dict__))
+        print(self.__dict__)
+
 
 class FQDDHelper(IndexHelper):
     def __init__(self):
         if PY2:
             super(FQDDHelper, self).__init__(1, 30)
         else:
-            super().__init__(1,30)
+            super().__init__(1, 30)

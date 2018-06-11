@@ -28,7 +28,7 @@ import time
 import json
 from enum import Enum
 from json import JSONEncoder
-from omsdk.sdkcenum import EnumWrapper,TypeHelper,PY2Enum
+from omsdk.sdkcenum import EnumWrapper, TypeHelper, PY2Enum
 from pprint import pprint
 from datetime import datetime
 import xml.etree.ElementTree as ET
@@ -80,7 +80,11 @@ class MyEncoder(JSONEncoder):
 
 class Prettifyer:
     def prettify_json(self, json_object):
-        return "<empty json>" if json_object is None else json.dumps(json_object, sort_keys=True, indent=4, \
-              separators=(',', ': '), cls=MyEncoder)
+        return "<empty json>" if json_object is None else json.dumps(json_object,
+                                                                     sort_keys=True,
+                                                                     indent=4,
+                                                                     separators=(',', ': '),
+                                                                     cls=MyEncoder)
+
 
 PrettyPrint = Prettifyer()

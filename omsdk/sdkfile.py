@@ -937,7 +937,7 @@ class cfgprocessor:
 		logger.debug("====")
 		for i in self.datasets:
 			logger.debug("=====" + i + "=======")
-			logger.debug(PrettyPrint.prettify_json(self.datasets[i]))
+			logger.debug(self.datasets[i])
 			logger.debug("=====================")
 		logger.debug("====")
 		return self

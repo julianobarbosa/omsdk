@@ -30,37 +30,38 @@ from omsdk.omlogs.Logger import LogManager, LoggerConfigTypeEnum
 import sys
 import logging
 
-#LogManager.setup_logging()
+# LogManager.setup_logging()
 logger = logging.getLogger(__name__)
+
 
 def RepoBuilder(arglist):
     parser = ArgumentParser(description='Local Repository Builder')
-    parser.add_argument('-C', '--catalog', 
-        action="store", dest="catalog", nargs='?',
-        default='Catalog', type=str,
-        help="Name of the Catalog file that contains the info about needed DUPs")
-    parser.add_argument('-f', '--folder', 
-        action="store", dest="folder", type=str,
-        help="folder from where repository is built")
+    parser.add_argument('-C', '--catalog',
+                        action="store", dest="catalog", nargs='?',
+                        default='Catalog', type=str,
+                        help="Name of the Catalog file that contains the info about needed DUPs")
+    parser.add_argument('-f', '--folder',
+                        action="store", dest="folder", type=str,
+                        help="folder from where repository is built")
     parser.add_argument('-c', '--components',
-        action="store", dest="component", nargs='+',
-        help="components for which the DUPs are requested.")
-    parser.add_argument('-s', '--site', 
-        action="store", dest="site", type=str, nargs='?',
-        default='downloads.dell.com',
-        help="models for which the DUPs are requested.")
-    parser.add_argument('-p', '--protocol', 
-        action="store", dest="protocol", nargs='?',
-        default='HTTP', choices=['HTTP', 'FTP', 'NoOp', 'HashCheck'],
-        help="models for which the DUPs are requested.")
-    parser.add_argument('-v', '--verbose', 
-        action="store_true", help="verbose mode")
-    parser.add_argument('-D', '--download-dups', 
-        action="store_true", dest="dld_dups", help="download DUPs")
-    parser.add_argument('-l', '--download-catalog', 
-        action="store_true", dest="dld_catalog", help="download catalog")
-    parser.add_argument('-b', '--build-catalog', 
-        action="store_true", dest="build_catalog", help="build catalog")
+                        action="store", dest="component", nargs='+',
+                        help="components for which the DUPs are requested.")
+    parser.add_argument('-s', '--site',
+                        action="store", dest="site", type=str, nargs='?',
+                        default='downloads.dell.com',
+                        help="models for which the DUPs are requested.")
+    parser.add_argument('-p', '--protocol',
+                        action="store", dest="protocol", nargs='?',
+                        default='HTTP', choices=['HTTP', 'FTP', 'NoOp', 'HashCheck'],
+                        help="models for which the DUPs are requested.")
+    parser.add_argument('-v', '--verbose',
+                        action="store_true", help="verbose mode")
+    parser.add_argument('-D', '--download-dups',
+                        action="store_true", dest="dld_dups", help="download DUPs")
+    parser.add_argument('-l', '--download-catalog',
+                        action="store_true", dest="dld_catalog", help="download catalog")
+    parser.add_argument('-b', '--build-catalog',
+                        action="store_true", dest="build_catalog", help="build catalog")
 
     options = parser.parse_args(arglist)
     if not options.component:
@@ -77,15 +78,15 @@ def RepoBuilder(arglist):
         logging.basicConfig(level=logging.DEBUG)
 
     if not options.dld_dups and not options.build_catalog and \
-       not options.dld_catalog:
+            not options.dld_catalog:
         options.dld_catalog = True
         options.build_catalog = True
         options.dld_dups = True
 
     options.protocol = TypeHelper.convert_to_enum(options.protocol,
-                            DownloadProtocolEnum)
+                                                  DownloadProtocolEnum)
 
-    updshare = LocalFile(local = options.folder, isFolder=True)
+    updshare = LocalFile(local=options.folder, isFolder=True)
     if not updshare.IsValid:
         print("Folder is not writable!")
         return -2
@@ -93,7 +94,7 @@ def RepoBuilder(arglist):
     if options.protocol != DownloadProtocolEnum.HashCheck:
         print("Configuring Update Share...")
     UpdateManager.configure(updshare, site=options.site,
-            protocol=options.protocol)
+                            protocol=options.protocol)
 
     if options.dld_catalog:
         if options.protocol != DownloadProtocolEnum.HashCheck:
@@ -107,6 +108,7 @@ def RepoBuilder(arglist):
         if options.protocol != DownloadProtocolEnum.HashCheck:
             print("Downloading DUPs ...")
         UpdateManager.update_cache(options.catalog)
+
 
 if __name__ == "__main__":
     RepoBuilder(sys.argv[1:])

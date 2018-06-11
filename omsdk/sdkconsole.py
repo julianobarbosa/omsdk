@@ -25,15 +25,15 @@ from omsdk.sdkbase import iBaseRegistry, iBaseDiscovery, iBaseDriver
 import sys
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 
-class iConsoleRegistry(iBaseRegistry) :
+class iConsoleRegistry(iBaseRegistry):
     pass
+
 
 class iConsoleDiscovery(iBaseDiscovery):
     pass
@@ -50,8 +50,8 @@ class iConsoleDriver(iBaseDriver):
 
     def my_reset(self):
         self.entityjson["devmap"] = {}
-        self.entityjson["unknown_devmap"] = [] 
-        self.entityjson["unknown_svctag"] = [] 
+        self.entityjson["unknown_devmap"] = []
+        self.entityjson["unknown_svctag"] = []
         self.entityjson["topology"]["DeviceGroups"] = {}
         self.entityjson["devices"]["Devices"] = []
 
@@ -85,9 +85,9 @@ class iConsoleDriver(iBaseDriver):
                 else:
                     self.entityjson["devmap"][retval] = device
                     self.add_device_props(device)
-        
+
         for gname in self.entityjson["topology"]["DeviceGroups"]:
-            group= self.entityjson["topology"]["DeviceGroups"][gname]
+            group = self.entityjson["topology"]["DeviceGroups"][gname]
             if "Devices" in group:
                 for device in group["Devices"]:
                     if not (device in self.entityjson["devmap"]):
@@ -96,10 +96,10 @@ class iConsoleDriver(iBaseDriver):
                 logger.debug(str(group) + " is empty")
 
     def print_details(self):
-        print ("Unknown Tags in Topology:" +
-            str(self.entityjson["unknown_svctag"]))
-        print ("Unknown devices in Device List:" +
-            str(self.entityjson["unknown_devmap"]))
+        print("Unknown Tags in Topology:" +
+              str(self.entityjson["unknown_svctag"]))
+        print("Unknown devices in Device List:" +
+              str(self.entityjson["unknown_devmap"]))
 
     # All Topology APIs
     def get_topology(self):
@@ -139,21 +139,21 @@ class iConsoleDriver(iBaseDriver):
 
     def update_device_group(self, device, devmap, gname):
         if gname is None or not gname in self.entityjson["topology"]["DeviceGroups"]:
-            logger.debug(groupName +" is not found in topology")
+            logger.debug(groupName + " is not found in topology")
             return False
         dev = self.my_update_device_group(device, devmap, gname)
         self.entityjson["topology"]["DeviceGroups"][gname]["Devices"].append(dev)
         return True
 
-    def add_device(self, device, devmap, groupName = None):
+    def add_device(self, device, devmap, groupName=None):
         if devmap is None:
             logger.debug("DevMap is not provided!")
             return False
         if groupName is None:
             groupName = "Ungrouped"
-            logger.debug("no group given, changing to: " +groupName)
+            logger.debug("no group given, changing to: " + groupName)
         if not groupName in self.entityjson["topology"]["DeviceGroups"]:
-            logger.debug(groupName +" is not found in topology")
+            logger.debug(groupName + " is not found in topology")
             return False
         dev = self.my_add_or_update_device(device, devmap, groupName)
         if not dev is None:
@@ -172,14 +172,15 @@ class iConsoleDriver(iBaseDriver):
     def remove_group(self, groupname):
         not_implemented
 
-    def my_add_or_update_device(self, device, groupname = None):
+    def my_add_or_update_device(self, device, groupname=None):
         not_implemented
 
     def my_update_device_group(self, device, devmap, groupname):
         not_implemented
 
-    def my_remove_device(self, device, groupname = None):
+    def my_remove_device(self, device, groupname=None):
         not_implemented
+
     # End All Topology APIs
 
     def get_devices(self):
@@ -188,9 +189,9 @@ class iConsoleDriver(iBaseDriver):
             myl.append(dev)
         return myl
 
-    def get_json_device(self, device, monitorfilter = None, compScope = None):
+    def get_json_device(self, device, monitorfilter=None, compScope=None):
         if not (device in self.entityjson["devmap"]):
-            print ("Not found!")
+            print("Not found!")
             return False
         devicejson = self.entityjson["devmap"][device]
         return self._get_json_for_device(devicejson, monitorfilter, compScope)
