@@ -331,6 +331,11 @@ class FileOnShare(Share):
         else:
             super().__init__()
 
+        if creds is not None and creds.username is not None and "@" in creds.username:
+            username_domain = creds.username.split("@")
+            creds.username = username_domain[0]
+            creds.domain = username_domain[1]
+
         self.creds = creds
         self.isFolder = isFolder
 
@@ -479,7 +484,7 @@ class FileOnShare(Share):
         except Exception as ex:
             logger.debug("Failed to create temp file: " +str(ex))
             return None
-        common_path = fname.replace(self.mount_point.mountable_path + psep, '')
+        common_path = fname.lower().replace(self.mount_point.mountable_path.lower() + psep, '')
 
         #Kludge: Windows associates the fonshare with the fd
         # and keeps the file in open state.

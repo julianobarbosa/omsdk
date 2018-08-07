@@ -74,6 +74,10 @@ class UserCredentials(iCredentials):
             super(UserCredentials, self).__init__(CredentialsEnum.User)
         else:
             super().__init__(CredentialsEnum.User)
+        #if username is not None and "@" in username:
+        #    username_domain = username.split("@")
+        #    username = username_domain[0]
+        #    work_group = username_domain[1]
         self.username = username
         self.password = password
         self.work_group = work_group

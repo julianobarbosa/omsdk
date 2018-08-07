@@ -188,6 +188,9 @@ iDRACComponentTree = {
         iDRACCompEnum.PhysicalDisk, #DirectDisk.RAID
         iDRACCompEnum.ControllerSensor
     ],
+    iDRACCompEnum.VirtualDisk : [
+        iDRACCompEnum.PhysicalDisk,
+    ],
     iDRACCompEnum.ControllerSensor : [
         iDRACCompEnum.ControllerBattery,
     ],
@@ -879,6 +882,20 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical"
+            }
+        },
+        "PowerCapEnabledState": {
+            'Lookup': 'True',
+            'Values': {
+                "2": "Enabled",
+                "3": "Disabled"
+            }
+        },
+        "PowerState": {
+            'Lookup': 'True',
+            'Values': {
+                "2": "On",
+                "8": "Off - Soft"
             }
         }
     },

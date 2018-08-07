@@ -107,7 +107,6 @@ setup(
         'requests>=2.12.3',
         'PyYAML>=3.12',
         'future>=0.16.0',
-        'six>=1.11.0',
         'pysnmp_mibs>=0',
         'ipaddress>=0'
     ],

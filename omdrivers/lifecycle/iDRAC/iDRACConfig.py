@@ -3490,11 +3490,12 @@ class iDRACConfig(iBaseConfigApi):
     def SyslogConfig(self):
         return self._sysconfig.iDRAC.SysLog
 
-    def enable_syslog(self):
+    def enable_syslog(self, apply_changes=True):
         """
             Enable Sys Log Configuration
-
-            :return: success/failure response
+            :param apply_changes: ApplyCanges
+            :type apply_changes: bool
+            :return: success/failure response ,when apply_changes is True
             :rtype: JSON
 
 
@@ -3515,13 +3516,15 @@ class iDRACConfig(iBaseConfigApi):
         # if len(self.SyslogServers) > 0:
         self._sysconfig.iDRAC.SysLog.PowerLogEnable_SysLog = PowerLogEnable_SysLogTypes.Enabled
         self._sysconfig.iDRAC.SysLog.SysLogEnable_SysLog = SysLogEnable_SysLogTypes.Enabled
-        return self.apply_changes(reboot=False)
+        if apply_changes:
+            return self.apply_changes(reboot=False)
 
-    def disable_syslog(self):
+    def disable_syslog(self, apply_changes=True):
         """
             Enable Sys Log Configuration
-
-            :return: success/failure response
+            :param apply_changes: ApplyCanges
+            :type apply_changes: bool
+            :return: success/failure response ,when apply_changes is True
             :rtype: JSON
 
 
@@ -3542,7 +3545,8 @@ class iDRACConfig(iBaseConfigApi):
         # if len(self.SyslogServers) > 0:
         self._sysconfig.iDRAC.SysLog.PowerLogEnable_SysLog = PowerLogEnable_SysLogTypes.Disabled
         self._sysconfig.iDRAC.SysLog.SysLogEnable_SysLog = SysLogEnable_SysLogTypes.Disabled
-        return self.apply_changes(reboot=False)
+        if apply_changes:
+            return self.apply_changes(reboot=False)
 
     #############################################
     ##  Timezone
@@ -5000,3 +5004,17 @@ class iDRACConfig(iBaseConfigApi):
     def reboot_system(self):
         rjson = self.entity._reboot_system_redfish(reboot_type="GracefulRestart")
         return rjson
+
+    def is_change_applicable(self):
+        """when check_mode is enabled ,checks if changes are applicable or not"""
+        try:
+            logger.info(self.entity.ipaddr + " : Interface is_change_applicable enter")
+            if self._sysconfig and not self._sysconfig.is_changed():
+                msg = {'Status': 'Success', 'Message': 'No changes found to commit!', 'changes_applicable': False}
+            else:
+                msg = {'Status': 'Success', 'Message': 'Changes found to commit!', 'changes_applicable': True}
+        except Exception as e:
+            logger.error(self.entity.ipaddr + " : Interface is_change_applicable failed to execute")
+            msg = {'Status': 'Failed', 'Message': 'Failed to execute the command!', 'changes_applicable': False}
+        logger.info(self.entity.ipaddr + " : Interface is_change_applicable exit")
+        return msg

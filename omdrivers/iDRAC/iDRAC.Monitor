@@ -606,7 +606,8 @@
             "BlockSize",
             "Layout",
             "Name",
-            "DeviceDescription"
+            "DeviceDescription",
+            "PhysicalDiskIDs"
         ],
         "ConfigState" : [ 
             "LockStatus",
