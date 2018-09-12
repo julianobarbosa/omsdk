@@ -476,7 +476,7 @@ class ProtocolWrapper(object):
         counter = 1
         fcmd = self.cmds[cmdname]
         for name, value in kwargs.items():
-           # logger.debug(str(counter) + ":" + str(name) + "=" + str(value))
+            # logger.debug(str(counter) + ":" + str(name) + "=" + str(value))
             counter = counter + 1
             if not name in fcmd["Args"]:
                 str_err = name + " argument is invalid!"
@@ -751,6 +751,19 @@ class ProtocolFactory(object):
     def add(self, protocol):
         self.protos.append(protocol)
         self.pref.add(protocol.enumid)
+
+    def removeProto(self, protoenum):
+        cnt = 0
+        found = False
+        for proto in self.protos:
+            if(proto.enumid == protoenum):
+                found = True
+                break
+            cnt = cnt + 1
+        if((cnt < len(self.protos)) and found):
+            self.protos.pop(cnt)
+            self.pref.remIndex(cnt, protoenum)
+
 
     def copy(self, source):
         self.pref.copy(source)

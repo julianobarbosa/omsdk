@@ -214,7 +214,7 @@ CMCMergeJoinCompSpec = {
    },
    "System": {
         "_components": [
-            ["System", "HostName", "SystemChassis", "Name"]
+            ["System", "PhysicalLocationChassisName", "SystemChassis", "Name"]
         ],
         "_components_enum": [
             CMCCompEnum.System,
@@ -396,7 +396,13 @@ CMCWsManViews_FieldSpec = {
         "LicenseType":  {
             'Lookup' : 'True',
             'Values' : {
-                "1" : "Perpertual", "2" : "Leased", "3" : "Evaluation", "4" : "Site"
+                "1" : "Perpetual", "2" : "Leased", "3" : "Evaluation", "4" : "Site"
+            }
+        },
+        "LicensePrimaryStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown", "1": "Healthy", "2": "Warning", "3": "Critical"
             }
         }
     },
@@ -479,7 +485,7 @@ CMCWsManViews_FieldSpec = {
                     "3" : "Short", "4" : "Long"
             }
         },
-        "CacheSizeInMB" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'OutUnits' : 'MB'}
+        "CacheSizeInMB": {'Type': 'Bytes', 'InUnits': 'MB', 'OutUnits': 'GB'},
     },
     CMCCompEnum.Enclosure : {
         "PrimaryStatus": {
@@ -683,40 +689,56 @@ class CMCEntity(iDeviceDriver):
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
-        # print("IN MODIFY COMP ",component)
         if component == 'ComputeModule':
             if "ComputeModule" in finalretjson:
                 bladeslot = finalretjson['ComputeModule']
                 st_dict = {}
                 slt_ndict = {}
                 for slot in bladeslot:
-                    slot_srvtag = slot.get('ServiceTag')
+                    slot_srvtag = slot.get('MasterSlotNumber')
                     slt_ndict.setdefault(slot_srvtag, []).append(slot.get('SlotNumber'))
                     if slot_srvtag in st_dict:
                         st_dict[slot_srvtag] = st_dict[slot_srvtag] + 1
                     else:
                         st_dict[slot_srvtag] = 1
                 for slot in bladeslot:
-                    if (st_dict[slot.get('ServiceTag')] == 2) and (slot.get('SubSlot') == 'NA'):
+                    if (st_dict[slot.get('MasterSlotNumber')] == 2) and (slot.get('SubSlot') == 'NA'):
                         slot['FormFactor'] = 'Full length Blade'
                         if slot.get('MasterSlotNumber') != slot.get('SlotNumber'):
-                            slot['ExtensionSlot'] = "True"
-                        slot['SlotNumber'] = "/".join(sorted(slt_ndict[slot.get('ServiceTag')],key=int))
+                            slot['ExtensionSlot'] = True
+                        slot['SlotNumber'] = "/".join(sorted(slt_ndict[slot.get('MasterSlotNumber')],key=int))
                     if 'FormFactor' in slot:
                         if 'Quarter' in slot['FormFactor']:
                             if slot.get('SubSlot') not in slot.get('SlotNumber'):
                                 slot['SlotNumber'] = slot.get('SlotNumber') + slot.get('SubSlot')
 
                 newbladeList = []
+                tmpDupList = []
+                #TODO: Replacing 4 FM servers with Single - Will affect Nagios
+                fmSlotNumSet = {}
+                cmcmodel = self.entityjson['System'][0]["Model"]
+                slotArch = 1
+                if 'FX2' in cmcmodel:
+                    slotArch = 2
                 for slot in bladeslot:
-                    if slot.get('ExtensionSlot','False') != "True":
-                        if 'Full' in slot.get('FormFactor',"Not Available"):
-                            extslot = slot.get('SlotNumber').split('/')
-                            slot['ExtensionSlot'] = extslot[-1]
-                        newbladeList.append(slot)
-                if newbladeList:
-                    del finalretjson["ComputeModule"]
-                    finalretjson['ComputeModule'] = newbladeList
+                    if 'FM' in slot.get('Model', 'Not Available'):
+                        fmSlotNumSet[slot.get('MasterSlotNumber')] = slot
+                    else:
+                        if slot.get('ExtensionSlot',False) != True:
+                            if 'Full' in slot.get('FormFactor',"Not Available"):
+                                extslot = slot.get('SlotNumber').split('/')
+                                slot['ExtensionSlot'] = extslot[-1]
+                                if abs(int(slot.get('MasterSlotNumber')) - int(slot['ExtensionSlot'])) == slotArch:
+                                    slot['FormFactor'] = "Half length Double width"
+                            newbladeList.append(slot)
+                            tmpDupList.append(slot)
+                #To remove FM servers who dont show Model - based on MasterSlotNumber
+                for slot in tmpDupList:
+                    if slot.get('MasterSlotNumber') in fmSlotNumSet:
+                        newbladeList.remove(slot)
+
+                del finalretjson["ComputeModule"]
+                finalretjson['ComputeModule'] = newbladeList + list(fmSlotNumSet.values())
 
                 storagelist = []
                 for m in finalretjson['ComputeModule']:
@@ -731,12 +753,6 @@ class CMCEntity(iDeviceDriver):
                     for x in storagelist:
                         finalretjson['ComputeModule'].remove(x)
 
-                #This is used as Slots in SCOM so FMserver duplicates to be removed
-                #TODO: this is not right for nagios - Temp Solution
-                pkeys = ["ServiceTag"]
-                filtered = {tuple((k, d[k]) for k in sorted(d) if k in pkeys): d for d in finalretjson[component]}
-                finalretjson[component] = list(filtered.values())
-
         if component == "Slots_Summary":
             if "Slots_Summary" in finalretjson:
                 bladeslot = self.entityjson["Slots_Summary"]
@@ -744,22 +760,20 @@ class CMCEntity(iDeviceDriver):
                 slt_ndict = {}
                 for slot in bladeslot:
                     if not "StorageMode" in slot:
-                        slt_ndict.setdefault(slot.get('ServiceTag'), []).append(slot.get('SlotNumber'))
-                        if slot.get('ServiceTag') in st_dict:
-                            st_dict[slot.get('ServiceTag')] = st_dict[slot.get('ServiceTag')] + 1
+                        slt_ndict.setdefault(slot.get('MasterSlotNumber'), []).append(slot.get('SlotNumber'))
+                        if slot.get('MasterSlotNumber') in st_dict:
+                            st_dict[slot.get('MasterSlotNumber')] = st_dict[slot.get('MasterSlotNumber')] + 1
                         else:
-                            st_dict[slot.get('ServiceTag')] = 1
+                            st_dict[slot.get('MasterSlotNumber')] = 1
                 for slot in bladeslot:
                     if not "StorageMode" in slot:
-                        if (st_dict[slot.get('ServiceTag')] > 1) and ((slot.get('SubSlot') == 'NA') or (slot.get('SubSlot') == None)):
+                        if (st_dict[slot.get('MasterSlotNumber')] == 2) and ((slot.get('SubSlot') == 'NA') or (slot.get('SubSlot') == None)):
                             slot['FormFactor'] = 'Full length Blade'
-                            # slot['SlotNumber'] = "/".join(sorted(slt_ndict[slot.get('ServiceTag')], key=int))
                         if 'FormFactor' in slot:
                             if 'Quarter' in slot['FormFactor']:
                                 slot['SlotNumber'] = slot.get('MasterSlotNumber') + slot.get('SubSlot')
 
                 cmcmodel = self.entityjson['System'][0]["Model"]
-                # print("SLOTS of ",cmcmodel)
                 freeslots = set()
                 occupiedSlots = set()
                 extensionSlots = set()
@@ -773,25 +787,23 @@ class CMCEntity(iDeviceDriver):
                     slotArch = 8
                     freeslots = set(range(1, 17))
 
-                # print(freeslots)
                 bladeslot = self.entityjson["Slots_Summary"]
                 for slot in bladeslot:
                     if 'StorageMode' in slot:  # this is a Sled
                         sledslot = int(slot['FQDD'][-2:])
-                        # print("Sledslot ",sledslot)
-                        freeslots.remove(sledslot)
+                        freeslots.discard(sledslot)
                         occupiedSlots.add(sledslot)
                     else:  # this is a blade
                         if 'FormFactor' in slot:
                             if 'Full' in slot['FormFactor']:
                                 if 'ExtensionSlot' in slot:
-                                    freeslots.remove(int(slot['ExtensionSlot']))
+                                    freeslots.discard(int(slot['ExtensionSlot']))
                                     extensionSlots.add(int(slot['ExtensionSlot']))
                                 else:
-                                    freeslots.remove(int(slot['MasterSlotNumber']))
+                                    freeslots.discard(int(slot['MasterSlotNumber']))
                                     occupiedSlots.add(int(slot['MasterSlotNumber']))
                             if 'Half' in slot['FormFactor']:
-                                freeslots.remove(int(slot['MasterSlotNumber']))
+                                freeslots.discard(int(slot['MasterSlotNumber']))
                                 occupiedSlots.add(int(slot['MasterSlotNumber']))
 
                 quarterSlotdict = {'a': 'b', 'b': 'a', 'c': 'd', 'd': 'c'}
@@ -804,10 +816,10 @@ class CMCEntity(iDeviceDriver):
                                 slotModifier = slotArch
                             extSlot = int(slot['MasterSlotNumber']) + slotModifier
                             if extSlot in freeslots:
-                                freeslots.remove(extSlot)
+                                freeslots.discard(extSlot)
                             qSlot = slot['MasterSlotNumber'] + slot['SubSlot']
                             if qSlot in freeslots:
-                                freeslots.remove(qSlot)
+                                freeslots.discard(qSlot)
                             occupiedSlots.add(qSlot)
                             otherslot = slot['MasterSlotNumber'] + quarterSlotdict[slot['SubSlot']]
                             if otherslot not in occupiedSlots:

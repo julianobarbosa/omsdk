@@ -3773,6 +3773,10 @@ class iDRACConfig(iBaseConfigApi):
     def iDRAC_NIC(self):
         return self._sysconfig.iDRAC.NIC
 
+    @property
+    def iDRAC_NICStatic(self):
+        return self._sysconfig.iDRAC.NICStatic
+
     def configure_network_settings(self, enable_nic=None, nic_selection=None, failover_network=None, auto_detect=None,
                                    auto_negotiation=None, network_speed=None, duplex_mode=None, nic_mtu=None):
         """
@@ -3900,7 +3904,7 @@ class iDRACConfig(iBaseConfigApi):
             self.iDRAC_NIC.DNSRacName_NIC.set_value(dns_idrac_name)
 
         if auto_config is not None:
-            self.iDRAC_NIC.DNSDomainNameFromDHCP_NIC.set_value(auto_config)
+            self.iDRAC_NICStatic.DNSDomainFromDHCP_NICStatic.set_value(auto_config)
 
         if static_dns is not None:
             self.iDRAC_NIC.DNSDomainName_NIC.set_value(static_dns)

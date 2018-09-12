@@ -17,7 +17,10 @@
        "ExpressServiceCode",
        "Hostname",
        "ManagementIP",
-       "HWVersion"
+       "HWVersion",
+       "SwitchType",
+       "SwitchIPv4",
+       "SwitchIPv6"
     ],
     "Metrics": ["SwitchUptime"]
   },
@@ -35,7 +38,6 @@
       "ProductRev",
       "VendorId",
       "Temp",
-      "Description",
       "ProductOrder",
       "PiecePartID",
       "ServiceTag",
@@ -44,7 +46,8 @@
     ],
     "Key": [
       "_SNMPIndex",
-      "ChassisIndex"
+      "ChassisIndex",
+      "Description"
     ],
     "Metrics": []
   },
@@ -70,7 +73,8 @@
       "WebURL"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -82,7 +86,7 @@
       "1Min",
       "5Sec"
     ],
-    "Key": [ "_SNMPIndex" ],
+    "Key": [ "_SNMPIndex", "Name" ],
     "Metrics": [
       "MemUsage",
       "CpuFlashUsage"
@@ -103,7 +107,8 @@
       "FanDeviceIndex"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -114,23 +119,24 @@
     ],
     "Inventory": [
       "Index",
-      "Description",
       "Speed"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Description"
     ]
   },
   "Port": {
     "Key": [
-      "ifIndex"
+      "ifIndex",
+      "Description"
     ],
     "Health": ["Status"],
     "Inventory": [
-      "Description",
       "Type",
       "Address",
-      "SysIfName"
+      "SysIfName",
+      "Class"
     ],
     "Metrics": [
       "ifInOctets",
@@ -154,7 +160,7 @@
       "PartitionNumber",
       "PartitionName"
     ],
-    "Key": [ "_SNMPIndex" ],
+    "Key": [ "_SNMPIndex", "Name" ],
     "Metrics": []
   },
   "PE": {
@@ -174,7 +180,6 @@
       "NumFanTrays",
       "VendorId",
       "Temp",
-      "Description",
       "ProductOrder",
       "PEID",
       "PiecePartID",
@@ -184,7 +189,8 @@
       "NumOfPorts"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Description"
     ],
     "Metrics": []
   },
@@ -195,7 +201,8 @@
     "Key": [
       "_SNMPIndex",
       "PEBindCascadePortIfIndex",
-      "PEBindPEIndex"
+      "PEBindPEIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -206,11 +213,11 @@
     ],
     "Inventory": [
       "Index",
-      "Description",
       "Source"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Description"
     ]
   },
   "PowerSupplyTray": {
@@ -229,7 +236,8 @@
       "PowerDeviceIndex"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -244,7 +252,8 @@
       "Index"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -265,7 +274,8 @@
       "RunningMode"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Name"
     ],
     "Metrics": []
   },
@@ -296,7 +306,6 @@
       "VendorId",
       "NumFanTrays",
       "Temp",
-      "Description",
       "UpTime",
       "PiecePartID",
       "ProductOrder",
@@ -304,7 +313,8 @@
       "MfgDate"
     ],
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Description"
     ],
     "Metrics": []
   },
@@ -320,7 +330,7 @@
       "BootSelectorImgVersion",
       "InPartitionBImgVers"
     ],
-    "Key": [ "_SNMPIndex" ],
+    "Key": [ "_SNMPIndex", "Name" ],
     "Metrics": [
       "CurrentBootImage"
     ]
@@ -335,7 +345,7 @@
       "StackUnitNumber",
       "FileName"
     ],
-    "Key": [ "_SNMPIndex" ],
+    "Key": [ "_SNMPIndex", "Name" ],
     "Metrics": []
   },
   "SysIf": {
@@ -346,254 +356,13 @@
     ],
     "Inventory": [
       "Type",
-      "Name",
       "XfpRecvPower",
       "XfpRecvTemp",
       "XfpTxPower"
     ],
-    "Key": [ "_SNMPIndex" ],
+    "Key": [ "_SNMPIndex", "Name" ],
     "Metrics": []
   },
-   "stack" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "chassis" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "module" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "port" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "cpu" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "backplane" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "powerSupply" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "fan" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "sensor" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
-   "other" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
-   },
    "Subsystem" : {
         "Key" : ["Key"],
         "MainHealth" : [ "PrimaryStatus" ],
@@ -602,29 +371,5 @@
    "EntityPortMap": {
        "Key" : [ "ifIndex" ],
        "Inventory" : [ "Class" ]
-   },
-   "container" : {
-		"Key" : [
-           "Name"
-         ],
-		"ConfigState" : [
-         ],
-    	"Health"      : [
-         ],
-    	"Inventory"   : [ 
-            "AssetTag",
-            "Class",
-            "ContainedIn",
-            "Description",
-            "FirmwareRev",
-            "HardwareRev",
-            "IsFRU",
-            "Manufacturer",
-            "Model",
-            "Name",
-            "ParentRelPos",
-            "MyPos",
-            "SerialNo"
-         ]
    }
 }

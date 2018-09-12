@@ -88,7 +88,7 @@ class sdkinfra:
         self.disc_modules = tempdict
         self.driver_enum = EnumWrapper("Driver", self.driver_names).enum_type
     
-    def find_driver(self, ipaddr, creds, protopref=None, pOptions=None):
+    def find_driver(self, ipaddr, creds, protopref=None, pOptions=None, msgFlag=False):
         """Find a device driver for the given IPAddress or host name
 
                 :param ipaddr: ipaddress or hostname of the device
@@ -98,20 +98,26 @@ class sdkinfra:
                 :type ipaddr: str
                 :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
                 :type protopref: enumeration of preferred protocol
-                :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+                :type pOptions: object <SNMPOptions or WSMANOptions or REDFISHOptions>
                 :return: a driver handle for further configuration/monitoring
                 :rtype: object <iBaseDriver>
 
         """
         duplicSet = set()
+        msg = ipaddr + " : Connection to Dell EMC device failed, please check device status and credentials."
+        drv = None
         for mod in self.disc_modules:
             if (self.disc_modules[mod] in duplicSet) or (str(mod) == "FileList"):
                 continue
             drv = self._create_driver(mod, ipaddr, creds, protopref, pOptions)
             if drv:
-                return drv
+                msg = ipaddr + " : Connected to Dell EMC device"
+                break
             duplicSet.add(self.disc_modules[mod])
-        return None
+
+        if msgFlag:
+            return drv, msg
+        return drv
 
     # Return:
     #    None - if driver not found, not classifed
@@ -128,7 +134,7 @@ class sdkinfra:
             :type driver_en: enumerate of the device type
             :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
             :type protopref: enumeration of preferred protocol
-            :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+            :type pOptions: object <SNMPOptions or WSMANOptions or REDFISHOptions>
             :return: a driver handle for further configuration/monitoring
             :rtype: object <iBaseDriver>
 
@@ -138,6 +144,7 @@ class sdkinfra:
         return self._create_driver(mod, ipaddr, creds, protopref, pOptions)
 
     def _create_driver(self, mod, host, creds, protopref, pOptions):
+        msg = "Connection to Dell EMC device failed, please check device status and credentials."
         logger.debug("get_driver(): Asking for " + mod)
         ipaddr = host
         try:
@@ -147,19 +154,23 @@ class sdkinfra:
             if ipaddress:
                 ipaddr = ipaddress
         except socket.gaierror as err:
-            print("cannot resolve hostname: ", host, err)
+            logger.error("{}: {}: {}".format(host, err, "cannot resolve hostname!"))
         if not mod in self.disc_modules:
             # TODO: Change this to exception
+            logger.error("{}: {}".format(host, msg))
             logger.debug(mod + " not found!")
             return None
         try:
             logger.debug(mod + " driver found!")
             drv = self.disc_modules[mod].is_entitytype(self, ipaddr, creds, protopref, mod, pOptions)
+            if drv is None:
+                logger.info("{}: {}".format(host, msg))
             if drv:
+                logger.info("{}: {}".format(host, msg.replace("failed", "success")))
                 hostname = None
                 try:
                     hostname, aliaslist, addresslist = socket.gethostbyaddr(ipaddr)
-                    logger.debug("Found host name for " + ipaddr + " as "+hostname)
+                    logger.debug("Found host name for " + ipaddr + " as " + hostname)
                 except socket.herror:
                     hostname = None
                     logger.debug("No host name found for " + ipaddr)
@@ -190,3 +201,19 @@ class sdkinfra:
         drv = self.disc_modules.get(driver_name, None)
         if drv:
             drv.protofactory.prefProtocol = protopref
+
+    def excludeDrivers(self, excList):
+        for drv in excList:
+            self.disc_modules.pop(drv)
+
+    def includeDriversOnly(self, incList):
+        drvkeys = self.disc_modules.keys()
+        for drv in drvkeys:
+            if drv not in incList:
+                self.disc_modules.pop(drv)
+
+    def removeProtoDriver(self, driver_name, protList):
+        drv = self.disc_modules.get(driver_name, None)
+        if drv:
+            for protoenum in protList:
+                drv.protofactory.removeProto(protoenum)

@@ -246,12 +246,15 @@ class RAIDHelper:
                     filter_query += ' and entry.MediaType == "' + kwargs['mediatype'] + '"'
                 if kwargs.get('busprotocol') is not None:
                     filter_query += ' and entry.BusProtocol == "' + kwargs['busprotocol'] + '"'
-                if kwargs.get('PDSlots') is not None:
+                if kwargs.get('PDSlots'):
                     slots_list = kwargs.get('PDSlots')
                     if isinstance(slots_list, str):
                         slots_list = eval(slots_list)
                     slots_list = list(map(str, slots_list))
                     filter_query += ' and entry.Slot._value in ' + str(slots_list)
+                if kwargs.get('FQDD'):
+                    id_list = kwargs.get('FQDD')
+                    filter_query += ' and entry.FQDD._value in ' + str(id_list)
 
                 disks = self.filter_disks(ndisks, filter_query)
         else:
@@ -383,7 +386,12 @@ class RAIDHelper:
             for vd_val in kwargs["multiple_vd"]:
                 span_depth = vd_val.get("SpanDepth") if vd_val.get("SpanDepth") is not None else 0
                 span_length = vd_val.get("SpanLength") if vd_val.get("SpanLength") is not None else 0
-                upd_slots = vd_val.get("PDSlots") if vd_val.get("PDSlots") else None
+                if vd_val.get("PDSlots"):
+                    upd_slots = vd_val.get("PDSlots")
+                elif vd_val.get("FQDD"):
+                    upd_slots = vd_val.get("FQDD")
+                else:
+                    upd_slots = None
                 pd_required = int(span_length) * int(span_depth)
                 if pd_required == 0:
                     pd_required = None
@@ -425,17 +433,24 @@ class RAIDHelper:
                     vd.RAIDaction = "Delete"
                     vd_select.append(vd)
                 except AttributeError:
-                    return {"Status": "Failed", "Message": "Unable to find the virtual disk."}
-            if apply_changes:
+                    logger.error("{}: {}".format(self.entity.ipaddr,
+                                                 "Unable to find the virtual disk!"))
+                    pass
+        if apply_changes:
+            msg = {"Status": "Failed",
+                   "Message": "Unable to find the virtual disk."}
+            if vd_select:
                 msg = self.entity.config_mgr.apply_changes(reboot=True)
                 if msg['Status'] == 'Success':
-                    controller.VirtualDisk._remove_selected(vd_select)
-                    sysconfig.commit()
-                return msg
-            else:
-                return self.entity.config_mgr.is_change_applicable()
-        return {'Status': 'Success',
-                'Message': 'Unable to find the virtual disk'}
+                    try:
+                        controller.VirtualDisk._remove_selected(vd_select)
+                        sysconfig.commit()
+                    except (ValueError, IndexError):
+                        logger.info("{}: {}".format(
+                            self.entity.ipaddr,
+                            "unable to find the virtual disk index!"))
+            return msg
+        return self.entity.config_mgr.is_change_applicable()
 
     def find_first_virtual_disk(self, **kwargs):
         vdselect = None

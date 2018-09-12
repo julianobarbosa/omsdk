@@ -13,7 +13,10 @@
        "PPID",
        "ExpressServiceCode",
        "Hostname",
-       "ManagementIP"
+       "ManagementIP",
+       "SwitchType",
+       "SwitchIPv6",
+       "SwitchIPv4"
     ],
     "Metrics": ["SwitchUptime"]
   },
@@ -32,24 +35,24 @@
   },
   "Fan": {
     "Key": [
-      "_SNMPIndex"
+      "_SNMPIndex",
+      "Description"
     ],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
       "Index",
-      "Description",
       "Speed"
     ]
   },
   "Port": {
     "Key": [
-      "ifIndex"
+      "ifIndex",
+      "Description"
     ],
     "Health": ["Status"],
     "Inventory": [
-      "Description",
       "Type",
       "Class",
       "Address",
@@ -68,13 +71,13 @@
   },
   "PowerSupply": {
     "Key": [
-      "Index"
+      "Index",
+      "Description"
     ],
     "Health": [
       "OperStatus"
     ],
     "Inventory": [
-      "Description",
       "Source"
     ]
   },

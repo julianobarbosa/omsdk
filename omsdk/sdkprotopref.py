@@ -63,6 +63,14 @@ class ProtoPreference:
                 self.protocols.append(protoenum)
                 self.include_flag.append(True)
 
+    def remIndex(self, ix, protoenum):
+        if protoenum in self.orig_protocols:
+            self.orig_protocols.remove(protoenum)
+        if protoenum in self.protocols:
+            self.protocols.remove(protoenum)
+        if ix < len(self.include_flag):
+            self.include_flag.pop(ix)
+
     def clone(self):
         s = ProtoPreference()
         for i in range(0, len(self.protocols)):

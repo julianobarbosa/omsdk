@@ -14,7 +14,6 @@
             "Model",
             "OSName",
             "OSVersion",
-            "RACType",
             "MachineName",
             "iDRACURL",
             "DeviceType",
@@ -377,7 +376,6 @@
             "Model",
             "SerialNumber",
             "Size",
-            "UsedSize",
             "MediaType",
             "Revision",
             "BlockSize",
@@ -404,7 +402,8 @@
         "OtherHealth" : [ "PredictiveFailureState" ],
         "Metrics" : [ 
             "RemainingRatedWriteEndurance",
-            "FreeSize"
+            "FreeSize",
+            "UsedSize"
         ],
         "HotSpareStatus" :{
             "0" : "No",
@@ -765,10 +764,10 @@
         "Key" : [ "FQDD"]
     },
     "Sensors_Battery": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "CurrentReading",
             "OtherSensorTypeDescription"
@@ -798,10 +797,10 @@
         }
     },
     "Sensors_Temperature": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "CurrentReading(Degree Celsius)",
             "OtherSensorTypeDescription"
@@ -837,10 +836,10 @@
         }
     },
     "Sensors_Fan": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "OtherSensorTypeDescription",
             "coolingUnitIndexReference",
@@ -880,10 +879,10 @@
         }
     },
     "Sensors_Intrusion": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "Type",
             "CurrentReading",
@@ -914,10 +913,10 @@
         }
     },
     "Sensors_Voltage": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "Reading(V)",
             "CurrentReading",
@@ -948,10 +947,10 @@
         }
     },
     "Sensors_Amperage": {
-        "Key" : [ "DeviceID" ],
+        "Key" : [ "Location" ],
         "Multiple" : "True",
         "Inventory" : [
-            "Location",
+            "DeviceID",
             "SensorType",
             "OtherSensorTypeDescription"
         ],
@@ -1103,9 +1102,7 @@
     "PresenceAndStatusSensor" : {
         "Key" : [ "DeviceID" ],
         "Inventory" : ["ElementName"],
-        "ConfigState" : [],
-        "MainHealth" : [],
-        "Metrics" : []
+        "MainHealth" : ["PrimaryStatus"]
     },
     "ChassisRF": {
         "Key" : [ "Id"]
