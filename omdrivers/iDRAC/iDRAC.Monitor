@@ -843,8 +843,8 @@
             "SensorType",
             "OtherSensorTypeDescription",
             "coolingUnitIndexReference",
-            "Type",
             "SubType",
+            "Type",
             "FQDD",
             "Name"
         ],

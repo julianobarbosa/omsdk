@@ -456,13 +456,13 @@ CMCWsManViews_FieldSpec = {
         'SlicedVDCapability' : {
             'Lookup': 'True',
             'Values' : {
-                    "0" : "Not Supported", "1" : "Supported"
+                    "0" : "Sliced Virtual Disk creation not supported", "1" : "Sliced Virtual Disk creation supported"
             }
         },
         'CachecadeCapability' : {
             'Lookup': 'True',
             'Values' : {
-                    "0" : "Not Supported", "1" : "Supported"
+                    "0" : "Cachecade Virtual Disk not supported", "1" : "Cachecade Virtual Disk supported"
             }
         },
         'EncryptionMode' : {
@@ -485,7 +485,7 @@ CMCWsManViews_FieldSpec = {
                     "3" : "Short", "4" : "Long"
             }
         },
-        "CacheSizeInMB": {'Type': 'Bytes', 'InUnits': 'MB', 'OutUnits': 'GB'},
+        "CacheSizeInMB": {'Type': 'Bytes', 'InUnits': 'MB', 'OutUnits': 'MB'},
     },
     CMCCompEnum.Enclosure : {
         "PrimaryStatus": {

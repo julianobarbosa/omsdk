@@ -1418,6 +1418,20 @@ iDRACWsManViews_FieldSpec = {
                 "3": "Disabled"
             }
         }
+    },
+    iDRACCompEnum.ControllerBattery: {
+        "RAIDState": {
+            'Lookup': 'True',
+            'Values': {
+                "0" : "Unknown",
+                "1" : "Ready",
+                "6" : "Failed",
+                "7" : "Degraded",
+                "9" : "Missing",
+                "10" : "Charging",
+                "12" : "Below Threshold"
+            }
+        }
     }
 }
 
@@ -1698,7 +1712,7 @@ if PySnmpPresent:
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.5"), 
             'coolingUnitIndexReference' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.15"), 
             'CurrentReading' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.6"), 
-            'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.7"), 
+            'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.7"),
             'State' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.4"),
             'Location' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.8"), 
             'SubType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.16"), 
@@ -1791,7 +1805,11 @@ if PySnmpPresent:
             'SASAddress' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.77"), 
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.1"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.78"), 
-            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.79"), 
+            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.79"),
+            'T10PICapability': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.80"),
+            'SupportRAID10UnevenSpans': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.81"),
+            'SupportEnhancedAutoForeignImport': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.82"),
+            'SupportControllerBootMode': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.83"),
         },
         iDRACCompEnum.VirtualDisk : {
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.1"), 
@@ -1911,6 +1929,7 @@ if PySnmpPresent:
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.5'),
             "CurrentReading(Degree Celsius)"      : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.6'),
             "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.8'),
+            "SensorType": ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.7.1'),
         },
     }
     iDRACSNMPViews_FieldSpec = {
@@ -1960,6 +1979,51 @@ if PySnmpPresent:
                     "4": "Warning",
                     "5": "Critical",
                     "6": "Critical"
+                }
+            },
+            "T10PICapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other", "2": "Capable", "3": "Not Capable"
+                }
+            },
+            "EncryptionCapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "None",
+                    "3": "LKM"
+                }
+            },
+            "SecurityStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "None",
+                    "3": "LKM"
+                }
+            },
+            "SupportEnhancedAutoForeignImport": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "Not Supported",
+                    "3": "Disabled",
+                    "4": "Enabled"
+                }
+            },
+            "SupportControllerBootMode": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Not Supported",
+                    "1": "Supported"
+                }
+            },
+            "SupportRAID10UnevenSpans": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Uneven span for RAID10 not supported",
+                    "1": "Uneven span for RAID10 supported"
                 }
             }
         },
@@ -2736,6 +2800,15 @@ if PySnmpPresent:
                     "4" : "Not Ready",
                     "6" : "Enabled Not Ready"
                 }
+            },
+            "SensorType": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "Unknown",
+                    "3": "Ambient ESM",
+                    "16": "Discrete"
+                }
             }
         },
         iDRACCompEnum.Sensors_Voltage : {
@@ -2769,6 +2842,19 @@ if PySnmpPresent:
                     "2" : "Enabled",
                     "4" : "Not Ready",
                     "6" : "Enabled Not Ready"
+                }
+            }
+        },
+        iDRACCompEnum.ControllerBattery: {
+            "PrimaryStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "Unknown",
+                    "3": "Healthy",
+                    "4": "Warning",
+                    "5": "Critical",
+                    "6": "Critical"
                 }
             }
         }
@@ -3259,6 +3345,16 @@ class iDRACEntity(iDeviceDriver):
                 entry['DeviceID'] = entry.get('Key')#Redfish Case for SCOM to Adapt
             # or change in Monitor file Sensor/NumericSensor/PSNumericSensor to ElementName
             entry['Key'] = entry.get('Location', entry.get('Key', component))
+            if (entry.get('SensorType', "Not Available")):
+                entry["SensorType"] = component.split('_')[-1]
+        if component == 'Sensors_Temperature' :
+            tempReading = entry.get('CurrentReading(Degree Celsius)', '0')
+            if self.cfactory.work_protocols[0].name == "SNMP" and tempReading != None:
+                try:
+                    entry['CurrentReading(Degree Celsius)'] = float(tempReading) / 10
+                except ValueError:
+                    logger.info(
+                        self.ipaddr + " Warning: Converting CurrentReading(Degree Celsius) not a number " + tempReading)
         return True
 
     def _should_i_modify_component(self, finalretjson, component):

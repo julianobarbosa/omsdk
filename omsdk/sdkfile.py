@@ -708,7 +708,7 @@ class LocalFile(Share):
         }
 
     def _get_local_path_object(self, stype_enum, local_path, isFolder):
-        if local_path.endswith('/') or local_path.endswith('\\'):
+        if local_path.endswith('/') or local_path.endswith('\\') or os.path.isdir(local_path):
             isFolder = True
         if platform.system() == "Windows":
             share_type = Share.LocalFolderType.Windows

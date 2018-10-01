@@ -124,9 +124,14 @@ class RAIDHelper:
         self.storage.Controller.remove(PrimaryStatus='0')
         for controller in self.storage.Controller:
             controller.Enclosure.remove(PrimaryStatus='0')
+            fqdd = str(controller.FQDD)
+            filter_query_to_remove_used_disks = 'entry.RaidStatus != "Ready" and entry.FreeSize._value == 0'
+            filter_query_to_remove_invalid_fqdd = '"' + fqdd + '" not in entry.FQDD._value'
             for encl in controller.Enclosure:
-                encl.PhysicalDisk.remove_matching("entry.RaidStatus != 'Ready' and entry.FreeSize._value == 0")
-            controller.PhysicalDisk.remove_matching("entry.RaidStatus != 'Ready' and entry.FreeSize._value == 0")
+                encl.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
+                encl.PhysicalDisk.remove_matching(filter_query_to_remove_invalid_fqdd)
+            controller.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
+            controller.PhysicalDisk.remove_matching(filter_query_to_remove_invalid_fqdd)
         return self.storage
 
     def compute_disk_count(self, span_depth, span_length, n_dhs):
@@ -166,9 +171,10 @@ class RAIDHelper:
                 return s_disks[0:n_disks]
             for enclosure in controller.Enclosure:
                 s_disks = enclosure.PhysicalDisk.find_matching(criteria)
-                if dhspare:
-                    return s_disks
-                return s_disks[0:n_disks]
+                if len(s_disks) >= n_disks:
+                    if dhspare:
+                        return s_disks
+                    return s_disks[0:n_disks]
         return s_disks
 
     @staticmethod
@@ -418,6 +424,8 @@ class RAIDHelper:
     def delete_virtual_disk(self, **kwargs):
         sysconfig = self.entity.config_mgr._sysconfig
         apply_changes = True
+        msg = {"Status": "Failed",
+               "Message": "Unable to find the virtual disk."}
         if 'apply_changes' in kwargs:
             apply_changes = kwargs['apply_changes']
             del kwargs['apply_changes']
@@ -430,15 +438,14 @@ class RAIDHelper:
             for vd_name in kwargs.get("vd_names"):
                 vd = controller.VirtualDisk.find_first(Name=vd_name)
                 try:
-                    vd.RAIDaction = "Delete"
-                    vd_select.append(vd)
+                    if vd:
+                        vd.RAIDaction = "Delete"
+                        vd_select.append(vd)
                 except AttributeError:
                     logger.error("{}: {}".format(self.entity.ipaddr,
                                                  "Unable to find the virtual disk!"))
                     pass
         if apply_changes:
-            msg = {"Status": "Failed",
-                   "Message": "Unable to find the virtual disk."}
             if vd_select:
                 msg = self.entity.config_mgr.apply_changes(reboot=True)
                 if msg['Status'] == 'Success':
@@ -450,7 +457,10 @@ class RAIDHelper:
                             self.entity.ipaddr,
                             "unable to find the virtual disk index!"))
             return msg
-        return self.entity.config_mgr.is_change_applicable()
+        else:
+            if vd_select:
+                return self.entity.config_mgr.is_change_applicable()
+            return msg
 
     def find_first_virtual_disk(self, **kwargs):
         vdselect = None

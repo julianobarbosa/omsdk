@@ -166,7 +166,7 @@ class sdkinfra:
             if drv is None:
                 logger.info("{}: {}".format(host, msg))
             if drv:
-                logger.info("{}: {}".format(host, msg.replace("failed", "success")))
+                logger.info("{}: {}".format(host, "Connection to Dell EMC device success!"))
                 hostname = None
                 try:
                     hostname, aliaslist, addresslist = socket.gethostbyaddr(ipaddr)

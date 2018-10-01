@@ -105,8 +105,7 @@ setup(
                 'Printer/*.Monitor',
                 'Compellent/*.Monitor',
                 'EqualLogic/*.Monitor',
-                'MDArray/*.Monitor',
-                'NGM/*.Monitor'
+                'MDArray/*.Monitor'
         ],
     },
 
