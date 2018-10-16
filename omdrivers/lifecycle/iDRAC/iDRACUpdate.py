@@ -275,6 +275,38 @@ class iDRACUpdate(Update):
             rjson = self._job_mgr._job_wait(rjson['file'], rjson)
         return rjson
 
+    def update_from_repo_url(self, ipaddress, share_type, share_name,
+                             share_user, share_pwd, catalog_file,
+                             apply_update=True, reboot_needed=False,
+                             ignore_cert_warning=True, job_wait=True):
+
+        appUpdateLookup = {True: 1, False: 0}
+        rebootLookup = {True: "TRUE", False: "FALSE"}
+        ignoreCertWarnLookup = {True: 2, False: 1}
+        shareTypeLookup = {"ftp": 1, "http": 3, "https": 6}
+
+        appUpdate = appUpdateLookup[apply_update]
+        rebootNeeded = rebootLookup[reboot_needed]
+        ignoreCertWarn = ignoreCertWarnLookup[ignore_cert_warning]
+
+        rjson = self.entity._update_repo_url(
+                    ipaddress=ipaddress,
+                    share_type=shareTypeLookup[share_type],
+                    share_name=share_name,
+                    # username=share_user, password=share_pwd,
+                    catalog_file=catalog_file, apply_update=appUpdate,
+                    reboot_needed=rebootNeeded,
+                    ignore_cert_warning=ignoreCertWarn)
+
+        # re-create url from share_type, share_name and catalog file
+        rjson['file'] = share_type + "://" + ipaddress + share_name + "/" + catalog_file
+
+        if job_wait:
+            rjson = self._job_mgr._job_wait(rjson['file'], rjson)
+
+        return rjson
+
+
     ##below methods to update firmware using redfish will be reimplemented using Type Manager system
     def _get_scp_path(self, catalog_dir):
         """
