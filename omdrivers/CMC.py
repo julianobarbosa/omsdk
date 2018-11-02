@@ -255,11 +255,70 @@ CMCWsManViews_FieldSpec = {
     },
     CMCCompEnum.KVM : {
         "HealthState":  {
+            'Rename': 'PrimaryStatus',
             'Lookup': 'True',
             'Values': {
                 "0" : "Unknown", "5" : "Healthy",
                 "10" : "Warning", "15" : "Warning",
                 "20": "Critical", "25" : "Critical", "30" : "Critical"
+            }
+        },
+        "RequestedState": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Enabled",
+                "3": "Disabled",
+                "4": "Shut Down",
+                "5": "No Change",
+                "6": "Offline",
+                "7": "Test",
+                "8" : "Deferred",
+                "9": "Quiesce",
+                "10": "Reboot",
+                "11": "Reset",
+                "12": "Not Applicable "
+            }
+        },
+        "EnabledState": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Other",
+                "2": "Enabled",
+                "3": "Disabled",
+                "4": "Shutting Down",
+                "5": "Not Applicable",
+                "6": "Enabled but Offline",
+                "7": "In Test",
+                "8": "Deferred",
+                "9": "Quiesce",
+                "10": "Starting"
+            }
+        },
+        "OperationalStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Other",
+                "2": "OK",
+                "3": "Degraded",
+                "4": "Stressed",
+                "5": "Predictive Failure",
+                "6": "Error",
+                "7": "Non-Recoverable Error",
+                "8": "Starting",
+                "9": "Stopping",
+                "10": "Stopped",
+                "11": "In Service",
+                "12": "No Contact",
+                "13": "Lost Communication",
+                "14": "Aborted",
+                "15": "Dormant",
+                "16": "Supporting Entity in Error",
+                "17": "Completed",
+                "18": "Power Mode",
+                "19": "Relocating"
             }
         }
     },
@@ -545,6 +604,14 @@ CMCWsManViews_FieldSpec = {
             'Values': {
                 "0" : "Unknown", "1" : "Healthy", "2" : "Warning", "3" : "Critical"
             }
+        },
+        "PowerState": {
+            'Lookup': 'True',
+            'Values': {
+                "1": "Other",
+                "2": "Power On",
+                "6": "Power Off - Hard"
+            }
         }
     }
 }
@@ -686,6 +753,10 @@ class CMCEntity(iDeviceDriver):
                 rackslot = default
             entry["Location"] = "AISLE:{}, RACK:{}, Slot on Rack:{}".format(
                 aisle, rack, rackslot )
+        compsList = ["PowerSupply", "Fan", "KVM"]
+        if component in compsList :
+            if "PrimaryStatus" in entry:
+                entry["HealthState"] = entry.get("PrimaryStatus", "Not Available")
         return True
 
     def _should_i_modify_component(self, finalretjson, component):

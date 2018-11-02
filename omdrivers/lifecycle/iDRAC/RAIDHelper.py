@@ -104,8 +104,9 @@ class RAIDHelper:
         self._init_storage()
 
 
-    def _init_storage(self):
-        if self.storage.inited:
+    def _init_storage(self, reset_config=RAIDresetConfigTypes.T_False):
+        reset_config = reset_config.value
+        if self.storage.inited and reset_config == 'False':
             return self.storage
 
         self.entity.get_partial_entityjson(
@@ -121,24 +122,27 @@ class RAIDHelper:
         if self.storage.ControllerCount <= 0:
             logger.debug("No Controllers!")
             return self.storage
+        # filtering should not be called in case of reset config True
         self.storage.Controller.remove(PrimaryStatus='0')
         for controller in self.storage.Controller:
             controller.Enclosure.remove(PrimaryStatus='0')
             fqdd = str(controller.FQDD)
-            filter_query_to_remove_used_disks = 'entry.RaidStatus != "Ready" and entry.FreeSize._value == 0'
+            filter_query_to_remove_used_disks = '(entry.RaidStatus != "Ready" or entry.RaidStatus != "Non-RAID") and entry.FreeSize._value == 0'
             filter_query_to_remove_invalid_fqdd = '"' + fqdd + '" not in entry.FQDD._value'
             for encl in controller.Enclosure:
-                encl.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
+                if reset_config == 'False':
+                    encl.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
                 encl.PhysicalDisk.remove_matching(filter_query_to_remove_invalid_fqdd)
-            controller.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
+            if reset_config == 'False':
+                controller.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
             controller.PhysicalDisk.remove_matching(filter_query_to_remove_invalid_fqdd)
         return self.storage
 
     def compute_disk_count(self, span_depth, span_length, n_dhs):
         return span_length * span_depth + n_dhs
 
-    def get_disks(self, n_disks):
-        self._init_storage()
+    def get_disks(self, n_disks, restconfig=RAIDresetConfigTypes.T_False):
+        self._init_storage(reset_config=restconfig)
         s_disks = []
         if self.storage.ControllerCount <= 0:
             print("No Healthy Controllers found!")
@@ -156,8 +160,8 @@ class RAIDHelper:
                 return s_disks[0:n_disks]
         return s_disks
 
-    def filter_disks(self, n_disks, criteria, dhspare=False):
-        self._init_storage()
+    def filter_disks(self, n_disks, criteria, dhspare=False, restconfig=RAIDresetConfigTypes.T_False):
+        self._init_storage(reset_config=restconfig)
         s_disks = []
         if self.storage.ControllerCount <= 0:
             print("No Healthy Controllers found!")
@@ -239,8 +243,11 @@ class RAIDHelper:
 
         ndisks = self.compute_disk_count(kwargs['SpanLength'], kwargs['SpanDepth'],
                                          kwargs['NumberDedicatedHotSpare'])
+        ndks = self.compute_disk_count(kwargs['SpanLength'], kwargs['SpanDepth'], 0)
+        if "RAIDresetConfig" not in kwargs:
+            kwargs['RAIDresetConfig'] = RAIDresetConfigTypes.T_False
         if 'PhysicalDiskFilter' in kwargs:
-            disks = self.filter_disks(ndisks, kwargs['PhysicalDiskFilter'])
+            disks = self.filter_disks(ndks, kwargs['PhysicalDiskFilter'], restconfig=kwargs['RAIDresetConfig'])
 
             # Time being fix for -JIT-107987 - Ansible(1.0.3) - [RAID Configuration] VD creation is failing
             # on external storage (MD Array) configured to server
@@ -261,10 +268,10 @@ class RAIDHelper:
                 if kwargs.get('FQDD'):
                     id_list = kwargs.get('FQDD')
                     filter_query += ' and entry.FQDD._value in ' + str(id_list)
-
-                disks = self.filter_disks(ndisks, filter_query)
+                disks = self.filter_disks(ndks, filter_query, restconfig=kwargs['RAIDresetConfig'])
         else:
-            disks = self.get_disks(ndisks)
+            disks = self.get_disks(ndks, restconfig=kwargs['RAIDresetConfig'])
+
         if len(disks) <= 0:
             logger.debug(self.entity.ipaddr + " : No sufficient disks found in Controller!")
             con_msg = 'Number of sufficient disks not found in Controller!'
@@ -350,7 +357,7 @@ class RAIDHelper:
                 else:
                     sp_query = kwargs['PhysicalDiskFilter']
                 pd_query = filter(None, re.compile(r"^(\(.*)\sand (?:disk|entry).Slot._value.*$").split(sp_query))[0]
-                av_disks = self.filter_disks(1, pd_query, dhspare=True)
+                av_disks = self.filter_disks(n_dhs, pd_query, dhspare=True, restconfig=kwargs['RAIDresetConfig'])
                 dhs_msg = "physical disks are not available for dedicated hot spare!"
                 if len(av_disks) < 0:
                     return {"Status": "Failed", "Message": dhs_msg}

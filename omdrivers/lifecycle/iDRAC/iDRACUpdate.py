@@ -257,6 +257,9 @@ class iDRACUpdate(Update):
         catalog_file = cache_share.remote_file_name
 
         if self.entity.use_redfish:
+            if isinstance(catalog_path, FileOnShare) and catalog_path.mount_point is None:
+                logger.error("Share path or mount point does not exist")
+                raise ValueError("Share path or mount point does not exist")
             return self.update_from_repo_usingscp_redfish(catalog_dir, catalog_file,
                                                           mount_point=catalog_path.mount_point.full_path,
                                                           reboot_needed=reboot_needed, job_wait=job_wait)

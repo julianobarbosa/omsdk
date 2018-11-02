@@ -45,7 +45,7 @@
             "EnabledState",
             "RequestedState"
         ],
-        "MainHealth"      : [ "PrimaryStatus" ],
+        "MainHealth"      : [ "PrimaryStatus", "HealthState" ],
         "OtherHealth"     : [ "OperationalStatus" ],
         "BasicInventory"   : [ 
             "SlotNumber"
@@ -120,7 +120,7 @@
             "RequestedState",
             "TransitioningToState"
         ],
-        "MainHealth"  : [ "PrimaryStatus" ],
+        "MainHealth"  : [ "PrimaryStatus", "HealthState" ],
         "BasicInventory"   : [
             "ClassId",
             "SystemName", 
@@ -168,7 +168,7 @@
             "EnabledState",
             "RequestedState"
         ],
-        "MainHealth"  : [ "HealthState" ],
+        "MainHealth"  : [ "PrimaryStatus", "HealthState" ],
         "Inventory"   : [ 
             "ElementName",
             "Name",

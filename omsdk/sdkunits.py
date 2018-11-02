@@ -137,14 +137,13 @@ class iUnitsFactory(object):
             return str(final_value) + " " + final_spec
 
     def append_sensors_unit(self, reading, unitmodifier, unitstr):
-        if reading == 0:
-             return str(reading) + " " + unitstr
-        elif reading:
-            retval = float(reading) * math.pow(10, int(unitmodifier))
-            s = str(retval).rstrip('0').rstrip('.')
-            if unitstr:
-                s = s + " " + unitstr
-            return s
-
+        if reading :
+            if str(reading).isdigit() :
+                retval = float(reading) * math.pow(10, int(unitmodifier))
+                s = str(retval).rstrip('0').rstrip('.')
+                if unitstr:
+                    s = s + " " + unitstr
+                return s
+        return "Not Available"
 
 UnitsFactory = iUnitsFactory()

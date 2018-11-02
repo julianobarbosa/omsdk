@@ -499,7 +499,7 @@ if PyPSNMP:
             }
         },
         F10CompEnum.Processor : {
-            "AvailableMemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'KB', 'OutUnits' : 'GB' },
+            "AvailableMemSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'OutUnits' : 'GB' },
             "Module" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -593,24 +593,24 @@ class F10Entity(iDeviceDriver):
             if entry.get("Name", "NA") == component+"_Name_null":
                 entry['Name'] = component
         if component in ["Fan", "FanTray", "PowerSupplyTray", "PowerSupply"]:
-            if entry["OperStatus"] == 'Absent':
+            if entry.get("OperStatus") == 'Absent':
                 return False
         if component in ["Port"]:
             if entry.get("Status") == 'Testing':
                 return False
             if 'ifIndex' in entry:
-                if entry["ifIndex"] == component + '_ifIndex_null':
+                if entry.get("ifIndex") == component + '_ifIndex_null':
                     return False
             # This is implimented to ignore virtual port instances
             if not 'SysIfName' in entry:
                     return False
         if component in ["System"]:
-            if entry["Hostname"].startswith("\""):
-                entry["Hostname"] = entry["Hostname"].replace('"', '')
+            name = entry.get("Hostname", "Not Available")
+            entry["Hostname"] = name.strip('\"\'')
             if 'SwitchUptime' in entry:
-                x = entry["SwitchUptime"].split()
+                x = entry.get("SwitchUptime", "Seconds").split()
                 if "Seconds" not in x :
-                    s = float(entry["SwitchUptime"]) / 100.0
+                    s = float(entry.get("SwitchUptime", 0)) / 100.0
                     m, s = divmod(s, 60)
                     h, m = divmod(m, 60)
                     l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
@@ -626,9 +626,9 @@ class F10Entity(iDeviceDriver):
 
         if component in ["Processor"]:
             if 'UpTime' in entry:
-                x = entry["UpTime"].split()
+                x = entry.get("UpTime", "Seconds").split()
                 if "Seconds" not in x :
-                    s = float(entry["UpTime"]) / 100.0
+                    s = float(entry.get("UpTime", 0)) / 100.0
                     m, s = divmod(s, 60)
                     h, m = divmod(m, 60)
                     l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
@@ -637,24 +637,24 @@ class F10Entity(iDeviceDriver):
                                         if value)
         if component in ["EntityPortMap"]:
             if 'ifIndex' in entry:
-                if entry["ifIndex"] == component + '_ifIndex_null':
+                if entry.get("ifIndex") == component + '_ifIndex_null':
                         return False
-                temp = entry["ifIndex"].split(".")[-1]
+                temp = entry.get("ifIndex", "NA").split(".")[-1]
                 entry["ifIndex"] =  temp
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
         if component == 'Port':
             if "Port" and "EntityPortMap" in finalretjson:
-                 Portlist = finalretjson['Port']
-                 entportlist = finalretjson['EntityPortMap']
+                 Portlist = finalretjson.get('Port')
+                 entportlist = finalretjson.get('EntityPortMap')
                  tempEntPortDict = {}
                  for ep in entportlist:
                      if "ifIndex" in ep:
                         tempEntPortDict[ep['ifIndex']] = ep
                  for dnp in Portlist:
                      if "ifIndex" in dnp:
-                         dnp['Class'] = tempEntPortDict.get(dnp['ifIndex'],{}).get('Class', 'Not Available')
+                         dnp['Class'] = tempEntPortDict.get(dnp.get('ifIndex', "NA"),{}).get('Class', 'Not Available')
         if component == 'EntityPortMap':
             del finalretjson[component]
 
@@ -666,15 +666,15 @@ class F10Entity(iDeviceDriver):
         """
         device_json = self.get_json_device()
         ctree = self._build_ctree(self.protofactory.ctree, device_json)
-        mf10model = self.entityjson.get('System',[None])[0]["Model"]
+        mf10model = self.entityjson.get('System',[None])[0].get('Model', "")
         if 'm-MXL' in mf10model or 'm-IOA' in mf10model:
             return ctree
         fn = {"Fan":[]}
         ps = {"PowerSupply":[]}
-        if not "Fan" in ctree["System"]:
+        if not "Fan" in ctree.get("System"):
             ctree["System"].update(fn)
-        if not "PowerSupply" in ctree["System"]:
-            ctree["System"].update(ps)
+        if not "PowerSupply" in ctree.get("System"):
+            ctree.get("System", "NA").update(ps)
         return ctree
 
     def get_basic_entityjson(self):
@@ -700,7 +700,7 @@ class F10Entity(iDeviceDriver):
                             finalStat = iStat
                     tmp.update({"Key": comp})
                     tmp.update({"PrimaryStatus": finalStat})
-                    entj["Subsystem"].append(tmp)
+                    entj.get("Subsystem", []).append(tmp)
 
     def get_entityjson(self):
         plist = []
@@ -725,4 +725,4 @@ class F10Entity(iDeviceDriver):
                             finalStat = iStat
                     tmp.update({"Key": comp})
                     tmp.update({"PrimaryStatus": finalStat})
-                    entj["Subsystem"].append(tmp)
+                    entj.get("Subsystem", "NA").append(tmp)

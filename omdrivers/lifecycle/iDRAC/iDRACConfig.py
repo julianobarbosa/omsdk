@@ -2578,7 +2578,8 @@ class iDRACConfig(iBaseConfigApi):
                         'Message': 'Configuration Liason Share not registered.'}
 
             tempshare = self.liason_share.mkstemp(prefix='scp', suffix='.xml')
-            filename = tempshare.local_full_path
+            if tempshare:
+                filename = tempshare.local_full_path
 
             with open(filename, "w") as f:
                 f.write(content)
@@ -2614,7 +2615,8 @@ class iDRACConfig(iBaseConfigApi):
                         'Message': 'Configuration Liason Share not registered.'}
 
             tempshare = self.liason_share.mkstemp(prefix='scp', suffix='.xml')
-            filename = tempshare.local_full_path
+            if tempshare:
+                filename = tempshare.local_full_path
 
             msg = self.scp_export(tempshare)
             logger.debug(msg)
@@ -4429,7 +4431,11 @@ class iDRACConfig(iBaseConfigApi):
                 export_format=ExportFormatEnum.JSON, export_use=ExportUseEnum.Clone,
                 include_in_export=IncludeInExportEnum.Default)
         """
-        share = share_path.format(ip=self.entity.ipaddr)
+        if share_path:
+            share = share_path.format(ip=self.entity.ipaddr)
+        else:
+            logger.error("Share path or mount point does not exist")
+            raise ValueError("Share path or mount point does not exist")
 
         target = ",".join(
             str(TypeHelper.resolve(component)) if TypeHelper.belongs_to(SCPTargetEnum, component) else str(component)
@@ -4437,10 +4443,15 @@ class iDRACConfig(iBaseConfigApi):
             else (TypeHelper.resolve(target) if TypeHelper.belongs_to(SCPTargetEnum, target) else target)
         logger.info(self.entity.ipaddr+" : Triggering scp export")
         if self.entity.use_redfish and isinstance(share, LocalFile):
-            return self.scp_export_to_local_share_redfish(share.local_full_path, target=target,
+            rjson = self.scp_export_to_local_share_redfish(share.local_full_path, target=target,
                                                           export_format=export_format,
                                                           export_use=export_use,
                                                           include_in_export=include_in_export)
+            if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
+                logger.info(self.entity.ipaddr + " : Tracking scp export job")
+                rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
+            rjson['file'] = str(share)
+            return rjson
 
         if self.entity.use_redfish:
             rjson = self.entity._scp_export_redfish(share=share, creds=share_path.creds,
@@ -4449,10 +4460,10 @@ class iDRACConfig(iBaseConfigApi):
                                                     export_use=ExportUseRedfishEnum[export_use.value],
                                                     include_in_export=IncludeInExportRedfishEnum[
                                                         include_in_export.value])
-            rjson['file'] = str(share)
             if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
                 logger.info(self.entity.ipaddr + " : Tracking scp export job")
                 rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
+            rjson['file'] = str(share)
             return rjson
 
         if isinstance(share, LocalFile):
@@ -4991,7 +5002,7 @@ class iDRACConfig(iBaseConfigApi):
             logger.error(self.entity.ipaddr+" : Failed to write exported content to local file")
             return {'Status': 'Failed', 'Message': 'Unable to write exported content to local file'}
 
-        return {'Status': 'Success', 'Message': 'Exported content written to local file'}
+        return rjson
 
     def _get_xml_string_fromlocalscp(self, file_path):
         try:

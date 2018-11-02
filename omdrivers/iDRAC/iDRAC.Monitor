@@ -212,13 +212,7 @@
             "State"
         ],
         "MainHealth" : [ "PrimaryStatus" ],
-        "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        }
+        "Metrics" : [ ]
     },
     "EnclosureSensor": {
         "Key" : [ "FQDD"]
@@ -454,7 +448,8 @@
             "PowerSupplySensorState",
             "DetailedState",
             "Type",
-            "Name"
+            "Name",
+            "Range1MaxInputPower"
         ],
         "ConfigState" : [ 
             "RAIDState"
@@ -462,7 +457,7 @@
         "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : ["Redundancy" ],
         "Metrics" : [ 
-            "InputVoltage", "TotalOutputPower", "Range1MaxInputPower"
+            "InputVoltage", "TotalOutputPower"
         ],
         "Type" :{
             "0" : "AC",
@@ -802,8 +797,8 @@
         "Inventory" : [
             "DeviceID",
             "SensorType",
-            "CurrentReading(Degree Celsius)",
-            "OtherSensorTypeDescription"
+            "OtherSensorTypeDescription",
+            "Type"
         ],
         "ConfigState" : [ 
             "State",
@@ -819,7 +814,7 @@
         "MainHealth" : [
             "PrimaryStatus"
         ],
-        "Metrics" : ["CurrentReading"],
+        "Metrics" : ["CurrentReading", "CurrentReading(Degree Celsius)"],
         "PrimaryStatus" : {
             "0" : "Unknown",
             "1" : "Healthy",
@@ -843,8 +838,8 @@
             "SensorType",
             "OtherSensorTypeDescription",
             "coolingUnitIndexReference",
-            "SubType",
             "Type",
+            "SubType",
             "FQDD",
             "Name"
         ],
@@ -952,6 +947,7 @@
         "Inventory" : [
             "DeviceID",
             "SensorType",
+            "ProbeType",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 

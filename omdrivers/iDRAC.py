@@ -773,7 +773,13 @@ iDRACWsManViews_FieldSpec = {
             'Values': {
                 "0":"Unknown", "1": "1.5 Gbps", "2": "3 Gbps", "3": "6 Gbps","4": "12 Gbps"
             }
-        }
+        },
+        "T10PICapability": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "T10 PI not supported", "1": "T10 PI supported"
+            }
+        },
     },
     iDRACCompEnum.PCIeSSDDisk : {
         "SizeInBytes" : { 'Rename' : 'Size', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
@@ -1149,8 +1155,8 @@ iDRACWsManViews_FieldSpec = {
         }
     },
     iDRACCompEnum.PowerSupply : {
-        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'Watts'},
-        "Range1MaxInputPower" : {'UnitScale': '0', 'UnitAppend' : 'Watts'},
+        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'W'},
+        "Range1MaxInputPower" : {'UnitScale': '0', 'UnitAppend' : 'W'},
         "PrimaryStatus" : {
             'Lookup'  :  'True',
             'Values' : {
@@ -1430,6 +1436,17 @@ iDRACWsManViews_FieldSpec = {
                 "9" : "Missing",
                 "10" : "Charging",
                 "12" : "Below Threshold"
+            }
+        }
+    },
+    iDRACCompEnum.Enclosure: {
+        "PrimaryStatus": {
+            'Lookup' : 'True',
+            'Values' : {
+                "0" : "Warning",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
             }
         }
     }
@@ -1840,14 +1857,14 @@ if PySnmpPresent:
             'Size' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.11"), 
             'UsedSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.17"),
             'FreeSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.19"),
-            'BusType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.21"), 
-            'SpareState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.22"), 
+            'BusProtocol' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.21"),
+            'HotSpareStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.22"),
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.24"), 
             'PPID' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.27"), 
             'SASAddress' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.28"), 
-            'NegotiatedSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.29"), 
+            'RAIDNegotiatedSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.29"),
             'PredictiveFailureState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.31"),
-            'CapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"), 
+            'MaxCapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"),
             'MediaType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.35"), 
             'PowerState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.42"), 
             'DriveFormFactor' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.53"), 
@@ -1856,9 +1873,11 @@ if PySnmpPresent:
             'ManufacturingWeek' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.33"), 
             'ManufacturingYear' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.34"), 
             'OperationalState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.50"), 
-            'SecurityStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.52"), 
+            'SecurityState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.52"),
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.54"), 
-            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.55"), 
+            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.55"),
+            'T10PICapability': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.57"),
+            'BlockSize': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.58"),
         },
         "FRU" : {
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.2000.10.1.12"), 
@@ -1901,6 +1920,7 @@ if PySnmpPresent:
             "PrimaryStatus" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.5'),
             "State" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.4'),
             "ProbeReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.6'),
+            "ProbeType" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.7'),
             "CurrentReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.16'),
         },
         iDRACCompEnum.Sensors_Battery : {
@@ -1939,10 +1959,10 @@ if PySnmpPresent:
             "memoryDeviceStateSettings" : {
                 'Lookup' :  'True',
                 'Values' : {
-                    "1"  : "unknown",
-                    "2"  : "enabled",
-                    "4"  : "notReady",
-                    "6"  : "enabledAndNotReady"
+                    "1"  : "Unknown",
+                    "2"  : "Enabled",
+                    "4"  : "Not Ready",
+                    "6"  : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -2027,14 +2047,39 @@ if PySnmpPresent:
                 }
             }
         },
+
+        iDRACCompEnum.Enclosure: {
+            "State": {
+                'Lookup' : 'True',
+                'Values' : {
+                    "1": "Unknown",
+                    "2": "Ready",
+                    "3": "Failed",
+                    "4": "Missing",
+                    "5": "Degraded"
+                }
+            },
+            "PrimaryStatus": {
+                'Lookup' : 'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            }
+        },
+
         iDRACCompEnum.Sensors_Fan: {
             "State" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "unknown",
-                    "2" : "enabled",
-                    "4" : "notReady",
-                    "6" : "enabledAndNotReady",
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -2085,10 +2130,10 @@ if PySnmpPresent:
             "processorDeviceStateSettings" : {
                 'Lookup' :  'True',
                 'Values' : {
-                    "1"  : "unknown",
-                    "2"  : "enabled",
-                    "4"  : "notReady",
-                    "6"  : "enabledAndNotReady"
+                    "1"  : "Unknown",
+                    "2"  : "Enabled",
+                    "4"  : "Not Ready",
+                    "6"  : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -2405,6 +2450,7 @@ if PySnmpPresent:
             "Size" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' },
             "UsedSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'Metrics' : 'GB'},
             "FreeSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'Metrics' : 'GB' },
+            "BlockSize": {'Type': 'Bytes', 'InUnits': 'B', 'OutUnits': 'B'},
             "RaidStatus" : {
                 'Lookup' :  'True',
                 'Values' : {
@@ -2443,6 +2489,93 @@ if PySnmpPresent:
                     "3" : "SSD"
                 }
             },
+            "ManufacturingDay": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Sunday",
+                    "2": "Monday",
+                    "3": "Tuesday",
+                    "4": "Wednesday",
+                    "5": "Thursday",
+                    "6": "Friday",
+                    "7": "Saturday"
+                }
+            },
+            "MaxCapableSpeed": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.5 Gbps",
+                    "3": "3.0 Gbps",
+                    "4": "6.0 Gbps",
+                    "5": "12.0 Gbps",
+                    "6": "5 GT/s",
+                    "7": "8 GT/s"
+                }
+            },
+            "T10PICapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other", "2": "Capable", "3": "Not Capable"
+                }
+            },
+            "RAIDNegotiatedSpeed": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.5 Gbps",
+                    "3": "3.0 Gbps",
+                    "4": "6.0 Gbps",
+                    "5": "12.0 Gbps",
+                    "6": "5 GT/s",
+                    "7": "8 GT/s"
+                }
+            },
+            "SecurityState": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Supported",
+                    "2": "Not Supported",
+                    "3": "Secured",
+                    "4": "Locked",
+                    "5": "Foreign"
+                }
+            },
+            "HotSpareStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Not A Spare",
+                    "2": "Dedicated Hot Spare",
+                    "3": "Global Hot Spare"
+                }
+            },
+            "PredictiveFailureState": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Smart Alert Absent",
+                    "1": "Smart Alert Present"
+                }
+            },
+            "BusProtocol": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "SCSI",
+                    "3": "SAS",
+                    "4": "SATA",
+                    "5": "Fibre Channel",
+                    "6": "PCIe"
+                }
+            },
+            "DriveFormFactor": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.8 inch",
+                    "3": "2.5 inch",
+                    "4": "3.5 inch"
+                }
+            }
         },
         iDRACCompEnum.System : {
             "SystemGeneration" : {
@@ -2758,6 +2891,31 @@ if PySnmpPresent:
                     "10" : "Critical"
                 }
             },
+            "ProbeType": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "amperageProbeTypeIsOther",
+                    "2": "amperageProbeTypeIsUnknown",
+                    "3": "amperageProbeTypeIs1Point5Volt",
+                    "4": "amperageProbeTypeIs3Point3volt",
+                    "5": "amperageProbeTypeIs5Volt",
+                    "6": "amperageProbeTypeIsMinus5Volt",
+                    "7": "amperageProbeTypeIs12Volt",
+                    "8": "amperageProbeTypeIsMinus12Volt",
+                    "9": "amperageProbeTypeIsIO",
+                    "10": "amperageProbeTypeIsCore",
+                    "11": "amperageProbeTypeIsFLEA",
+                    "12": "amperageProbeTypeIsBattery",
+                    "13": "amperageProbeTypeIsTerminator",
+                    "14": "amperageProbeTypeIs2Point5Volt",
+                    "15": "amperageProbeTypeIsGTL",
+                    "16": "amperageProbeTypeIsDiscrete",
+                    "23": "amperageProbeTypeIsPowerSupplyAmps",
+                    "24": "amperageProbeTypeIsPowerSupplyWatts",
+                    "25": "amperageProbeTypeIsSystemAmps",
+                    "26": "amperageProbeTypeIsSystemWatts"
+                }
+            },
             "State" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -2777,6 +2935,7 @@ if PySnmpPresent:
         },
         iDRACCompEnum.Sensors_Temperature : {
             'Reading(Degree Celsius)' :  {'UnitScale': '-1', 'UnitAppend' : 'Degree Celsius'},
+            'CurrentReading(Degree Celsius)': {'UnitScale': '-1'},
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -3347,14 +3506,6 @@ class iDRACEntity(iDeviceDriver):
             entry['Key'] = entry.get('Location', entry.get('Key', component))
             if (entry.get('SensorType', "Not Available")):
                 entry["SensorType"] = component.split('_')[-1]
-        if component == 'Sensors_Temperature' :
-            tempReading = entry.get('CurrentReading(Degree Celsius)', '0')
-            if self.cfactory.work_protocols[0].name == "SNMP" and tempReading != None:
-                try:
-                    entry['CurrentReading(Degree Celsius)'] = float(tempReading) / 10
-                except ValueError:
-                    logger.info(
-                        self.ipaddr + " Warning: Converting CurrentReading(Degree Celsius) not a number " + tempReading)
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
