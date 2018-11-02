@@ -18,7 +18,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Authors: Vaideeswaran Ganesan
+# Authors: Jagadeesh N V
 #
 import sys
 import logging
@@ -85,6 +85,7 @@ class RedfishProtocolBase(ProtocolBase):
         headers = None
         self._logger = logging.getLogger(__name__)
         self.cache = {}
+        self.data_cache = {}
         self.session = requests.session()
         self.pOptions = pOptions
         self.session.verify = self.pOptions.verify_ssl
@@ -165,68 +166,139 @@ class RedfishProtocolBase(ProtocolBase):
         urlConcat = '/'
         # authttp = HTTPBasicAuth(self.username, self.password)
         retval = {}
+        xcomp = []
         retval['Data'] = {}
         retval['Status'] = 'Failure'
 
         ix = 0
         odataid = "@odata.id"
-        redfurl = urlConcat + self.pOptions.urlbase + urlConcat + resource[ix]
-        oDataDict = {}
-        oDataDict[odataid] = redfurl
-        oDataList = []
-        oDataList.append(oDataDict)
-        rlen = len(resource)
-        xcomp = []
-        while ix<rlen:
-            xcomp = []
-            tflag = False
-            ix = ix + 1
-            for mem in oDataList:
-                url = "https://" + self.ipaddr + ':' + str(self.pOptions.port) + mem[odataid]
+        if isinstance(resource, dict):
+            if 'url' in resource:
+                url = "https://" + self.ipaddr + ':' + str(self.pOptions.port) + resource['url']
                 if ':' in self.ipaddr:
-                    url = "https://[" + self.ipaddr + ']:' + str(self.pOptions.port) + mem[odataid]
-                cachData = self.fetch_cache(url)
-                if cachData:
-                    compjData = cachData
-                    xcomp.append(compjData)
-                    retval['Status'] = 'Success'
-                else:
-                    try:
-                        memResponse = self.session.get(url, timeout=(self.pOptions.connection_timeout, self.pOptions.read_timeout))
-                        if (memResponse.ok):
-                            retval['Status'] = 'Success'
-                            compjData = json.loads(memResponse.content)
-                            self.add_cache(url,compjData)
-                            xcomp.append(compjData)
+                    url = "https://[" + self.ipaddr + ']:' + str(self.pOptions.port) + resource['url']
+                try:
+                    memResponse = self.session.get(url, timeout=(
+                    self.pOptions.connection_timeout, self.pOptions.read_timeout))
+                    if (memResponse.ok):
+                        # retval['Status'] = 'Success'
+                        compjData = json.loads(memResponse.content)
+                        if resource.get('attribute', None):
+                            xcomp = xcomp + compjData[resource['attribute']]
                         else:
-                            retval['Status'] = 'Failure'
-                            logger.debug("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(memResponse.url, memResponse.status_code, memResponse.reason))
-                        memResponse.close()
-                    except requests.exceptions.ConnectionError as err:
-                        logger.debug(err)
-            intrmOdataList = []
-            for xc in xcomp:##Members flow
-                if ix < rlen:
-                    if resource[ix] in xc:
-                        res = xc[resource[ix]]
-                        tflag = True
-                        while(tflag == True):
-                            if isinstance(res, dict):
-                                if resource[ix+1] in res:
-                                    res = res[resource[ix+1]]
-                                    tflag = True
-                                    ix = ix + 1
-                                    if isinstance(res, list):
-                                        intrmOdataList = intrmOdataList + res
-                                        tflag = False
+                            xcomp = xcomp + [compjData]
+                        if 'filter' in resource:
+                            listparam = resource.get('filter_param', None)
+                            xcomp = resource['filter'](xcomp, self.ipaddr, listparam)
+                    else:
+                        # retval['Status'] = 'Failure'
+                        logger.debug("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(
+                            memResponse.url, memResponse.status_code, memResponse.reason))
+                    memResponse.close()
+                except requests.exceptions.ConnectionError as err:
+                    logging.debug(err)
+                except requests.exceptions.Timeout as err:
+                    logging.debug(err)
+                if xcomp:
+                    retval['Status'] = 'Success'
+            else:
+                cdict = self.data_cache.get(self.ipaddr, None)
+                if cdict:
+                    # print(cdict)
+                    clist = cdict[resource['device']]
+                    xcomp = []
+                    for xc in clist:
+                        if 'condition' in resource:
+                            (attr, value) = resource['condition']
+                            if xc[attr] != value:
+                                continue
+                        key = xc[resource['key']]
+                        apiuri = resource['gen_func'](key, resource['comp'])
+                        url = "https://" + self.ipaddr + ':' + str(self.pOptions.port) + apiuri
+                        if ':' in self.ipaddr:
+                            url = "https://[" + self.ipaddr + ']:' + str(self.pOptions.port) + apiuri
+                        try:
+                            memResponse = self.session.get(url, timeout=(
+                            self.pOptions.connection_timeout, self.pOptions.read_timeout))
+                            if (memResponse.ok):
+                                # retval['Status'] = 'Success'
+                                compjData = json.loads(memResponse.content)
+                                if resource.get('attribute', None):
+                                    xcomp = xcomp + compjData[resource['attribute']]
                                 else:
-                                    if odataid in res:
-                                        intrmOdataList.append(res)
+                                    xcomp = xcomp + [compjData]
+                            else:
+                                # retval['Status'] = 'Failure'
+                                logger.debug("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(
+                                    memResponse.url, memResponse.status_code, memResponse.reason))
+                            memResponse.close()
+                        except requests.exceptions.ConnectionError as err:
+                            logging.debug(err)
+                        except requests.exceptions.Timeout as err:
+                            logging.debug(err)
+                if xcomp:
+                    retval['Status'] = 'Success'
+        elif isinstance(resource, list):
+            redfurl = urlConcat + self.pOptions.urlbase + urlConcat + resource[ix]
+            oDataDict = {}
+            oDataDict[odataid] = redfurl
+            oDataList = []
+            oDataList.append(oDataDict)
+            rlen = len(resource)
+            xcomp = []
+            while ix<rlen:
+                xcomp = []
+                tflag = False
+                ix = ix + 1
+                for mem in oDataList:
+                    url = "https://" + self.ipaddr + ':' + str(self.pOptions.port) + mem[odataid]
+                    if ':' in self.ipaddr:
+                        url = "https://[" + self.ipaddr + ']:' + str(self.pOptions.port) + mem[odataid]
+                    cachData = self.fetch_cache(url)
+                    if cachData:
+                        compjData = cachData
+                        xcomp.append(compjData)
+                        retval['Status'] = 'Success'
+                    else:
+                        try:
+                            memResponse = self.session.get(url, timeout=(self.pOptions.connection_timeout, self.pOptions.read_timeout))
+                            if (memResponse.ok):
+                                retval['Status'] = 'Success'
+                                compjData = json.loads(memResponse.content)
+                                self.add_cache(url,compjData)
+                                xcomp.append(compjData)
+                            else:
+                                retval['Status'] = 'Failure'
+                                logger.debug("GET Request Failed - URL : {0}  Status Code : {1}  Reason : {2}".format(memResponse.url, memResponse.status_code, memResponse.reason))
+                            memResponse.close()
+                        except requests.exceptions.ConnectionError as err:
+                            logging.debug(err)
+                        except requests.exceptions.Timeout as err:
+                            logging.debug(err)
+                intrmOdataList = []
+                for xc in xcomp:##Members flow
+                    if ix < rlen:
+                        if resource[ix] in xc:
+                            res = xc[resource[ix]]
+                            tflag = True
+                            while(tflag == True):
+                                if isinstance(res, dict):
+                                    if resource[ix+1] in res:
+                                        res = res[resource[ix+1]]
+                                        tflag = True
+                                        ix = ix + 1
+                                        if isinstance(res, list):
+                                            intrmOdataList = intrmOdataList + res
+                                            tflag = False
+                                    else:
+                                        if odataid in res:
+                                            intrmOdataList.append(res)
+                                        tflag = False
+                                elif isinstance(res, list):
+                                    intrmOdataList = intrmOdataList + res
                                     tflag = False
-                            elif isinstance(res, list):
-                                intrmOdataList = intrmOdataList + res
-                                tflag = False
-            oDataList = intrmOdataList
-
+                oDataList = intrmOdataList
         retval['Data'][clsName] = xcomp
+        cdict = self.data_cache.setdefault(self.ipaddr, {})
+        cdict[clsName] = xcomp
         return retval

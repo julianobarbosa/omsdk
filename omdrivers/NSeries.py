@@ -330,15 +330,17 @@ else:
     NSeriesPSNMPClassifier = {}
 
 NSeriesComponentTree = {
-    "Full" : [ 
-        NSeriesCompEnum.System,
-        NSeriesCompEnum.FanTray,
-        NSeriesCompEnum.PowerSupply,
-        NSeriesCompEnum.Processor,
-        NSeriesCompEnum.Port,
+    NSeriesCompEnum.System : [
         NSeriesCompEnum.Fan,
-        NSeriesCompEnum.PowerSupplyTray
+        NSeriesCompEnum.PowerSupply,
+        "Interfaces"
     ],
+    "Interfaces": [
+        "UserPorts"
+    ],
+    "UserPorts": [
+                NSeriesCompEnum.Port
+    ]
 }
 
 NSeriesClassifier = [ NSeriesCompEnum.System ]
@@ -347,6 +349,15 @@ NSeriesSubsystemHealthSpec = {
     NSeriesCompEnum.System : { "Component" : NSeriesCompEnum.System, "Field" : 'PrimaryStatus' },
 }
 
+NSeries_more_details_spec = {
+    "System": {
+        "_components_enum": [
+            NSeriesCompEnum.System,
+            NSeriesCompEnum.Fan,
+            NSeriesCompEnum.PowerSupply,
+        ]
+    }
+}
 class NSeries(iDeviceDiscovery):
     def __init__(self, srcdir):
         if PY2:
@@ -371,7 +382,7 @@ class NSeriesEntity(iDeviceDriver):
             super(NSeriesEntity, self).__init__(ref, protofactory, ipaddr, creds)
         else:
             super().__init__(ref, protofactory, ipaddr, creds)
-
+        self.more_details_spec = NSeries_more_details_spec
 
     def _isin(self, parentClsName, parent, childClsName, child):
         if 'MyPos' in parent:
@@ -396,4 +407,77 @@ class NSeriesEntity(iDeviceDriver):
                     entry["SwitchUptime"] = ' '.join('{} {}'.format(value, name)
                                         for name, value in l
                                         if value)
+            if 'Model' in entry:
+                entry["SwitchType"] = entry.get('Model')[:1].upper()+"Series"
+            if ':' in self.ipaddr:
+                entry['SwitchIPv6'] = self.ipaddr
+            else:
+                entry['SwitchIPv4'] = self.ipaddr
+
         return True
+
+    @property
+    def ContainmentTree(self):
+        """
+        Adding Fan and PowerSupply to Scalable CompTree
+        :return: JSON
+        """
+        device_json = self.get_json_device()
+        ctree = self._build_ctree(self.protofactory.ctree, device_json)
+        fn = {"Fan":[]}
+        ps = {"PowerSupply":[]}
+        if not "Fan" in ctree["System"]:
+            ctree["System"].update(fn)
+        if not "PowerSupply" in ctree["System"]:
+            ctree["System"].update(ps)
+        return ctree
+
+    def get_basic_entityjson(self):
+        plist = []
+        for comp in self.protofactory.classifier:
+            plist.append(comp)
+        entj = self.get_partial_entityjson(*plist)
+        if entj:
+            compList = ["Fan", "PowerSupply"]
+            for comp in compList:
+                tmp = {}
+                compiList = entj.pop(comp, [])
+                if compiList:
+                    finalStat = 'Healthy'
+                    for iComp in compiList:
+                        iStat = iComp.get('OperStatus','Unknown')
+                        if iStat == 'Critical':
+                            finalStat = iStat
+                            break
+                        elif iStat == 'Warning':
+                            finalStat = iStat
+                        elif iStat == 'Unknown' and finalStat != 'Warning':
+                            finalStat = iStat
+                    tmp.update({"Key": comp})
+                    tmp.update({"PrimaryStatus": finalStat})
+                    entj["Subsystem"].append(tmp)
+
+    def get_entityjson(self):
+        plist = []
+        for comp in self.ComponentEnum:
+            plist.append(comp)
+        entj = self.get_partial_entityjson(*plist)
+        if entj:
+            compList = ["Fan", "PowerSupply"]
+            for comp in compList:
+                tmp = {}
+                compiList = entj.get(comp, [])
+                if compiList:
+                    finalStat = 'Healthy'
+                    for iComp in compiList:
+                        iStat = iComp.get('OperStatus','Unknown')
+                        if iStat == 'Critical':
+                            finalStat = iStat
+                            break
+                        elif iStat == 'Warning':
+                            finalStat = iStat
+                        elif iStat == 'Unknown' and finalStat != 'Warning':
+                            finalStat = iStat
+                    tmp.update({"Key": comp})
+                    tmp.update({"PrimaryStatus": finalStat})
+                    entj["Subsystem"].append(tmp)

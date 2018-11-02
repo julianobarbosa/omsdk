@@ -14,12 +14,11 @@
             "Model",
             "OSName",
             "OSVersion",
-            "RACType",
             "MachineName",
             "iDRACURL",
             "DeviceType",
             "LifecycleControllerVersion",
-			"SysName"
+            "SysName"
         ],
         "MainHealth"      : ["PrimaryStatus"],
         "Inventory"   : [ 
@@ -59,7 +58,7 @@
         "Key" : [ "FQDD" ],
         "ConfigState" : [ ],
         "MainHealth"      : [ "PrimaryStatus" ],
-        "BasicInventory"   : [ 
+        "Inventory"   : [ 
             "BankLabel",
             "DeviceDescription",
             "ManufactureDate",
@@ -70,7 +69,7 @@
             "Rank",
             "SerialNumber",
             "Size",
-	    "memoryDeviceStateSettings",
+            "memoryDeviceStateSettings",
             "Speed"
         ],
         "Metrics" : [
@@ -140,7 +139,7 @@
     },
     "Controller": {
         "Key" : [ "FQDD"],
-        "BasicInventory" : [
+        "Inventory" : [
             "Bus",
             "CacheSize",
             "CachecadeCapability",
@@ -172,6 +171,9 @@
         ],
         "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ ]
+    },
+    "ControllerSensor": {
+        "Key" : [ "FQDD"]
     },
     "ControllerBattery": {
         "Key" : [ "FQDD"],
@@ -210,14 +212,11 @@
             "State"
         ],
         "MainHealth" : [ "PrimaryStatus" ],
-        "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        }
-        },
+        "Metrics" : [ ]
+    },
+    "EnclosureSensor": {
+        "Key" : [ "FQDD"]
+    },
     "Fan": {
         "Key" : [ "FQDD"],
         "Inventory" : [
@@ -334,7 +333,7 @@
             "Name"
         ],
         "ConfigState" : [ ],
-        "MainHealth" : [ "Status" ],
+        "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : [ ],
         "Metrics" : [ ],
         "Type" :{
@@ -347,15 +346,6 @@
             "6" : "IEEE80211 Wireless",
             "7" : "Tunnel",
             "8" : "IEEE1394 Fireware"
-        },
-        "Status" :{
-            "0" : "Healthy",
-            "1" : "Critical",
-            "2" : "Warning",
-            "3" : "Warning",
-            "4" : "Warning",
-            "5" : "Warning",
-            "6" : "Critical"
         }
     },
     "PCIDevice": {
@@ -375,12 +365,11 @@
         },
     "PhysicalDisk": {
         "Key" : [ "FQDD"],
-        "BasicInventory" : [
+        "Inventory" : [
             "DeviceDescription",
             "Model",
             "SerialNumber",
             "Size",
-            "UsedSize",
             "MediaType",
             "Revision",
             "BlockSize",
@@ -407,7 +396,8 @@
         "OtherHealth" : [ "PredictiveFailureState" ],
         "Metrics" : [ 
             "RemainingRatedWriteEndurance",
-            "FreeSize"
+            "FreeSize",
+            "UsedSize"
         ],
         "HotSpareStatus" :{
             "0" : "No",
@@ -454,12 +444,12 @@
             "RedMinNumberNeeded",
             "RedTypeOfSet",
             "SerialNumber",
-            "TotalOutputPower",
             "powerSupplyStateCapabilitiesUnique",
             "PowerSupplySensorState",
             "DetailedState",
             "Type",
-            "Name"
+            "Name",
+            "Range1MaxInputPower"
         ],
         "ConfigState" : [ 
             "RAIDState"
@@ -467,7 +457,7 @@
         "MainHealth" : [ "PrimaryStatus" ],
         "OtherHealth" : ["Redundancy" ],
         "Metrics" : [ 
-            "InputVoltage", "TotalOutputPower", "Range1MaxInputPower"
+            "InputVoltage", "TotalOutputPower"
         ],
         "Type" :{
             "0" : "AC",
@@ -491,13 +481,6 @@
         "Metrics" : [
             "AvailableSize"
         ],
-        "PrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical",
-            "OK" : "Healthy"
-        },
         "VFlashEnabledState" :{
             "true"  : "Enable",
             "false" : "Disable"
@@ -602,7 +585,7 @@
         },
     "VirtualDisk": {
         "Key" : [ "FQDD"],
-        "BasicInventory" : [
+        "Inventory" : [
             "RAIDTypes",
             "Size",
             "Cachecade",
@@ -617,7 +600,8 @@
             "BlockSize",
             "Layout",
             "Name",
-            "DeviceDescription"
+            "DeviceDescription",
+            "PhysicalDiskIDs"
         ],
         "ConfigState" : [ 
             "LockStatus",
@@ -704,14 +688,14 @@
         "Key" : [ "FQDD"],
         "Inventory" : [ ],
         "ConfigState" : [ ],
-        "MainHealth" : [ ],
+        "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ ]
     },
     "EnclosureFanSensor": {
         "Key" : [ "FQDD"],
         "Inventory" : [ ],
         "ConfigState" : [ ],
-        "MainHealth" : [ ],
+        "MainHealth" : [ "PrimaryStatus" ],
         "Metrics" : [ ]
     },
     "Subsystem" : {
@@ -813,8 +797,8 @@
         "Inventory" : [
             "DeviceID",
             "SensorType",
-            "CurrentReading(Degree Celsius)",
-            "OtherSensorTypeDescription"
+            "OtherSensorTypeDescription",
+            "Type"
         ],
         "ConfigState" : [ 
             "State",
@@ -830,7 +814,7 @@
         "MainHealth" : [
             "PrimaryStatus"
         ],
-        "Metrics" : ["CurrentReading"],
+        "Metrics" : ["CurrentReading", "CurrentReading(Degree Celsius)"],
         "PrimaryStatus" : {
             "0" : "Unknown",
             "1" : "Healthy",
@@ -963,6 +947,7 @@
         "Inventory" : [
             "DeviceID",
             "SensorType",
+            "ProbeType",
             "OtherSensorTypeDescription"
         ],
         "ConfigState" : [ 
@@ -1006,19 +991,7 @@
             "LicenseSoldDate",
             "LicenseDescription"
         ],
-        "MainHealth" : [ "LicensePrimaryStatus" ],
-        "LicenseType" :{
-            "1" : "Perpetual", 
-            "2" : "Leased",
-            "3" : "Evaluation",
-            "4" : "Site"
-        },
-        "LicensePrimaryStatus" : {
-            "0" : "Warning",
-            "1" : "Healthy",
-            "2" : "Warning",
-            "3" : "Critical"
-        }
+        "MainHealth" : [ "PrimaryStatus" ]
     },
     "iDRACNIC" : {
         "Key" : [ "FQDD" ],
@@ -1032,15 +1005,12 @@
             "IPv6Address",
             "GroupName",
             "SwitchConnection",
-            "SwitchPortConnection"
+            "SwitchPortConnection",
+            "NICEnabled"
         ],
         "ConfigState" : [ ],
         "MainHealth" : [ "PrimaryStatus" ],
-        "Metrics" : [ ],
-        "PrimaryStatus" : {
-            "Enabled" : "Healthy",
-            "Disabled" : "Critical"
-        }
+        "Metrics" : [ ]
     },
     "LogicalSystem" : {
         "Key" : [ "Key" ],
@@ -1066,9 +1036,9 @@
     },
     "PCIeSSDExtender" : {
         "Key" : [ "FQDD" ],
-        "Inventory" : [ "InstanceID" ],
+        "Inventory" : [ "InstanceID","DeviceDescription" ],
         "ConfigState" : [ ],
-        "MainHealth" : [ ],
+        "MainHealth" : ["PrimaryStatus"],
         "Metrics" : []
     },
     "EnclosureTemperatureSensor" : {
@@ -1078,20 +1048,21 @@
         "MainHealth" : [ ],
         "Metrics" : []
     },
-    "PCIeSSDBackPlaneView" : {
+    "PCIeSSDBackPlane" : {
         "Key" : [ "FQDD" ],
         "Inventory" : [ "ProductName", "SlotCount", "FirmwareVersion" ],
         "ConfigState" : [ ],
-        "MainHealth" : [ ],
+        "MainHealth" : ["PrimaryStatus"],
         "Metrics" : []
     },
-    "PCIeSSDView" : {
+    "PCIeSSDDisk" : {
         "Key" : [ "FQDD" ],
-        "Inventory" : [ "Model", "SizeInBytes", "BusProtocol", "DeviceProtocol", "MediaType", 
-        "Manufacturer", "ProductID", "SerialNumber", "DriveFormFactor", "CapableSpeed", "Revision" ],
+        "Inventory" : [ "Model", "Size", "BusProtocol", "DeviceProtocol", "MediaType", 
+        "Manufacturer", "ProductID", "SerialNumber", "DriveFormFactor", "MaximumCapableSpeed", "Revision" ],
         "ConfigState" : [ ],
-        "MainHealth" : [ ],
-        "Metrics" : []
+        "MainHealth" : ["PrimaryStatus"],
+        "OtherHealth" : [ "PredictiveFailureState" ],
+        "Metrics" : ["RemainingRatedWriteEndurance"]
     },
     "SystemMetrics" : {
         "Key" : [ "SystemMetrics" ],
@@ -1127,9 +1098,7 @@
     "PresenceAndStatusSensor" : {
         "Key" : [ "DeviceID" ],
         "Inventory" : ["ElementName"],
-        "ConfigState" : [],
-        "MainHealth" : [],
-        "Metrics" : []
+        "MainHealth" : ["PrimaryStatus"]
     },
     "ChassisRF": {
         "Key" : [ "Id"]

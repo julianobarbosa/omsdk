@@ -225,6 +225,23 @@ EqualLogic_more_details_spec = {
           EqualLogicCompEnum.InetAddr,
           EqualLogicCompEnum.StoragePool
         ]
+    },
+    "Member": {
+        "_components_enum": [
+            EqualLogicCompEnum.System,
+            EqualLogicCompEnum.Member,
+            EqualLogicCompEnum.InetAddr,
+            EqualLogicCompEnum.StoragePool
+        ]
+    },
+    "PhysicalDisk": {
+        "_components_enum": [
+            EqualLogicCompEnum.System,
+            EqualLogicCompEnum.Member,
+            EqualLogicCompEnum.InetAddr,
+            EqualLogicCompEnum.StoragePool,
+            EqualLogicCompEnum.PhysicalDisk
+        ]
     }
 }
 
@@ -288,7 +305,7 @@ class EqualLogicEntity(iDeviceDriver):
             if ':' in self.ipaddr:
                 if 'GroupIPv6' in entry:
                     entry['GroupURL'] = "http://"+"["+entry['GroupIPv6']+"]"
-                    entry['GroupIP'] = entry['GroupIPv6']
+                    entry['GroupIP'] = entry['GroupIPv6'] 
         if component == "Member":
             if ':' in self.ipaddr:
                 if 'GroupIPv6' in entry:
@@ -336,17 +353,18 @@ class EqualLogicEntity(iDeviceDriver):
             ipaddr = str(addr.exploded)
             if (ipaddr == sys_dict.get('GroupIPv6')):
                 sys_dict.update({"DeviceType" : "EqualLogic Group"})
-            else:
-                sys_dict.update({'_SNMPIndex':self.memid})
-                sys_dict.update({"DeviceType" : "EqualLogic Member"})
+            elif keyComp == 'System':
+                sys_dict.update({'_SNMPIndex': self.memid})
+                sys_dict.update({"DeviceType": "EqualLogic Member"})
         elif (self.ipaddr == sys_dict.get('GroupIP')):
             sys_dict.update({"DeviceType" : "EqualLogic Group"})
-        else:
+        elif keyComp == 'System':
             sys_dict.update({'_SNMPIndex':self.memid})
             sys_dict.update({"DeviceType" : "EqualLogic Member"})
-            for item in self.entityjson['Member']:
-                item.update({"GroupName" : self.entityjson[keyComp][0]['GroupName']})
-        
+        if self.entityjson.get('Member', None):
+            for item in self.entityjson.get('Member', None):
+                item.update({"GroupName" : self.entityjson[keyComp][0].get('GroupName', None)})
+
     def _get_index(self,memid):
         print ("memid:", memid)
         temp1,temp2 = memid.split("1.")

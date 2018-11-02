@@ -39,7 +39,7 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 
-#logging.basicConfig(level=logging.DEBUG,
+# logging.basicConfig(level=logging.DEBUG,
 #    format='[%(levelname)s] (%(threadName)-10s) %(message)s',)
 
 class ListProc:
@@ -63,8 +63,8 @@ class ListProc:
             for line in mylist:
                 counter = counter + 1
                 device = line.rstrip()
-                thr = threading.Thread(name=device, \
-                          target=self._worker, args=(device,str(counter),))
+                thr = threading.Thread(name=device,
+                                       target=self._worker, args=(device, str(counter),))
                 self.threadlist.append(thr)
                 thr.start()
         logger.debug('Waiting for _worker threads')
@@ -72,15 +72,13 @@ class ListProc:
             t.join()
         return self
 
-
     def printx(self):
         with self.myentitylistlock:
             for device in self.entityjson["devices"]["Devices"]:
                 logger.debug("-======" + str(device) + "----------")
                 if not device is None:
-                    logger.debug(PrettyPrint.prettify_json(device.entityjson))
+                    logger.debug(device.entityjson)
                 logger.debug("-==================-------")
-
 
     def _worker(self, device, counter):
         logger.debug("Starting")
@@ -93,7 +91,7 @@ class ListProc:
         t1 = time.time()
         if not entity is None:
             entity.get_entityjson()
-            #entity.get_partial_entityjson(entity.ComponentEnum.System)
+            # entity.get_partial_entityjson(entity.ComponentEnum.System)
             with open('.\\output\\ff\\detailed.' + str(counter), 'w') as f:
                 json.dump(entity.get_json_device(), f)
                 f.flush()
@@ -103,10 +101,10 @@ class ListProc:
     def get_data(self):
         counter = 0
         for entity in self.entitylist:
-            counter = counter +1
-            thr = threading.Thread(name=entity.ipaddr, \
-                     target=self._run,\
-                     args=(entity,counter,))
+            counter = counter + 1
+            thr = threading.Thread(name=entity.ipaddr,
+                                   target=self._run,
+                                   args=(entity, counter,))
             self.threadlist.append(thr)
             thr.start()
         for t in self.threadlist:

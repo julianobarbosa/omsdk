@@ -21,6 +21,6 @@
 # Authors: Vaideeswaran Ganesan
 #
 
+
 def main():
     print("Welcome to Dell OpenManage SDK")
-

@@ -267,7 +267,7 @@ class FileOnShare(Share):
 
     def _get_path_object(self, stype_enum, remote_path, common_path, isFolder):
         filename = None
-        if remote_path.endswith('/') or remote_path.endswith('\\'):
+        if remote_path.endswith('/') or remote_path.endswith('\\') or os.path.exists(remote_path):
             if common_path is None:
                 isFolder = True
         if not isFolder:
@@ -331,6 +331,11 @@ class FileOnShare(Share):
         else:
             super().__init__()
 
+        if creds is not None and creds.username is not None and "@" in creds.username:
+            username_domain = creds.username.split("@")
+            creds.username = username_domain[0]
+            creds.domain = username_domain[1]
+
         self.creds = creds
         self.isFolder = isFolder
 
@@ -348,6 +353,12 @@ class FileOnShare(Share):
             self.mount_point = self._get_path_object(Share.LocalFolderType, mount_point, common_path, isFolder)
         else:
             self.mount_point = None
+        if remote is not None and self.remote and isinstance(self.remote, InvalidPath):
+            logger.error("Share path is not valid : {}".format(repr(remote)))
+            raise ValueError("Share path is not valid : {}".format(repr(remote)))
+        if mount_point is not None and self.mount_point and isinstance(self.mount_point, InvalidPath):
+            logger.error("Mount point is not valid : {}".format(repr(mount_point)))
+            raise ValueError("Mount point is not valid : {}".format(repr(mount_point)))
         self.mounted = False
         self.fd = fd
         self.valid = False
@@ -479,7 +490,7 @@ class FileOnShare(Share):
         except Exception as ex:
             logger.debug("Failed to create temp file: " +str(ex))
             return None
-        common_path = fname.replace(self.mount_point.mountable_path + psep, '')
+        common_path = fname.lower().replace(self.mount_point.mountable_path.lower() + psep, '')
 
         #Kludge: Windows associates the fonshare with the fd
         # and keeps the file in open state.
@@ -703,7 +714,7 @@ class LocalFile(Share):
         }
 
     def _get_local_path_object(self, stype_enum, local_path, isFolder):
-        if local_path.endswith('/') or local_path.endswith('\\'):
+        if local_path.endswith('/') or local_path.endswith('\\') or os.path.exists(local_path):
             isFolder = True
         if platform.system() == "Windows":
             share_type = Share.LocalFolderType.Windows
@@ -937,7 +948,7 @@ class cfgprocessor:
 		logger.debug("====")
 		for i in self.datasets:
 			logger.debug("=====" + i + "=======")
-			logger.debug(PrettyPrint.prettify_json(self.datasets[i]))
+			logger.debug(self.datasets[i])
 			logger.debug("=====================")
 		logger.debug("====")
 		return self
@@ -1014,10 +1025,16 @@ class file_share_manager:
     @staticmethod
     def create_share_obj(share_path=None, mount_point=None, creds=None, isFolder=True):
         #Check if local file path confirms to unix/windows file path format
-        win_format = re.match(r"^[a-zA-Z]:\\(((?![<>:\"/\\|?*]).)+((?<![ .])\\)?)*$", share_path)
-        unix_format = re.match(r'^(\/[^\/\\ ]*)+\/?$', share_path)
-
+        if share_path is not None:
+            win_format = re.match(r"^[a-zA-Z]:\\(((?![<>:\"/\\|?*]).)+((?<![ .])\\)?)*$", share_path)
+            unix_format = re.match(r'^(\/[^\/\\ ]*)+\/?$', share_path)
+        else:
+            logger.error("Share path value is missing")
+            raise ValueError("Share path value is missing")
         if win_format or unix_format:
+            if share_path and not os.path.exists(share_path):
+                logger.error("Share path {} does not exist".format(share_path))
+                raise ValueError("Share path {} does not exist".format(share_path))
             return LocalFile(local=share_path)
         else:
             return FileOnShare(share_path, mount_point, isFolder=isFolder, creds=creds)

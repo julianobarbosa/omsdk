@@ -35,8 +35,9 @@ import re
 import os
 import logging
 import sys
+import copy
 
-
+from itertools import chain
 from omsdk.http.sdkrestbase import RestOptions
 from omsdk.http.sdkredfishbase import RedfishOptions
 from omsdk.http.sdkrest import RestProtocol
@@ -44,39 +45,48 @@ from omsdk.http.sdkredfish import RedfishProtocol
 from omsdk.http.sdkwsmanbase import WsManOptions
 from omsdk.http.sdkwsman import WsManProtocol
 
-
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
 
+
 class Simulation:
     def __init__(self):
         self.record = False
         self.simulate = False
+
     def start_recording(self):
         self.record = True
         self.simulate = False
+
     def end_recording(self):
         self.record = False
         self.simulate = False
+
     def start_simulating(self):
         self.simulate = True
         self.record = False
+
     def end_simulating(self):
         self.record = False
         self.simulate = False
+
     def is_recording(self):
         return self.record
+
     def is_simulating(self):
         return self.simulate
 
+
 Simulator = Simulation()
+
 
 class ProtocolOptions(object):
     def __init__(self, enid):
         self.enid = enid
         self.options = {}
+
 
 class WSMANOptions(ProtocolOptions):
     def __init__(self):
@@ -84,6 +94,7 @@ class WSMANOptions(ProtocolOptions):
             super(WSMANOptions, self).__init__(ProtocolEnum.WSMAN)
         else:
             super().__init__(ProtocolEnum.WSMAN)
+
 
 class ProtocolOptionsFactory:
     def __init__(self):
@@ -110,11 +121,13 @@ class ProtocolOptionsFactory:
             return self.pOptions[pEnum]
         return None
 
+
 class SNMPOptions(ProtocolOptions):
     """
         Options for establishing a SNMP Communication
     """
-    def __init__(self, port = 161, timeout = 3, nretries = 1):
+
+    def __init__(self, port=161, timeout=3, nretries=1):
         """
         :param port: Port number for SNMP communication
         :param timeout: time in seconds to wait for the request to wait before giving up
@@ -133,13 +146,16 @@ class SNMPOptions(ProtocolOptions):
         self.nretries = nretries
 
     def __str__(self):
-        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(self.timeout) + ")" /
-        + "(nretries =" + str(self.nretries) + ")")
+        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(
+            self.timeout) + ")" /
+                + "(nretries =" + str(self.nretries) + ")")
 
     def __repr__(self):
-        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(self.timeout) + ")" /
-        + "(nretries =" + str(self.nretries) + ")")
- 
+        return (TypeHelper.resolve(str(self.enid)) + "(port=" + str(self.port) + ")" + "(timeout=" + str(
+            self.timeout) + ")" /
+                + "(nretries =" + str(self.nretries) + ")")
+
+
 class ProtocolWrapper(object):
     def __init__(self, enumid):
         self.enumid = enumid
@@ -183,14 +199,14 @@ class ProtocolWrapper(object):
             return Simulator.simulator_connect(self.ipaddr, self.enumid, self)
         self.pOptions = None
         if pOptions is None:
-                pOptions = ProtocolOptionsFactory()
+            pOptions = ProtocolOptionsFactory()
         for supported_pOp in [self.enumid]:
-           if isinstance(pOptions, ProtocolOptionsFactory):
-               self.pOptions = pOptions.get(supported_pOp)
-           elif TypeHelper.resolve(pOptions.enid) == TypeHelper.resolve(supported_pOp):
-               self.pOptions = pOptions
-           else:
-               logger.debug("Invalid pOptions provided!")
+            if isinstance(pOptions, ProtocolOptionsFactory):
+                self.pOptions = pOptions.get(supported_pOp)
+            elif TypeHelper.resolve(pOptions.enid) == TypeHelper.resolve(supported_pOp):
+                self.pOptions = pOptions
+            else:
+                logger.debug("Invalid pOptions provided!")
         return self.my_connect(ipaddr, self.creds, self.pOptions)
 
     def disconnect(self):
@@ -199,33 +215,61 @@ class ProtocolWrapper(object):
     def my_connect(self, ipaddr, creds, pOptions):
         not_implemented
 
+    def deviceconversion(self, nodeobj=None):
+        nodeval = {}
+        for i in nodeobj:
+            if isinstance(i, dict):
+                for key, value in i.items():
+                    nodeval.setdefault(key, []).append(value)
+        return nodeval
+
+    def devicemgmt(self, nodeobj=None):
+        nodeval = None
+        if isinstance(nodeobj, list):
+            nodeval = self.deviceconversion(nodeobj=nodeobj)
+        elif isinstance(nodeobj, dict):
+            nodeval = self.deviceconversion(nodeobj=[nodeobj])
+        return nodeval
+
+    def findkey(self, dictobj, fkeylst, default=None):
+        for find_key in fkeylst:
+            if find_key in dictobj:
+                nestedval = [each if not isinstance(each, dict) else [each] for each in dictobj.get(find_key)]
+                if any(isinstance(i, list) for i in nestedval):
+                    nestedval = self.devicemgmt(list(chain(*(nestedval))))
+                    fkeylst.remove(find_key)
+                    nestedval = self.findkey(nestedval, fkeylst, default=None)
+                return nestedval
+        return default
+
     def _apply_spec(self, rjson, en):
         for i in self.view_fieldspec[en]:
             if (not i in rjson) or (rjson[i] == "Not Available"):
                 continue
+            #OPTIM - x = self.view_fieldspec[en][i] Since this is used multiple times
             if 'Type' in self.view_fieldspec[en][i]:
                 orig_value = rjson[i]
                 if rjson[i]:
                     units_spec = {
-                        'Type' : self.view_fieldspec[en][i]['Type'],
-                        'InUnits' : self.view_fieldspec[en][i]['InUnits'],
-                        'Value' : float(rjson[i])
+                        'Type': self.view_fieldspec[en][i]['Type'],
+                        'InUnits': self.view_fieldspec[en][i]['InUnits'],
+                        'Value': float(rjson[i])
                     }
                     if 'OutUnits' in self.view_fieldspec[en][i]:
-                        units_spec['OutUnits'] =  \
+                        units_spec['OutUnits'] = \
                             self.view_fieldspec[en][i]['OutUnits']
                     if 'Metrics' in self.view_fieldspec[en][i]:
-                        units_spec['Metrics'] =  \
+                        units_spec['Metrics'] = \
                             self.view_fieldspec[en][i]['Metrics']
                     rjson[i] = UnitsFactory.Convert(units_spec)
-                logger.debug("orig_value: " + str(orig_value) + ", " +\
+                logger.debug("orig_value: " + str(orig_value) + ", " + \
                              "new_value: " + str(rjson[i]))
             if 'Lookup' in self.view_fieldspec[en][i]:
                 orig_value = rjson[i]
                 if 'Values' in self.view_fieldspec[en][i] and \
-                   orig_value in self.view_fieldspec[en][i]['Values']:
+                        orig_value in self.view_fieldspec[en][i]['Values']:
                     rjson[i] = self.view_fieldspec[en][i]['Values'][orig_value]
-                logger.debug("orig_value: " + str(orig_value) + ", " +\
+                logger.debug("orig_value: " + str(orig_value) + ", " + \
                              "new_value: " + str(rjson[i]))
 
             if 'CopyTo' in self.view_fieldspec[en][i]:
@@ -247,20 +291,47 @@ class ProtocolWrapper(object):
             if 'UnitScale' in self.view_fieldspec[en][i]:
                 # logger.debug("Scaling UNit for ",i)
                 unit_spec = self.view_fieldspec[en][i]
-                rjson[i] = UnitsFactory.append_sensors_unit(rjson[i], unit_spec['UnitScale'], unit_spec['UnitAppend'])
+                rjson[i] = UnitsFactory.append_sensors_unit(rjson[i], unit_spec['UnitScale'], unit_spec.get('UnitAppend'))
+
+            if 'CreateNew' in self.view_fieldspec[en][i]:
+                creatordict = self.view_fieldspec[en][i]['CreateNew']
+                for k, v in creatordict.items():
+                    node = rjson[i]
+                    if len(node) > 0:
+                        node = self.devicemgmt(nodeobj=node)
+                    else:
+                        break
+                    x = v['_Attribute']
+                    keyattr = copy.deepcopy(x)
+                    item = self.findkey(node, keyattr, default=None)
+                    rjson[k] = "Not Available"
+                    if item is not None:
+                        rjson[k] = ",".join(str(i) for i in set(item))
 
             if 'Create' in self.view_fieldspec[en][i]:
                 creatordict = self.view_fieldspec[en][i]['Create']
-                for k,v in creatordict.items():
+                for k, v in creatordict.items():
                     node = rjson[i]
+                    if isinstance(node, list):
+                        if len(node) > 0:
+                            node = node[0]
+                        else: break
                     # print("CREATE in ",k)
                     x = v['_Attribute']
                     while isinstance(x, dict):
                         node = node[list(x.keys())[0]]
+                        if isinstance(node,list):
+                            if len(node) > 0:
+                                node = node[0] #Taking the 1st element if list
+                            else: break
                         x = list(x.values())[0]
                         # node = node[x.ElementAt(0)]
                     if x in node:
-                        rjson[k] = node[x]
+                        if node.get(x) is None:
+                            node[x] = "Not Available"
+                        elif node.get(x) == "":
+                            node[x] = "Not Available"
+                        rjson[k] = node.get(x, "Not Available")
                         if '_Mapping' in v:
                             m = v['_Mapping']
                             if node[x] in m:
@@ -269,7 +340,7 @@ class ProtocolWrapper(object):
                         # print("Created ",k," with ",rjson[k])
             if 'Macedit' in self.view_fieldspec[en][i]:
                 s = rjson[i]
-                rjson[i] = str(':'.join([s[j]+s[j+1] for j in range(2,14,2)]))
+                rjson[i] = str(':'.join([s[j] + s[j + 1] for j in range(2, 14, 2)]))
             if 'IPv6edit' in self.view_fieldspec[en][i]:
                 s = rjson[i]
                 rjson[i] = str(re.sub(r'(.{4})(?!$)', r'\1:', s[2:]))
@@ -282,14 +353,15 @@ class ProtocolWrapper(object):
                     if self.view_fieldspec[en][i]['DateTime']:
                         dtformat = self.view_fieldspec[en][i]['DateTime']
                     datetimeobject = datetime.strptime(dstr[0], dtformat)
-                    strFormat = '%Y-%m-%d %H:%M:%S'
+                    strFormat = '%Y-%m-%dT%H:%M:%S'
                     strdatetimeobject = datetimeobject.strftime(strFormat)
-                    #Need to convert this to string it is in datetime format
+                    # Need to convert this to string it is in datetime format
                     rjson[i] = strdatetimeobject
             if 'Rename' in self.view_fieldspec[en][i]:
                 orig_value = rjson[i]
                 del rjson[i]
                 rjson[self.view_fieldspec[en][i]['Rename']] = orig_value
+
     def simulator_save(self, retval, clsName):
         mypath = "."
         for i in ["simulator", self.ipaddr, str(self.enumid)]:
@@ -298,7 +370,7 @@ class ProtocolWrapper(object):
                 os.mkdir(mypath)
         with open(os.path.join(mypath, clsName + ".json"), "w") as f:
             json.dump(retval, f, sort_keys=True, indent=4, \
-                 separators=(',', ': '))
+                      separators=(',', ': '))
 
     def simulator_connect(self):
         mypath = "."
@@ -317,7 +389,7 @@ class ProtocolWrapper(object):
                 with open(sjson, 'r') as endata:
                     _s = json.load(endata)
                     if _s and 'Data' in _s and \
-                       _s['Data'] and simspec in _s['Data']:
+                            _s['Data'] and simspec in _s['Data']:
                         return self
         return None
 
@@ -326,12 +398,11 @@ class ProtocolWrapper(object):
         for i in ["simulator", self.ipaddr, str(self.enumid)]:
             mypath = os.path.join(mypath, i)
         mypath = os.path.join(mypath, clsName + ".json")
-        retval = {'Data' : {}, 'Status' : 'Failed', 'Message' : 'No file found'}
+        retval = {'Data': {}, 'Status': 'Failed', 'Message': 'No file found'}
         if os.path.exists(mypath) and not os.path.isdir(mypath):
             with open(mypath) as enum_data:
                 retval = json.load(enum_data)
         return retval
-
 
     def enumerate_view(self, index, bTrue):
         return self._enumerate_view(index, self.views, bTrue)
@@ -339,13 +410,13 @@ class ProtocolWrapper(object):
     def _enumerate_view(self, index, views, bTrue):
         if not index in views:
             logger.debug("WARN: no " + str(index) + " for " + str(self.enumid))
-            return { 'Status' : 'Success', 'Message' : 'Not supported' }
+            return {'Status': 'Success', 'Message': 'Not supported'}
         clsName = TypeHelper.resolve(index)
-        logger.debug("Collecting " + clsName + " ... via " + str(self.enumid) + "..." )
+        logger.debug("Collecting " + clsName + " ... via " + str(self.enumid) + "...")
         if Simulator.is_simulating():
             retval = Simulator.simulate_proto(self.ipaddr, self.enumid, clsName)
         else:
-            #Changed True to False for having single session
+            # Changed True to False for having single session
             wsprof = views[index]
             filter = None
             if isinstance(views[index], list) and self.enumid == ProtocolEnum.WSMAN:
@@ -353,13 +424,13 @@ class ProtocolWrapper(object):
                 filter = views[index][1]
             retval = self.proto.enumerate(clsName, wsprof, self.selectors, False, filter)
             if Simulator.is_recording():
-                Simulator.record_proto(self.ipaddr,self.enumid, clsName, retval)
+                Simulator.record_proto(self.ipaddr, self.enumid, clsName, retval)
         if not 'Data' in retval or retval['Data'] is None:
             return retval
         if index in self.classifier_cond:
             chk_func = self.classifier_cond[index].get(self.enumid, None)
             if chk_func:
-                (valid, flist) = chk_func(retval['Data'][clsName])
+                (valid, flist) = chk_func(retval['Data'][clsName], clsName)
                 if valid:
                     retval['Data'][clsName] = flist
                 else:
@@ -371,18 +442,18 @@ class ProtocolWrapper(object):
             for attr in self.classifier[index]:
                 if not clsName in retval['Data']:
                     return {
-                        'Status' : 'Failed',
+                        'Status': 'Failed',
                         'Message': clsName + ' instance is not found!'
                     }
                 if not attr in retval['Data'][clsName]:
                     return {
-                        'Status' : 'Failed',
+                        'Status': 'Failed',
                         'Message': 'Classifier attribute not found!'
                     }
                 if not re.search(self.classifier[index][attr],
-                           retval['Data'][clsName][attr]):
+                                 retval['Data'][clsName][attr]):
                     return {
-                        'Status' : 'Failed',
+                        'Status': 'Failed',
                         'Message': 'Classifier did not match!'
                     }
 
@@ -392,7 +463,7 @@ class ProtocolWrapper(object):
             for retobj in retval['Data']:
                 if isinstance(retval['Data'][retobj], dict):
                     self._apply_spec(retval['Data'][retobj], en)
-                else:                        
+                else:
                     for i in retval['Data'][retobj]:
                         self._apply_spec(i, en)
         return retval
@@ -405,27 +476,27 @@ class ProtocolWrapper(object):
         counter = 1
         fcmd = self.cmds[cmdname]
         for name, value in kwargs.items():
-            # logger.debug(str(counter) + ":"+ str(name) + "=" + str(value))
+            # logger.debug(str(counter) + ":" + str(name) + "=" + str(value))
             counter = counter + 1
             if not name in fcmd["Args"]:
                 str_err = name + " argument is invalid!"
-                logger.debug(str_err)
-                return { 'Status' : 'Failed', 'Message' : str_err }
+                logger.error(self.ipaddr+" : str_err")
+                return {'Status': 'Failed', 'Message': str_err}
             argtype = fcmd["Args"][name]
             if not TypeHelper.belongs_to(argtype, value):
                 str_err = name + " argument is invalid type! "
-                str_err = str_err + "Expected "+ str(argtype) + ". "
-                str_err = str_err + "But got "+ str(type(value))
-                str_err = str_err + "But got "+ str(value)
-                logger.debug(str_err)
-                return { 'Status' : 'Failed', 'Message' : str_err }
+                str_err = str_err + "Expected " + str(argtype) + ". "
+                str_err = str_err + "But got " + str(type(value))
+                str_err = str_err + "But got " + str(value)
+                logger.error(self.ipaddr + " : str_err")
+                return {'Status': 'Failed', 'Message': str_err}
             argvals[name] = value
-    
+
         for name in fcmd["Args"]:
             if not name in argvals:
                 str_err = name + " argument is empty!"
-                logger.debug(str_err)
-                return { 'Status' : 'Failed', 'Message' : str_err }
+                logger.error(self.ipaddr + " : str_err")
+                return {'Status': 'Failed', 'Message': str_err}
         paramlist = []
         for (pname, argname, field, ftype, dest) in fcmd["Parameters"]:
             if field is None:
@@ -434,8 +505,8 @@ class ProtocolWrapper(object):
                 argval = getattr(argvals[argname], field)
             paramlist.append(argval)
 
-        # logger.debug(PrettyPrint.prettify_json(paramlist))
-    
+        #logger.debug(self.ipaddr+" : Parameterlist: "+ str(paramlist))
+
         if Simulator.is_simulating():
             str_out = cmdname + "("
             comma = ""
@@ -443,11 +514,11 @@ class ProtocolWrapper(object):
                 str_out = str_out + comma + type(i).__name__ + str(i)
             comma = ","
             str_out = str_out + ")"
-            logger.debug(str_out)
-            rjson= { 'Status' : 'Success' }
+            #logger.debug(self.ipaddr+" : Str_out "+str_out)
+            rjson = {'Status': 'Success'}
         else:
             rjson = self.proto.operation(self.cmds, cmdname, *paramlist)
-        rjson['retval' ] = True
+        rjson['retval'] = True
         if not 'Message' in rjson:
             rjson['Message'] = 'none'
         return rjson
@@ -455,15 +526,15 @@ class ProtocolWrapper(object):
     def opget(self, index, selector):
         if not index in self.views:
             logger.debug("WARN: no " + str(index) + " for " + str(self.enumid))
-            return { 'Status' : 'Success', 'Message' : 'Not supported' }
+            return {'Status': 'Success', 'Message': 'Not supported'}
         clsName = TypeHelper.resolve(index)
-        logger.debug("Collecting " + clsName + " ... via " + str(self.enumid) + "..." )
+        logger.debug("Collecting " + clsName + " ... via " + str(self.enumid) + "...")
         if Simulator.is_simulating():
             retval = Simulator.simulate_proto(self.ipaddr, self.enumid, clsName)
         else:
             retval = self.proto.opget(self.views[index], clsName, selector)
             if Simulator.is_recording():
-                Simulator.record_proto(self.ipaddr,self.enumid, clsName, retval)
+                Simulator.record_proto(self.ipaddr, self.enumid, clsName, retval)
         if not 'Data' in retval or retval['Data'] is None:
             return retval
 
@@ -472,15 +543,16 @@ class ProtocolWrapper(object):
             counter = counter + 1
             retval['Data'][clsName] = retval['Data'][i]
             del retval['Data'][i]
-            if counter <= 1: 
+            if counter <= 1:
                 break
         return retval
 
     def isOpSupported(self, fname, **kwargs):
         return fname in self.cmds
 
+
 class PWSMAN(ProtocolWrapper):
-    def __init__(self, selectors, views, compmap, cmds, view_fieldspec = {}):
+    def __init__(self, selectors, views, compmap, cmds, view_fieldspec={}):
         if PY2:
             super(PWSMAN, self).__init__(ProtocolEnum.WSMAN)
         else:
@@ -490,7 +562,7 @@ class PWSMAN(ProtocolWrapper):
         self.view_fieldspec = view_fieldspec
         self.compmap = compmap
         self.cmds = cmds
-        self.supported_creds = [ CredentialsEnum.User ]
+        self.supported_creds = [CredentialsEnum.User]
 
     def clone(self):
         return PWSMAN(self.selectors, self.views, self.compmap, self.cmds, self.view_fieldspec)
@@ -512,7 +584,7 @@ class PWSMAN(ProtocolWrapper):
 
 
 class PSNMP(ProtocolWrapper):
-    def __init__(self, views, classifier, view_fieldspec = {}, cmds = {}, useSNMPGetFlag = False):
+    def __init__(self, views, classifier, view_fieldspec={}, cmds={}, useSNMPGetFlag=False):
         if PY2:
             super(PSNMP, self).__init__(ProtocolEnum.SNMP)
         else:
@@ -522,7 +594,7 @@ class PSNMP(ProtocolWrapper):
         self.view_fieldspec = view_fieldspec
         self.classifier = classifier
         self.cmds = cmds
-        self.supported_creds = [ CredentialsEnum.SNMPv1_v2c ]
+        self.supported_creds = [CredentialsEnum.SNMPv1_v2c]
         self.supports_entity_mib = False
         self.emib_mgr = EntityMibConvertor()
         self.useSNMPGetFlag = useSNMPGetFlag
@@ -552,6 +624,7 @@ class PSNMP(ProtocolWrapper):
             return False
         self.emib_mgr.build_entity_json(sdkbase.emib_json['Data'], sdkbase.entityjson)
 
+
 class PREST(ProtocolWrapper):
     def __init__(self, views, cmds):
         if PY2:
@@ -561,17 +634,18 @@ class PREST(ProtocolWrapper):
         self.selectors = {}
         self.views = views
         self.cmds = cmds
-        self.supported_creds = [ CredentialsEnum.User ]
+        self.supported_creds = [CredentialsEnum.User]
 
     def my_connect(self, ipaddr, creds, pOptions):
 
         if pOptions is None:
-                pOptions = RestOptions()
-				
+            pOptions = RestOptions()
+
         return False
 
     def clone(self):
         return PREST(self.views, self.cmds)
+
 
 class PREDFISH(ProtocolWrapper):
     def __init__(self, views, cmds={}, view_fieldspec={}, urlbase = None, classifier_cond = None):
@@ -585,7 +659,7 @@ class PREDFISH(ProtocolWrapper):
         self.classifier_cond = classifier_cond
         self.urlbase = urlbase
         self.cmds = cmds
-        self.supported_creds = [ CredentialsEnum.User ]
+        self.supported_creds = [CredentialsEnum.User]
 
     def my_connect(self, ipaddr, creds, pOptions):
         if pOptions is None:
@@ -604,13 +678,14 @@ class PREDFISH(ProtocolWrapper):
         if self.proto:
             self.proto.reset(True)
 
+
 class PCONSOLE(ProtocolWrapper):
     def __init__(self, obj):
         if PY2:
             super(PCONSOLE, self).__init__(ProtocolEnum.Other)
         else:
             super().__init__(ProtocolEnum.Other)
-        self.cmds = { "cmd" : 1 }
+        self.cmds = {"cmd": 1}
         self.obj = obj
 
     def clone(self):
@@ -618,6 +693,7 @@ class PCONSOLE(ProtocolWrapper):
 
     def connect(self, ipaddr, creds):
         self.obj.my_connect()
+
 
 class ProtocolFactoryIterator:
     def __init__(self, proto):
@@ -645,9 +721,10 @@ class ProtocolFactoryIterator:
                 raise StopIteration
 
             if breakflag:
-                return self.protocol_factory.protos[self.current-1]
+                return self.protocol_factory.protos[self.current - 1]
             else:
                 raise StopIteration
+
 
 class ProtocolFactory(object):
     def __init__(self):
@@ -675,9 +752,22 @@ class ProtocolFactory(object):
         self.protos.append(protocol)
         self.pref.add(protocol.enumid)
 
+    def removeProto(self, protoenum):
+        cnt = 0
+        found = False
+        for proto in self.protos:
+            if(proto.enumid == protoenum):
+                found = True
+                break
+            cnt = cnt + 1
+        if((cnt < len(self.protos)) and found):
+            self.protos.pop(cnt)
+            self.pref.remIndex(cnt, protoenum)
+
+
     def copy(self, source):
         self.pref.copy(source)
-        for i in range(len(source.protocols)-1, -1, -1):
+        for i in range(len(source.protocols) - 1, -1, -1):
             self._set_preferred_proto(source.protocols[i])
 
     def _set_preferred_proto(self, protoenum):
@@ -689,12 +779,12 @@ class ProtocolFactory(object):
         tt2 = []
         tt3 = []
         for i in range(len(moveit), 0, -1):
-            tt1.insert(0, self.protos[moveit[i-1]])
-            tt2.insert(0, self.pref.protocols[moveit[i-1]])
-            tt3.insert(0, self.pref.include_flag[moveit[i-1]])
-            del self.protos[moveit[i-1]]
-            del self.pref.protocols[moveit[i-1]]
-            del self.pref.include_flag[moveit[i-1]]
+            tt1.insert(0, self.protos[moveit[i - 1]])
+            tt2.insert(0, self.pref.protocols[moveit[i - 1]])
+            tt3.insert(0, self.pref.include_flag[moveit[i - 1]])
+            del self.protos[moveit[i - 1]]
+            del self.pref.protocols[moveit[i - 1]]
+            del self.pref.include_flag[moveit[i - 1]]
         self.protos[0:0] = tt1
         self.pref.protocols[0:0] = tt2
         self.pref.include_flag[0:0] = tt3
@@ -714,7 +804,7 @@ class ProtocolFactory(object):
         self.sspec = sspec
 
     def addClassifier(self, classifier):
-        self.classifier = set(classifier)
+        self.classifier = classifier
 
     def printx(self):
         for i in self.protos:

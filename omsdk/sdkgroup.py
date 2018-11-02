@@ -31,8 +31,8 @@ from omsdk.sdkdelta import DeltaComputer
 from omsdk.sdkstore import EntityStore
 import logging
 
-
 logger = logging.getLogger(__name__)
+
 
 class TopologyBuilder:
     def __init__(self, entity_store):
@@ -43,14 +43,14 @@ class TopologyBuilder:
         if self.entity_store is None: entity_store = EntityStore()
         self.builder_lock = threading.Lock()
 
-    def load(self, entity_store = None):
+    def load(self, entity_store=None):
         if entity_store is None: entity_store = self.entity_store
         with self.builder_lock:
             self.ctree = entity_store.load_master("Topology.json")
             self.ctree_flags = entity_store.load_master("Topology_Flags.json")
             self.assoc = entity_store.load_master("Assoc.json")
 
-    def _find_group(self, group, ctree, fpath = ''):
+    def _find_group(self, group, ctree, fpath=''):
         if group in ctree:
             return (ctree[group], fpath + "/" + group)
         for g in ctree:
@@ -63,7 +63,7 @@ class TopologyBuilder:
     def find_group(self, group):
         return self._find_group(group, self.ctree)
 
-    def _do_update(self, parent, name, entry, update = False, static = False):
+    def _do_update(self, parent, name, entry, update=False, static=False):
         (g, gf) = self._find_group(parent, self.ctree, '')
         if (g is not None) and (name not in g):
             if update:
@@ -99,7 +99,7 @@ class TopologyBuilder:
             return srctree == duptree
         for i in srctree:
             if (i not in duptree) or \
-               not self._check_assoc(srctree[i], duptree[i]):
+                    not self._check_assoc(srctree[i], duptree[i]):
                 return False
         for i in duptree:
             if i not in srctree:
@@ -150,19 +150,18 @@ class TopologyBuilder:
 
         return retval
 
-    def store(self, entity_store = None):
+    def store(self, entity_store=None):
         if entity_store is None: entity_store = self.entity_store
         diff_filter = DiffFilter()
         with self.builder_lock:
-            entity_store.store(self.ctree_flags, diff_filter, 
-                    "Topology_Flags.json", DeltaComputer.tree_without_instances)
+            entity_store.store(self.ctree_flags, diff_filter,
+                               "Topology_Flags.json", DeltaComputer.tree_without_instances)
             entity_store.store(self.ctree, diff_filter,
-                    "Topology.json", DeltaComputer.tree_without_instances)
+                               "Topology.json", DeltaComputer.tree_without_instances)
             entity_store.store(self.assoc, diff_filter,
-                    "Assoc.json", DeltaComputer.tree_with_instances)
+                               "Assoc.json", DeltaComputer.tree_with_instances)
 
     def printx(self):
-        logger.debug(PrettyPrint.prettify_json(self.ctree))
-        logger.debug(PrettyPrint.prettify_json(self.ctree_flags))
-        logger.debug(PrettyPrint.prettify_json(self.assoc))
-
+        logger.debug(self.ctree)
+        logger.debug(self.ctree_flags)
+        logger.debug(self.assoc)

@@ -22,19 +22,15 @@
 #
 import os
 import sys
-import logging
-import re
-import time
-import base64
-import xml.etree.ElementTree as ET
-from enum import Enum
-from datetime import datetime
+
 from omsdk.sdkdevice import iDeviceRegistry, iDeviceDriver, iDeviceDiscovery
 from omsdk.sdkdevice import iDeviceTopologyInfo
 from omsdk.sdkproto import PWSMAN,PREDFISH, PSNMP, ProtocolEnum, ProtocolOptionsFactory
 from omdrivers.enums.iDRAC.iDRACEnums import *
 from omsdk.idracmsgdb import eemiregistry
+from omsdk.sdkcenum import TypeHelper
 from omsdk.http.sdkredfishbase import RedfishOptions
+from omsdk.http.sdkwsmanbase import WsManOptions
 
 logger = logging.getLogger(__name__)
 
@@ -88,14 +84,19 @@ iDRACCompEnum = EnumWrapper("iDRACCompEnum", {
     "Enclosure" : "Enclosure",
     "EnclosureEMM" : "EnclosureEMM",
     "EnclosurePSU" : "EnclosurePSU",
+    "EnclosureSensor" : "EnclosureSensor",
     "EnclosureFanSensor" : "EnclosureFanSensor",
     "EnclosureTempSensor" : "EnclosureTempSensor",
     "VFlash"  : "VFlash",
     "Video" : "Video",
     "ControllerBattery" : "ControllerBattery" ,
     "Controller" : "Controller",
+    "ControllerSensor" : "ControllerSensor",
     "VirtualDisk" : "VirtualDisk",
     "PhysicalDisk" : "PhysicalDisk",
+    "PCIeSSDExtender" : "PCIeSSDExtender",
+    "PCIeSSDBackPlane" : "PCIeSSDBackPlane",
+    "PCIeSSDDisk" : "PCIeSSDDisk",
     "Sensors_Amperage" : "Sensors_Amperage",
     "Sensors_Temperature" : "Sensors_Temperature",
     "Sensors_Voltage" : "Sensors_Voltage",
@@ -177,17 +178,30 @@ iDRACComponentTree = {
     ],
     iDRACCompEnum.Controller : [
         iDRACCompEnum.Enclosure, # Enclosure.RAID.Modular.3-1
-        iDRACCompEnum.ControllerBattery, # Battery.RAID.Modular.3-1
         iDRACCompEnum.VirtualDisk, #VirtualDisk.RAID.Modular.3-1
         iDRACCompEnum.PhysicalDisk, #DirectDisk.RAID
+        iDRACCompEnum.ControllerSensor
+    ],
+    iDRACCompEnum.VirtualDisk : [
+        iDRACCompEnum.PhysicalDisk
+    ],
+    iDRACCompEnum.ControllerSensor : [
+        iDRACCompEnum.ControllerBattery,
     ],
     iDRACCompEnum.Enclosure : [
         iDRACCompEnum.EnclosureEMM,
         iDRACCompEnum.EnclosurePSU,
         iDRACCompEnum.PhysicalDisk,
-        "EnclosureSensor"
+        iDRACCompEnum.EnclosureSensor,
+        iDRACCompEnum.PCIeSSDExtender
     ],
-    "EnclosureSensor" : [
+    iDRACCompEnum.PCIeSSDExtender : [
+        iDRACCompEnum.PCIeSSDBackPlane
+    ],
+    iDRACCompEnum.PCIeSSDBackPlane : [
+        iDRACCompEnum.PCIeSSDDisk
+    ],
+    iDRACCompEnum.EnclosureSensor : [
         iDRACCompEnum.EnclosureFanSensor,
         iDRACCompEnum.EnclosureTempSensor
     ]
@@ -223,11 +237,16 @@ iDRACWsManViews = {
     iDRACCompEnum.VFlash : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VFlashView",
     iDRACCompEnum.Video : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VideoView",
     iDRACCompEnum.PhysicalDisk : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PhysicalDiskView",
+    iDRACCompEnum.PCIeSSDExtender : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PCIeSSDExtenderView",
+    iDRACCompEnum.PCIeSSDBackPlane : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PCIeSSDBackPlaneView",
+    iDRACCompEnum.PCIeSSDDisk : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PCIeSSDView",
     iDRACCompEnum.ControllerBattery : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ControllerBatteryView",
     iDRACCompEnum.Controller : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ControllerView",
+    iDRACCompEnum.ControllerSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ControllerView",
     iDRACCompEnum.EnclosureEMM : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureEMMView",
     iDRACCompEnum.EnclosurePSU : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosurePSUView",
     iDRACCompEnum.Enclosure : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureView",
+    iDRACCompEnum.EnclosureSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_EnclosureView",
     iDRACCompEnum.PCIDevice : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_PCIDeviceView",
     iDRACCompEnum.VirtualDisk : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_VirtualDiskView",
     iDRACSensorEnum.ServerSensor : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_Sensor",
@@ -239,12 +258,12 @@ iDRACWsManViews = {
     # iDRACMiscEnum.SystemString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SystemString",
     iDRACMiscEnum.SystemString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SystemString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_SystemString WHERE AttributeName = 'OSName' or AttributeName = 'OSVersion'"],
     # iDRACMiscEnum.NICString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICString",
-    iDRACMiscEnum.NICString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_NICString WHERE AttributeName = 'VirtWWN' or AttributeName = 'VirtWWPN' or AttributeName = 'WWN' or AttributeName = 'WWPN'  or AttributeName = 'FCoEBootSupport' or AttributeName = 'PXEBootSupport' or AttributeName = 'iSCSIBootSupport' or AttributeName = 'WOLSupport' or AttributeName = 'FlexAddressingSupport' or AttributeName = 'VFSRIOVSupport' or AttributeName = 'iSCSIOffloadSupport' or AttributeName = 'FCoEOffloadSupport' or AttributeName = 'NicPartitioningSupport' or AttributeName = 'TCPChimneySupport'"],
+    iDRACMiscEnum.NICString: ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_NICString WHERE AttributeName = 'VirtWWN' or AttributeName = 'VirtWWPN' or AttributeName = 'WWN' or AttributeName = 'WWPN'"],
     iDRACMiscEnum.NICEnumeration : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICEnumeration",
     # iDRACMiscEnum.iDRACString : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardString",
-    iDRACMiscEnum.iDRACString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardString WHERE InstanceID = 'iDRAC.Embedded.1#IPv4.1#Address' or  InstanceID = 'iDRAC.Embedded.1#Info.1#Product' or  InstanceID = 'iDRAC.Embedded.1#CurrentNIC.1#MACAddress' or  InstanceID = 'iDRAC.Embedded.1#CurrentIPv6.1#Address1' or  InstanceID = 'iDRAC.Embedded.1#GroupManager.1#GroupName' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchConnection' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchPortConnection'"],
+    iDRACMiscEnum.iDRACString : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardString", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardString WHERE InstanceID = 'iDRAC.Embedded.1#IPv4.1#Address' or  InstanceID = 'iDRAC.Embedded.1#Info.1#Product' or  InstanceID = 'iDRAC.Embedded.1#CurrentNIC.1#MACAddress' or  InstanceID = 'iDRAC.Embedded.1#CurrentIPv6.1#Address1' or  InstanceID = 'iDRAC.Embedded.1#GroupManager.1#GroupName' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchConnection' or  InstanceID = 'iDRAC.Embedded.1#NIC.1#SwitchPortConnection' or AttributeName = 'Destination'"],
     # iDRACMiscEnum.iDRACEnumeration : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardEnumeration",
-    iDRACMiscEnum.iDRACEnumeration : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardEnumeration", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardEnumeration WHERE InstanceID='iDRAC.Embedded.1#GroupManager.1#Status' or InstanceID='iDRAC.Embedded.1#NIC.1#Duplex' or InstanceID='iDRAC.Embedded.1#NIC.1#Speed' or InstanceID='iDRAC.Embedded.1#NIC.1#Enable' or InstanceID='iDRAC.Embedded.1#Lockdown.1#SystemLockdown'"],
+    iDRACMiscEnum.iDRACEnumeration : ["http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_iDRACCardEnumeration", "select FQDD,InstanceID,AttributeName,CurrentValue from DCIM_iDRACCardEnumeration WHERE InstanceID='iDRAC.Embedded.1#GroupManager.1#Status' or InstanceID='iDRAC.Embedded.1#NIC.1#Duplex' or InstanceID='iDRAC.Embedded.1#NIC.1#Speed' or InstanceID='iDRAC.Embedded.1#NIC.1#Enable' or InstanceID='iDRAC.Embedded.1#Lockdown.1#SystemLockdown' or AttributeName = 'State'"],
     iDRACMiscEnum.NICStatistics : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICStatistics",
     iDRACMiscEnum.NICCapabilities : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_NICCapabilities",
     iDRACMiscEnum.SwitchConnection : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_SwitchConnectionView",
@@ -275,8 +294,8 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical",
-                "0x8000" : "DMTF Reserved",
-                "0xFFFF" : "Vendor Reserved"
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
             }
         }
     },
@@ -288,6 +307,18 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical"
+            }
+        },
+        "RedundancyStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "DMTF Reserved",
+                "2": "Fully Redundant",
+                "3": "Degraded Redundancy",
+                "4": "Redundancy Lost",
+                "5": "Overall Failure",
+                "6": "Not Applicable"
             }
         }
     },
@@ -302,7 +333,7 @@ iDRACWsManViews_FieldSpec = {
         }
     },
     iDRACCompEnum.Controller : {
-        "CacheSizeInMB" : { 'Rename' : 'CacheSize', 'Type' : 'Bytes', 'InUnits' : 'MB', 'OutUnits' : 'MB' },
+        "CacheSizeInMB" : { 'Rename' : 'CacheSize', 'Type' : 'Bytes', 'InUnits' : 'MB', 'OutUnits' : 'GB' },
         "SecurityStatus" : {
             'Lookup'  :  'True',
             'Values' : {
@@ -350,8 +381,8 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical",
-                "0x8000" : "DMTF Reserved",
-                "0xFFFF" : "Vendor Reserved"
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
             }
         },
         "RollupStatus" : {
@@ -368,200 +399,219 @@ iDRACWsManViews_FieldSpec = {
         "CPUFamily" : {
             'Lookup'  :  'True',
             'Values' : {
-                "1" : "Other", 
-                "2" : "Unknown", 
-                "3" : "8086", 
-                "4" : "80286", 
+                "1" : "Other",
+                "2" : "Unknown",
+                "3" : "8086",
+                "4" : "80286",
                 "5" : "80386",
                 "6" : "80486",
                 "7" : "8087",
                 "8" : "80287",
                 "9" : "80387",
                 "A" : "80487",
-                "B" : "Pentium(R)brand", 
+                "B" : "Pentium(R)brand",
                 "C" : "Pentium(R)Pro",
-                "D" : "pentium(R) II", 
-                "E" : "Pentium(R) Processor with MMX(TM) technology", 
+                "D" : "pentium(R) II",
+                "E" : "Pentium(R) Processor with MMX(TM) technology",
                 "F" : "Celeron(TM)",
-                "10" : "Pentium(R) II Xeon(TM)", 
-                "11" : "Pentium(R) III", 
-                "12" : "M1 Family", 
-                "13" : "M2 Family", 
-                "14" : "Intel(R) Celeron(R) M processor", 
-                "15" : "Intel(R) Pentium(R) 4 HT processor", 
-                "18" : "K5 Family", 
+                "10" : "Pentium(R) II Xeon(TM)",
+                "11" : "Pentium(R) III",
+                "12" : "M1 Family",
+                "13" : "M2 Family",
+                "14" : "Intel(R) Celeron(R) M processor",
+                "15" : "Intel(R) Pentium(R) 4 HT processor",
+                "18" : "K5 Family",
                 "19" : "K6 Family" ,
-                "1A" : "K6-2", 
-                "1B" : "K6-3", 
-                "1C" : "AMD Athlon(TM) Processor Family", 
-                "1D" : "AMD(R) Duron(TM) Processor", 
-                "1E" : "AMD29000 Family", 
-                "1F" : "K6-2+", 
-                "20" : "Power PC Family", 
-                "21" : "Power PC 601", 
-                "22" : "Power PC 603", 
-                "23" : "Power PC 603+", 
-                "24" : "Power PC 604", 
-                "25" : "Power PC 620", 
-                "26" : "Power PC X704", 
-                "27" : "Power PC 750", 
-                "28" : "Intel(R) Core(TM) Duo processor", 
-                "29" : "Intel(R) Core(TM) Duo mobile processor", 
-                "2A" : "Intel(R) Core(TM) Solo mobile processor", 
-                "2B" : "Intel(R) Atom(TM) processor", 
-                "30" : "Alpha Family", 
-                "31" : "Alpha 21064", 
-                "32" : "Alpha 21066", 
-                "33" : "Alpha 21164", 
-                "34" : "Alpha 21164PC", 
-                "35" : "Alpha 21164a", 
-                "36" : "Alpha 21264", 
-                "37" : "Alpha 21364", 
-                "38" : "AMD Turion(TM) II Ultra Dual-Core Mobile M Processor Family", 
-                "39" : "AMD Turion(TM) II Dual-Core Mobile M Processor Family", 
-                "3A" : "AMD Athlon(TM) II Dual-Core Mobile M Processor Family", 
-                "3B" : "AMD Opteron(TM) 6100 Series Processor", 
-                "3C" : "AMD Opteron(TM) 4100 Series Processor", 
-                "3D" : "AMD Opteron(TM) 6200 Series Processor", 
-                "3E" : "AMD Opteron(TM) 4200 Series Processor", 
-                "40" : "MIPS Family", 
-                "41" : "MIPS R4000", 
-                "42" : "MIPS R4200", 
-                "43" : "MIPS R4400", 
-                "44" : "MIPS R4600", 
-                "45" : "MIPS R10000", 
-                "46" : "AMD C-Series Processor", 
-                "47" : "AMD E-Series Processor", 
-                "48" : "AMD S-Series Processor", 
-                "49" : "AMD G-Series Processor", 
-                "50" : "SPARC Family", 
-                "51" : "SuperSPARC", 
-                "52" : "microSPARC II", 
-                "53" : "microSPARC IIep", 
-                "54" : "UltraSPARC", 
-                "55" : "UltraSPARC II", 
-                "56" : "UltraSPARC IIi", 
-                "57" : "UltraSPARC III", 
-                "58" : "UltraSPARC IIIi", 
-                "60" : "68040", 
-                "61" : "68xxx Family", 
-                "62" : "68000", 
-                "63" : "68010", 
-                "64" : "68020", 
-                "65" : "68030", 
+                "1A" : "K6-2",
+                "1B" : "K6-3",
+                "1C" : "AMD Athlon(TM) Processor Family",
+                "1D" : "AMD(R) Duron(TM) Processor",
+                "1E" : "AMD29000 Family",
+                "1F" : "K6-2+",
+                "20" : "Power PC Family",
+                "21" : "Power PC 601",
+                "22" : "Power PC 603",
+                "23" : "Power PC 603+",
+                "24" : "Power PC 604",
+                "25" : "Power PC 620",
+                "26" : "Power PC X704",
+                "27" : "Power PC 750",
+                "28" : "Intel(R) Core(TM) Duo processor",
+                "29" : "Intel(R) Core(TM) Duo mobile processor",
+                "2A" : "Intel(R) Core(TM) Solo mobile processor",
+                "2B" : "Intel(R) Atom(TM) processor",
+                "30" : "Alpha Family",
+                "31" : "Alpha 21064",
+                "32" : "Alpha 21066",
+                "33" : "Alpha 21164",
+                "34" : "Alpha 21164PC",
+                "35" : "Alpha 21164a",
+                "36" : "Alpha 21264",
+                "37" : "Alpha 21364",
+                "38" : "AMD Turion(TM) II Ultra Dual-Core Mobile M Processor Family",
+                "39" : "AMD Turion(TM) II Dual-Core Mobile M Processor Family",
+                "3A" : "AMD Athlon(TM) II Dual-Core Mobile M Processor Family",
+                "3B" : "AMD Opteron(TM) 6100 Series Processor",
+                "3C" : "AMD Opteron(TM) 4100 Series Processor",
+                "3D" : "AMD Opteron(TM) 6200 Series Processor",
+                "3E" : "AMD Opteron(TM) 4200 Series Processor",
+                "40" : "MIPS Family",
+                "41" : "MIPS R4000",
+                "42" : "MIPS R4200",
+                "43" : "MIPS R4400",
+                "44" : "MIPS R4600",
+                "45" : "MIPS R10000",
+                "46" : "AMD C-Series Processor",
+                "47" : "AMD E-Series Processor",
+                "48" : "AMD S-Series Processor",
+                "49" : "AMD G-Series Processor",
+                "50" : "SPARC Family",
+                "51" : "SuperSPARC",
+                "52" : "microSPARC II",
+                "53" : "microSPARC IIep",
+                "54" : "UltraSPARC",
+                "55" : "UltraSPARC II",
+                "56" : "UltraSPARC IIi",
+                "57" : "UltraSPARC III",
+                "58" : "UltraSPARC IIIi",
+                "60" : "68040",
+                "61" : "68xxx Family",
+                "62" : "68000",
+                "63" : "68010",
+                "64" : "68020",
+                "65" : "68030",
                 "70" : "Hobbit Family",
-                "78" : "Crusoe(TM) TM5000 Family", 
-                "79" : "Crusoe(TM) TM3000 Family", 
-                "7A" : "Efficeon(TM) TM8000 Family", 
-                "80" : "Weitek", 
-                "82" : "Itanium(TM) Processor", 
-                "83" : "AMD Athlon(TM) 64 Processor Family", 
-                "84" : "AMD Opteron(TM) Processor Family", 
-                "85" : "AMD Sempron(TM) Processor Family", 
-                "86" : "AMD Turion(TM) 64 Mobile Technology", 
-                "87" : "Dual-Core AMD Opteron(TM) Processor Family", 
-                "88" : "AMD Athlon(TM) 64 X2 Dual-Core Processor Family", 
-                "89" : "AMD Turion(TM) 64 X2 Mobile Technology", 
-                "8A" : "Quad-Core AMD Opteron(TM) Processor Family", 
-                "8B" : "Third Generation AMD Opteron(TM) Processor Family", 
-                "8C" : "AMD Phenom(TM) FX Quad-Core Processor Family", 
-                "8D" : "AMD Phenom(TM) X4 Quad-Core Processor Family", 
-                "8E" : "AMD Phenom(TM) X2 Dual-Core Processor Family", 
-                "8F" : "AMD Athlon(TM) X2 Dual-Core Processor Family", 
-                "90" : "PA-RISC Family", 
-                "91" : "PA-RISC 8500", 
-                "92" : "PA-RISC 8000", 
-                "93" : "PA-RISC 7300LC", 
-                "94" : "PA-RISC 7200", 
-                "95" : "PA-RISC 7100LC", 
-                "96" : "PA-RISC 7100", 
+                "78" : "Crusoe(TM) TM5000 Family",
+                "79" : "Crusoe(TM) TM3000 Family",
+                "7A" : "Efficeon(TM) TM8000 Family",
+                "80" : "Weitek",
+                "82" : "Itanium(TM) Processor",
+                "83" : "AMD Athlon(TM) 64 Processor Family",
+                "84" : "AMD Opteron(TM) Processor Family",
+                "85" : "AMD Sempron(TM) Processor Family",
+                "86" : "AMD Turion(TM) 64 Mobile Technology",
+                "87" : "Dual-Core AMD Opteron(TM) Processor Family",
+                "88" : "AMD Athlon(TM) 64 X2 Dual-Core Processor Family",
+                "89" : "AMD Turion(TM) 64 X2 Mobile Technology",
+                "8A" : "Quad-Core AMD Opteron(TM) Processor Family",
+                "8B" : "Third Generation AMD Opteron(TM) Processor Family",
+                "8C" : "AMD Phenom(TM) FX Quad-Core Processor Family",
+                "8D" : "AMD Phenom(TM) X4 Quad-Core Processor Family",
+                "8E" : "AMD Phenom(TM) X2 Dual-Core Processor Family",
+                "8F" : "AMD Athlon(TM) X2 Dual-Core Processor Family",
+                "90" : "PA-RISC Family",
+                "91" : "PA-RISC 8500",
+                "92" : "PA-RISC 8000",
+                "93" : "PA-RISC 7300LC",
+                "94" : "PA-RISC 7200",
+                "95" : "PA-RISC 7100LC",
+                "96" : "PA-RISC 7100",
                 "A0" : "V30 Family",
-                "A1" : "Quad-Core Intel(R) Xeon(R) processor 3200 Series", 
-                "A2" : "Dual-Core Intel(R) Xeon(R) processor 3000 Series", 
-                "A3" : "Quad-Core Intel(R) Xeon(R) processor 5300 Series", 
-                "A4" : "Dual-Core Intel(R) Xeon(R) processor 5100 Series", 
-                "A5" : "Dual-Core Intel(R) Xeon(R) processor 5000 Series", 
+                "A1" : "Quad-Core Intel(R) Xeon(R) processor 3200 Series",
+                "A2" : "Dual-Core Intel(R) Xeon(R) processor 3000 Series",
+                "A3" : "Quad-Core Intel(R) Xeon(R) processor 5300 Series",
+                "A4" : "Dual-Core Intel(R) Xeon(R) processor 5100 Series",
+                "A5" : "Dual-Core Intel(R) Xeon(R) processor 5000 Series",
                 "A6" : "Dual-Core Intel(R) Xeon(R) processor LV",
                 "A7" : "Dual-Core Intel(R) Xeon(R) processor ULV",
-                "A8" : "Dual-Core Intel(R) Xeon(R) processor 7100 Series", 
+                "A8" : "Dual-Core Intel(R) Xeon(R) processor 7100 Series",
                 "A9" : "Quad-Core Intel(R) Xeon(R) processor 5400 Series",
                 "AA" : "Quad-Core Intel(R) Xeon(R) processor",
                 "AB" : "Dual-Core Intel(R) Xeon(R) processor 5200 Series",
                 "AC" : "Dual-Core Intel(R) Xeon(R) processor 7200 Series",
-                "AD" : "Quad-Core Intel(R) Xeon(R) processor 7300 Series", 
-                "AE" : "Quad-Core Intel(R) Xeon(R) processor 7400 Series", 
-                "AF" : "Multi-Core Intel(R) Xeon(R) processor 7400 Series", 
-                "B0" : "Pentium(R) III Xeon(TM)", 
-                "B1" : "Pentium(R) III Processor with Intel(R) SpeedStep(TM) Technology", 
-                "B2" : "Pentium(R) 4", 
-                "B3" : "Intel(R) Xeon(TM)", 
-                "B4" : "AS400 Family", 
-                "B5" : "Intel(R) Xeon(TM) Processor MP", 
-                "B6" : "AMD Athlon(TM) XP Family", 
+                "AD" : "Quad-Core Intel(R) Xeon(R) processor 7300 Series",
+                "AE" : "Quad-Core Intel(R) Xeon(R) processor 7400 Series",
+                "AF" : "Multi-Core Intel(R) Xeon(R) processor 7400 Series",
+                "B0" : "Pentium(R) III Xeon(TM)",
+                "B1" : "Pentium(R) III Processor with Intel(R) SpeedStep(TM) Technology",
+                "B2" : "Pentium(R) 4",
+                "B3" : "Intel(R) Xeon(TM)",
+                "B4" : "AS400 Family",
+                "B5" : "Intel(R) Xeon(TM) Processor MP",
+                "B6" : "AMD Athlon(TM) XP Family",
                 "B7" : "AMD Athlon(TM) MP Family",
                 "B8" : "Intel(R) Itanium(R) 2",
-                "B9" : "Intel(R) Pentium(R) M Processor", 
-                "BA" : "Intel(R) Celeron(R) D Processor", 
-                "BB" : "Intel(R) Pentium(R) D Processor", 
-                "BC" : "Intel(R) Pentium(R) Processor Extreme Edition", 
-                "BD" : "Intel(R) Core(TM) Solo Processor", 
-                "BE" : "K7", 
-                "BF" : "Intel(R) Core(TM) 2 Duo Processor", 
-                "C0" : "Intel(R) Core(TM) 2 Solo Processor", 
-                "C1" : "Intel(R) Core(TM) 2 Extreme Processor", 
-                "C2" : "Intel(R) Core(TM) 2 Quad Processor", 
-                "C3" : "Intel(R) Core(TM) 2 Extreme mobile Processor", 
-                "C4" : "Intel(R) Core(TM) 2 Duo mobile Processor", 
-                "C5" : "Intel(R) Core(TM) 2 solo mobile Processor", 
-                "C6" : "Intel(R) Core(TM) i7 processor", 
-                "C7" : "Dual-Core Intel(R) Celeron(R) Processor", 
-                "C8" : "S/390 and zSeries Family", 
-                "C9" : "ESA/390 G4", 
-                "CA" : "ESA/390 G5", 
-                "CB" : "ESA/390 G6", 
-                "CC" : "z/Architecture base", 
-                "CD" : "Intel(R) Core(TM) i5 processor", 
-                "CE" : "Intel(R) Core(TM) i3 processor", 
-                "D2" : "VIA C7(TM)-M Processor Family", 
-                "D3" : "VIA C7(TM)-D Processor Family", 
-                "D4" : "VIA C7(TM) Processor Family", 
-                "D5" : "VIA Eden(TM) Processor Family", 
-                "D6" : "Multi-Core Intel(R) Xeon(R) processor", 
-                "D7" : "Dual-Core Intel(R) Xeon(R) processor 3xxx Series", 
-                "D8" : "Quad-Core Intel(R) Xeon(R) processor 3xxx Series", 
-                "D9" : "VIA Nano(TM) Processor Family", 
-                "DA" : "Dual-Core Intel(R) Xeon(R) processor 5xxx Series", 
-                "DB" : "Quad-Core Intel(R) Xeon(R) processor 5xxx Series", 
-                "DD" : "Dual-Core Intel(R) Xeon(R) processor 7xxx Series", 
-                "DE" : "Quad-Core Intel(R) Xeon(R) processor 7xxx Series", 
-                "DF" : "Multi-Core Intel(R) Xeon(R) processor 7xxx Series", 
-                "E0" : "Multi-Core Intel(R) Xeon(R) processor 3400 Series", 
-                "E6" : "Embedded AMD Opteron(TM) Quad-Core Processor Family", 
-                "E7" : "AMD Phenom(TM) Triple-Core Processor Family", 
-                "E8" : "AMD Turion(TM) Ultra Dual-Core Mobile Processor Family", 
-                "E9" : "AMD Turion(TM) Dual-Core Mobile Processor Family", 
-                "EA" : "AMD Athlon(TM) Dual-Core Processor Family", 
-                "EB" : "AMD Sempron(TM) SI Processor Family", 
-                "EC" : "AMD Phenom(TM) II Processor Family", 
-                "ED" : "AMD Athlon(TM) II Processor Family", 
-                "EE" : "Six-Core AMD Opteron(TM) Processor Family", 
-                "EF" : "AMD Sempron(TM) M Processor Family", 
-                "FA" : "i860", 
-                "FB" : "i960", 
-                "FE" : "Reserved (SMBIOS Extension)", 
-                "FF" : "Reserved (Un-initialized Flash Content - Lo)", 
-                "104" : "SH-3", 
-                "105" : "SH-4", 
-                "118" : "ARM", 
-                "119" : "StrongARM", 
-                "12C" : "6x86", 
-                "12D" : "MediaGX", 
-                "12E" : "MII", 
-                "140" : "WinChip", 
-                "15E" : "DSP", 
-                "1F4" : "Video Processor", 
-                "FFFE" : "Reserved (For Future Special Purpose Assignment)", 
-                "FFFF" : "Reserved (Un-initialized Flash Content - Hi)"
+                "B9" : "Intel(R) Pentium(R) M Processor",
+                "BA" : "Intel(R) Celeron(R) D Processor",
+                "BB" : "Intel(R) Pentium(R) D Processor",
+                "BC" : "Intel(R) Pentium(R) Processor Extreme Edition",
+                "BD" : "Intel(R) Core(TM) Solo Processor",
+                "BE" : "K7",
+                "BF" : "Intel(R) Core(TM) 2 Duo Processor",
+                "C0" : "Intel(R) Core(TM) 2 Solo Processor",
+                "C1" : "Intel(R) Core(TM) 2 Extreme Processor",
+                "C2" : "Intel(R) Core(TM) 2 Quad Processor",
+                "C3" : "Intel(R) Core(TM) 2 Extreme mobile Processor",
+                "C4" : "Intel(R) Core(TM) 2 Duo mobile Processor",
+                "C5" : "Intel(R) Core(TM) 2 solo mobile Processor",
+                "C6" : "Intel(R) Core(TM) i7 processor",
+                "C7" : "Dual-Core Intel(R) Celeron(R) Processor",
+                "C8" : "S/390 and zSeries Family",
+                "C9" : "ESA/390 G4",
+                "CA" : "ESA/390 G5",
+                "CB" : "ESA/390 G6",
+                "CC" : "z/Architecture base",
+                "CD" : "Intel(R) Core(TM) i5 processor",
+                "CE" : "Intel(R) Core(TM) i3 processor",
+                "D2" : "VIA C7(TM)-M Processor Family",
+                "D3" : "VIA C7(TM)-D Processor Family",
+                "D4" : "VIA C7(TM) Processor Family",
+                "D5" : "VIA Eden(TM) Processor Family",
+                "D6" : "Multi-Core Intel(R) Xeon(R) processor",
+                "D7" : "Dual-Core Intel(R) Xeon(R) processor 3xxx Series",
+                "D8" : "Quad-Core Intel(R) Xeon(R) processor 3xxx Series",
+                "D9" : "VIA Nano(TM) Processor Family",
+                "DA" : "Dual-Core Intel(R) Xeon(R) processor 5xxx Series",
+                "DB" : "Quad-Core Intel(R) Xeon(R) processor 5xxx Series",
+                "DD" : "Dual-Core Intel(R) Xeon(R) processor 7xxx Series",
+                "DE" : "Quad-Core Intel(R) Xeon(R) processor 7xxx Series",
+                "DF" : "Multi-Core Intel(R) Xeon(R) processor 7xxx Series",
+                "E0" : "Multi-Core Intel(R) Xeon(R) processor 3400 Series",
+                "E6" : "Embedded AMD Opteron(TM) Quad-Core Processor Family",
+                "E7" : "AMD Phenom(TM) Triple-Core Processor Family",
+                "E8" : "AMD Turion(TM) Ultra Dual-Core Mobile Processor Family",
+                "E9" : "AMD Turion(TM) Dual-Core Mobile Processor Family",
+                "EA" : "AMD Athlon(TM) Dual-Core Processor Family",
+                "EB" : "AMD Sempron(TM) SI Processor Family",
+                "EC" : "AMD Phenom(TM) II Processor Family",
+                "ED" : "AMD Athlon(TM) II Processor Family",
+                "EE" : "Six-Core AMD Opteron(TM) Processor Family",
+                "EF" : "AMD Sempron(TM) M Processor Family",
+                "FA" : "i860",
+                "FB" : "i960",
+                "FE" : "Reserved (SMBIOS Extension)",
+                "FF" : "Reserved (Un-initialized Flash Content - Lo)",
+                "104" : "SH-3",
+                "105" : "SH-4",
+                "118" : "ARM",
+                "119" : "StrongARM",
+                "12C" : "6x86",
+                "12D" : "MediaGX",
+                "12E" : "MII",
+                "140" : "WinChip",
+                "15E" : "DSP",
+                "1F4" : "Video Processor",
+                "FFFE" : "Reserved (For Future Special Purpose Assignment)",
+                "FFFF" : "Reserved (Un-initialized Flash Content - Hi)",
+                "E5" : "AMD AMD Sempron(TM) II Processor",
+                "66" : "AMD Athlon(TM) X4 Quad-Core Processor Family",
+                "3F" : "AMD FX(TM) Series Processor",
+                "4F" : "AMD FirePro(TM) Series Processor",
+                "E4" : "AMD Opteron(TM) 3000 Series Processor",
+                "4E" : "AMD Opteron(TM) 3300 Series Processor",
+                "4C" : "AMD Opteron(TM) 4300 Series Processor",
+                "4D" : "AMD Opteron(TM) 6300 Series Processor",
+                "69" : "AMD Opteron(TM) A-Series Processor",
+                "67" : "AMD Opteron(TM) X1000 Series Processor",
+                "68" : "AMD Opteron(TM) X2000 Series APU",
+                "6A" : "AMD Opteron(TM) X3000 Series APU",
+                "4B" : "AMD R-Series Processor",
+                "4A" : "AMD Z-Series Processor",
+                "6B" : "AMD Zen Processor Family",
+                "2C" : "Intel(R) Core(TM) M processor",
+                "2D" : "Intel(R) Core(TM) m3 processor",
+                "2E" : "Intel(R) Core(TM) m5 processor",
+                "2F" : "Intel(R) Core(TM) m7 processor"
             }
         },
         "HyperThreadingCapable" : {
@@ -630,8 +680,8 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical",
-                "0x8000" : "DMTF Reserved",
-                "0xFFFF" : "Vendor Reserved"
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
             }
         }
     },
@@ -684,8 +734,8 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical",
-                "0x8000" : "DMTF Reserved",
-                "0xFFFF" : "Vendor Reserved"
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
             }
         },
         "RaidStatus" : {
@@ -708,6 +758,129 @@ iDRACWsManViews_FieldSpec = {
             'Values' : {
                 "0" : "Healthy",
                 "1" : "Warning"
+            }
+        },
+        "FailurePredicted": {
+            'Rename' : 'PredictiveFailureState',
+            'Lookup'  :  'True',
+            'Values' : {
+                "YES" : "Warning",
+                "NO" : "Healthy"
+            }
+        },
+        "MaxCapableSpeed" : {
+            'Lookup': 'True',
+            'Values': {
+                "0":"Unknown", "1": "1.5 Gbps", "2": "3 Gbps", "3": "6 Gbps","4": "12 Gbps"
+            }
+        },
+        "T10PICapability": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "T10 PI not supported", "1": "T10 PI supported"
+            }
+        },
+    },
+    iDRACCompEnum.PCIeSSDDisk : {
+        "SizeInBytes" : { 'Rename' : 'Size', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
+        "UsedSizeInBytes" : { 'Rename' : 'UsedSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
+        "FreeSizeInBytes" : { 'Rename' : 'FreeSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'GB' },
+        "BlockSizeInBytes":  { 'Rename' : 'BlockSize', 'Type' : 'Bytes' , 'InUnits' : 'B', 'Metrics' : 'B' },
+        "RemainingRatedWriteEndurance":  {
+            'Lookup' : 'True',
+            'Values' : {
+                '255' : "Unknown"
+            }
+        },
+        "MediaType" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                '0' : "HDD",
+                '1' : "SSD"
+            }
+        },
+        "BusProtocol" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "SCSI",
+                "2" : "PATA",
+                "3" : "FIBRE",
+                "4" : "USB",
+                "5" : "SATA",
+                "6" : "SAS",
+                "7" : "PCIe",
+                "8" : "NVME"
+            }
+        },
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
+            }
+        },
+        "RaidStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Ready",
+                "2" : "Online",
+                "3" : "Foreign",
+                "4" : "Offline",
+                "5" : "Blocked",
+                "6" : "Failed",
+                "7" : "Degraded",
+                "8" : "Non-RAID",
+                "9" : "Missing"
+            }
+        },
+        "FailurePredicted": {
+            'Rename' : 'PredictiveFailureState',
+            'Lookup'  :  'True',
+            'Values' : {
+                "YES" : "Warning",
+                "NO" : "Healthy"
+            }
+        },
+        "DriveFormFactor" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "1.8 inch",
+                "2" : "2.5 inch",
+                "3" : "3.5 inch",
+                "4" : "2.5 inch Add-in card"
+            }
+        }
+    },
+    iDRACCompEnum.PCIeSSDExtender : {
+        "PrimaryStatus" : {
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
+            }
+        }
+    },
+    iDRACCompEnum.PCIeSSDBackPlane : {
+        "RollupStatus" : {'Rename' : 'PrimaryStatus',
+            'Lookup'  :  'True',
+            'Values' : {
+                "0" : "Unknown",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical",
+                "0x8000" : "Unknown",
+                "0xFFFF" : "Unknown"
             }
         }
     },
@@ -740,6 +913,20 @@ iDRACWsManViews_FieldSpec = {
                 "1" : "Healthy",
                 "2" : "Warning",
                 "3" : "Critical"
+            }
+        },
+        "PowerCapEnabledState": {
+            'Lookup': 'True',
+            'Values': {
+                "2": "Enabled",
+                "3": "Disabled"
+            }
+        },
+        "PowerState": {
+            'Lookup': 'True',
+            'Values': {
+                "2": "On",
+                "8": "Off - Soft"
             }
         }
     },
@@ -823,7 +1010,14 @@ iDRACWsManViews_FieldSpec = {
     iDRACCompEnum.VFlash : {
         "Capacity" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
         "AvailableSize" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
-        "HealthStatus":  { 'Rename' : 'PrimaryStatus'},
+        "HealthStatus" : { 'Rename' : 'PrimaryStatus',
+            'Lookup'  :  'True',
+            'Values' : {
+                "OK" : "Healthy",
+                "Error" : "Critical",
+                "Critical" : "Critical"
+            }
+        }
     },
     iDRACSensorEnum.ServerSensor : {
         "PrimaryStatus" : {
@@ -941,7 +1135,8 @@ iDRACWsManViews_FieldSpec = {
                 "iDRAC.Embedded.1#GroupManager.1#Status" : 'GroupStatus',
                 "iDRAC.Embedded.1#NIC.1#Duplex" : 'NICDuplex',
                 "iDRAC.Embedded.1#NIC.1#Speed": 'NICSpeed',
-                "iDRAC.Embedded.1#Lockdown.1#SystemLockdown" : 'SystemLockDown'
+                "iDRAC.Embedded.1#Lockdown.1#SystemLockdown" : 'SystemLockDown',
+                "iDRAC.Embedded.1#NIC.1#Enable" : 'NICEnabled'
             }
         }
     },
@@ -960,7 +1155,7 @@ iDRACWsManViews_FieldSpec = {
         }
     },
     iDRACCompEnum.PowerSupply : {
-        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'Watts'},
+        "TotalOutputPower" : {'UnitScale': '0', 'UnitAppend' : 'W'},
         "Range1MaxInputPower" : {'UnitScale': '0', 'UnitAppend' : 'W'},
         "PrimaryStatus" : {
             'Lookup'  :  'True',
@@ -1046,7 +1241,214 @@ iDRACWsManViews_FieldSpec = {
     },
     iDRACCompEnum.License : {
         "LicenseInstallDate" : {'DateTime' : None},
-        "LicenseSoldDate" : {'DateTime' : None}
+        "LicenseSoldDate" : {'DateTime' : None},
+        "LicensePrimaryStatus": {
+            'Rename' : 'PrimaryStatus',
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Healthy",
+                "2": "Warning",
+                "3": "Critical"
+            }
+        },
+        "LicenseType": {
+            'Lookup': 'True',
+            'Values': {
+                "1": "Perpetual",
+                "2": "Leased",
+                "3": "Evaluation",
+                "4": "Site"
+            }
+        }
+    },
+    iDRACCompEnum.EnclosureFanSensor: {
+        "PrimaryStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Healthy",
+                "2": "Warning",
+                "3": "Critical"
+            }
+        }
+    },
+    iDRACCompEnum.EnclosureTempSensor: {
+        "PrimaryStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Healthy",
+                "2": "Warning",
+                "3": "Critical"
+            }
+        }
+    },
+    iDRACCompEnum.HostNIC: {
+        "Status": {
+            'Rename': 'PrimaryStatus',
+            'Lookup': 'True',
+            'Values': {
+                "0": "Healthy",
+                "1": "Critical",
+                "2": "Warning",
+                "3": "Warning",
+                "4": "Warning",
+                "5": "Warning",
+                "6": "Critical"
+            }
+        }
+    },
+    iDRACCompEnum.PresenceAndStatusSensor: {
+        "CurrentState":{
+            'Rename': 'PrimaryStatus',
+            'Lookup': 'True',
+            'Values': {
+                "OK": "Healthy",
+                "Critical": "Critical"
+            }
+        }
+    },
+    iDRACMiscEnum.NICCapabilities: {
+        "FCoEBootSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "PXEBootSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "iSCSIBootSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "WOLSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "FlexAddressingSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "VFSRIOVSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "iSCSIOffloadSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "FCoEOffloadSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "NicPartitioningSupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "TCPChimneySupport": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        },
+        "DCBExchangeProtocol": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Supported",
+                "3": "Not Supported"
+            }
+        }
+    },
+    iDRACCompEnum.NIC: {
+        "FCoEOffloadMode": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Enabled",
+                "3": "Disabled"
+            }
+        },
+        "iScsiOffloadMode": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Enabled",
+                "3": "Disabled"
+            }
+        },
+        "AutoNegotiation": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Enabled",
+                "3": "Disabled"
+            }
+        }
+    },
+    iDRACCompEnum.ControllerBattery: {
+        "RAIDState": {
+            'Lookup': 'True',
+            'Values': {
+                "0" : "Unknown",
+                "1" : "Ready",
+                "6" : "Failed",
+                "7" : "Degraded",
+                "9" : "Missing",
+                "10" : "Charging",
+                "12" : "Below Threshold"
+            }
+        }
+    },
+    iDRACCompEnum.Enclosure: {
+        "PrimaryStatus": {
+            'Lookup' : 'True',
+            'Values' : {
+                "0" : "Warning",
+                "1" : "Healthy",
+                "2" : "Warning",
+                "3" : "Critical"
+            }
+        }
     }
 }
 
@@ -1196,7 +1598,7 @@ iDRACRedfishViews_FieldSpec = {
     # }
 }
 
-def satisfyme(myListoFDict):
+def chk_classifier(myListoFDict, cls=None):
     valid = False
     flist = []
     for sys in myListoFDict:
@@ -1210,7 +1612,7 @@ def satisfyme(myListoFDict):
 classify_cond = {
     iDRACCompEnum.System :
     {
-        ProtocolEnum.REDFISH : satisfyme
+        ProtocolEnum.REDFISH : chk_classifier
     }
 }
 
@@ -1327,7 +1729,7 @@ if PySnmpPresent:
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.5"), 
             'coolingUnitIndexReference' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.15"), 
             'CurrentReading' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.6"), 
-            'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.7"), 
+            'Type' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.7"),
             'State' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.4"),
             'Location' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.8"), 
             'SubType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.700.12.1.16"), 
@@ -1420,7 +1822,11 @@ if PySnmpPresent:
             'SASAddress' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.77"), 
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.1"), 
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.78"), 
-            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.79"), 
+            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.79"),
+            'T10PICapability': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.80"),
+            'SupportRAID10UnevenSpans': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.81"),
+            'SupportEnhancedAutoForeignImport': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.82"),
+            'SupportControllerBootMode': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.1.1.83"),
         },
         iDRACCompEnum.VirtualDisk : {
             'Number' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.140.1.1.1"), 
@@ -1451,14 +1857,14 @@ if PySnmpPresent:
             'Size' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.11"), 
             'UsedSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.17"),
             'FreeSize' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.19"),
-            'BusType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.21"), 
-            'SpareState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.22"), 
+            'BusProtocol' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.21"),
+            'HotSpareStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.22"),
             'PrimaryStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.24"), 
             'PPID' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.27"), 
             'SASAddress' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.28"), 
-            'NegotiatedSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.29"), 
+            'RAIDNegotiatedSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.29"),
             'PredictiveFailureState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.31"),
-            'CapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"), 
+            'MaxCapableSpeed' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.30"),
             'MediaType' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.35"), 
             'PowerState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.42"), 
             'DriveFormFactor' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.53"), 
@@ -1467,9 +1873,11 @@ if PySnmpPresent:
             'ManufacturingWeek' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.33"), 
             'ManufacturingYear' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.34"), 
             'OperationalState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.50"), 
-            'SecurityStatus' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.52"), 
+            'SecurityState' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.52"),
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.54"), 
-            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.55"), 
+            'DeviceDescription' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.55"),
+            'T10PICapability': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.57"),
+            'BlockSize': ObjectIdentity("1.3.6.1.4.1.674.10892.5.5.1.20.130.4.1.58"),
         },
         "FRU" : {
             'FQDD' : ObjectIdentity("1.3.6.1.4.1.674.10892.5.4.2000.10.1.12"), 
@@ -1512,6 +1920,7 @@ if PySnmpPresent:
             "PrimaryStatus" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.5'),
             "State" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.4'),
             "ProbeReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.6'),
+            "ProbeType" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.7'),
             "CurrentReading" : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.600.30.1.16'),
         },
         iDRACCompEnum.Sensors_Battery : {
@@ -1540,6 +1949,7 @@ if PySnmpPresent:
             "PrimaryStatus"   : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.5'),
             "CurrentReading(Degree Celsius)"      : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.6'),
             "Location"        : ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.8'),
+            "SensorType": ObjectIdentity('1.3.6.1.4.1.674.10892.5.4.700.20.1.7.1'),
         },
     }
     iDRACSNMPViews_FieldSpec = {
@@ -1549,10 +1959,10 @@ if PySnmpPresent:
             "memoryDeviceStateSettings" : {
                 'Lookup' :  'True',
                 'Values' : {
-                    "1"  : "unknown",
-                    "2"  : "enabled",
-                    "4"  : "notReady",
-                    "6"  : "enabledAndNotReady"
+                    "1"  : "Unknown",
+                    "2"  : "Enabled",
+                    "4"  : "Not Ready",
+                    "6"  : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -1568,7 +1978,7 @@ if PySnmpPresent:
             },
         },
         iDRACCompEnum.Controller : {
-            "CacheSize" : { 'Type' : 'Bytes', 'InUnits' : 'MB' },
+            "CacheSize" : { 'Type' : 'Bytes', 'InUnits' : 'MB', 'OutUnits' : 'GB' },
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -1590,16 +2000,86 @@ if PySnmpPresent:
                     "5": "Critical",
                     "6": "Critical"
                 }
+            },
+            "T10PICapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other", "2": "Capable", "3": "Not Capable"
+                }
+            },
+            "EncryptionCapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "None",
+                    "3": "LKM"
+                }
+            },
+            "SecurityStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "None",
+                    "3": "LKM"
+                }
+            },
+            "SupportEnhancedAutoForeignImport": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "Not Supported",
+                    "3": "Disabled",
+                    "4": "Enabled"
+                }
+            },
+            "SupportControllerBootMode": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Not Supported",
+                    "1": "Supported"
+                }
+            },
+            "SupportRAID10UnevenSpans": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Uneven span for RAID10 not supported",
+                    "1": "Uneven span for RAID10 supported"
+                }
             }
         },
+
+        iDRACCompEnum.Enclosure: {
+            "State": {
+                'Lookup' : 'True',
+                'Values' : {
+                    "1": "Unknown",
+                    "2": "Ready",
+                    "3": "Failed",
+                    "4": "Missing",
+                    "5": "Degraded"
+                }
+            },
+            "PrimaryStatus": {
+                'Lookup' : 'True',
+                'Values' : {
+                    "1" : "Unknown",
+                    "2" : "Unknown",
+                    "3" : "Healthy",
+                    "4" : "Warning",
+                    "5" : "Critical",
+                    "6" : "Critical"
+                }
+            }
+        },
+
         iDRACCompEnum.Sensors_Fan: {
             "State" : {
                 'Lookup'  :  'True',
                 'Values' : {
-                    "1" : "unknown",
-                    "2" : "enabled",
-                    "4" : "notReady",
-                    "6" : "enabledAndNotReady",
+                    "1" : "Unknown",
+                    "2" : "Enabled",
+                    "4" : "Not Ready",
+                    "6" : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -1650,10 +2130,10 @@ if PySnmpPresent:
             "processorDeviceStateSettings" : {
                 'Lookup' :  'True',
                 'Values' : {
-                    "1"  : "unknown",
-                    "2"  : "enabled",
-                    "4"  : "notReady",
-                    "6"  : "enabledAndNotReady"
+                    "1"  : "Unknown",
+                    "2"  : "Enabled",
+                    "4"  : "Not Ready",
+                    "6"  : "Enabled Not Ready"
                 }
             },
             "PrimaryStatus" : {
@@ -1970,6 +2450,7 @@ if PySnmpPresent:
             "Size" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' },
             "UsedSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'Metrics' : 'GB'},
             "FreeSize" : { 'Type' : 'Bytes' , 'InUnits' : 'MB', 'Metrics' : 'GB' },
+            "BlockSize": {'Type': 'Bytes', 'InUnits': 'B', 'OutUnits': 'B'},
             "RaidStatus" : {
                 'Lookup' :  'True',
                 'Values' : {
@@ -2008,6 +2489,93 @@ if PySnmpPresent:
                     "3" : "SSD"
                 }
             },
+            "ManufacturingDay": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Sunday",
+                    "2": "Monday",
+                    "3": "Tuesday",
+                    "4": "Wednesday",
+                    "5": "Thursday",
+                    "6": "Friday",
+                    "7": "Saturday"
+                }
+            },
+            "MaxCapableSpeed": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.5 Gbps",
+                    "3": "3.0 Gbps",
+                    "4": "6.0 Gbps",
+                    "5": "12.0 Gbps",
+                    "6": "5 GT/s",
+                    "7": "8 GT/s"
+                }
+            },
+            "T10PICapability": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other", "2": "Capable", "3": "Not Capable"
+                }
+            },
+            "RAIDNegotiatedSpeed": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.5 Gbps",
+                    "3": "3.0 Gbps",
+                    "4": "6.0 Gbps",
+                    "5": "12.0 Gbps",
+                    "6": "5 GT/s",
+                    "7": "8 GT/s"
+                }
+            },
+            "SecurityState": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Supported",
+                    "2": "Not Supported",
+                    "3": "Secured",
+                    "4": "Locked",
+                    "5": "Foreign"
+                }
+            },
+            "HotSpareStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Not A Spare",
+                    "2": "Dedicated Hot Spare",
+                    "3": "Global Hot Spare"
+                }
+            },
+            "PredictiveFailureState": {
+                'Lookup': 'True',
+                'Values': {
+                    "0": "Smart Alert Absent",
+                    "1": "Smart Alert Present"
+                }
+            },
+            "BusProtocol": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "SCSI",
+                    "3": "SAS",
+                    "4": "SATA",
+                    "5": "Fibre Channel",
+                    "6": "PCIe"
+                }
+            },
+            "DriveFormFactor": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "1.8 inch",
+                    "3": "2.5 inch",
+                    "4": "3.5 inch"
+                }
+            }
         },
         iDRACCompEnum.System : {
             "SystemGeneration" : {
@@ -2323,6 +2891,31 @@ if PySnmpPresent:
                     "10" : "Critical"
                 }
             },
+            "ProbeType": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "amperageProbeTypeIsOther",
+                    "2": "amperageProbeTypeIsUnknown",
+                    "3": "amperageProbeTypeIs1Point5Volt",
+                    "4": "amperageProbeTypeIs3Point3volt",
+                    "5": "amperageProbeTypeIs5Volt",
+                    "6": "amperageProbeTypeIsMinus5Volt",
+                    "7": "amperageProbeTypeIs12Volt",
+                    "8": "amperageProbeTypeIsMinus12Volt",
+                    "9": "amperageProbeTypeIsIO",
+                    "10": "amperageProbeTypeIsCore",
+                    "11": "amperageProbeTypeIsFLEA",
+                    "12": "amperageProbeTypeIsBattery",
+                    "13": "amperageProbeTypeIsTerminator",
+                    "14": "amperageProbeTypeIs2Point5Volt",
+                    "15": "amperageProbeTypeIsGTL",
+                    "16": "amperageProbeTypeIsDiscrete",
+                    "23": "amperageProbeTypeIsPowerSupplyAmps",
+                    "24": "amperageProbeTypeIsPowerSupplyWatts",
+                    "25": "amperageProbeTypeIsSystemAmps",
+                    "26": "amperageProbeTypeIsSystemWatts"
+                }
+            },
             "State" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -2342,6 +2935,7 @@ if PySnmpPresent:
         },
         iDRACCompEnum.Sensors_Temperature : {
             'Reading(Degree Celsius)' :  {'UnitScale': '-1', 'UnitAppend' : 'Degree Celsius'},
+            'CurrentReading(Degree Celsius)': {'UnitScale': '-1'},
             "PrimaryStatus" : {
                 'Lookup'  :  'True',
                 'Values' : {
@@ -2364,6 +2958,15 @@ if PySnmpPresent:
                     "2" : "Enabled",
                     "4" : "Not Ready",
                     "6" : "Enabled Not Ready"
+                }
+            },
+            "SensorType": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Other",
+                    "2": "Unknown",
+                    "3": "Ambient ESM",
+                    "16": "Discrete"
                 }
             }
         },
@@ -2398,6 +3001,19 @@ if PySnmpPresent:
                     "2" : "Enabled",
                     "4" : "Not Ready",
                     "6" : "Enabled Not Ready"
+                }
+            }
+        },
+        iDRACCompEnum.ControllerBattery: {
+            "PrimaryStatus": {
+                'Lookup': 'True',
+                'Values': {
+                    "1": "Unknown",
+                    "2": "Unknown",
+                    "3": "Healthy",
+                    "4": "Warning",
+                    "5": "Critical",
+                    "6": "Critical"
                 }
             }
         }
@@ -2561,7 +3177,9 @@ iDRAC_more_details_spec = {
         "_components_enum": [
             iDRACCompEnum.System,
             iDRACMiscEnum.ChassisRF,
-            iDRACMiscEnum.DellAttributes
+            iDRACMiscEnum.DellAttributes,
+            iDRACCompEnum.iDRAC,
+            iDRACMiscEnum.iDRACString
         ]
     },
     "iDRAC":{
@@ -2660,6 +3278,14 @@ class iDRACEntity(iDeviceDriver):
            TypeHelper.resolve(childClsName) == "PhysicalDisk" and \
            ("Disk.Direct" not in self._get_obj_index(childClsName, child)):
            return False
+        if TypeHelper.resolve(parentClsName) == "VirtualDisk" and \
+           TypeHelper.resolve(childClsName) == "PhysicalDisk":
+            if 'PhysicalDiskIDs' in parent:
+                parentdiskListStr = parent['PhysicalDiskIDs'].strip("[]")
+                if (self._get_obj_index(childClsName, child) in parentdiskListStr):
+                    return True
+            else:
+                return False
         return self._get_obj_index(parentClsName, parent) in \
                self._get_obj_index(childClsName, child)
 
@@ -2731,7 +3357,7 @@ class iDRACEntity(iDeviceDriver):
     @property
     def PowerState(self):
         pstate = self._get_field_device(self.ComponentEnum.System, "PowerState")
-        return TypeHelper.convert_to_enum(pstate, PowerStateEnum)
+        return TypeHelper.convert_to_enum(int(pstate), PowerStateEnum)
 
     @property
     def IDRACDNSName(self):
@@ -2743,9 +3369,18 @@ class iDRACEntity(iDeviceDriver):
         #    if entry["RollupStatus"] == 0 or entry["PrimaryStatus"] == 0: 
         #        return False
         if component == 'System':
-            if 'iDRAC' in self.entityjson:
-                if 'URLString' in self.entityjson['iDRAC'][0]:
-                    entry['iDRACURL'] = self.entityjson['iDRAC'][0]['URLString']
+            if self.cfactory.work_protocols[0].name == "WSMAN":
+                port = 443
+                if isinstance(self.pOptions, ProtocolOptionsFactory):
+                    pOptions = self.pOptions.get(ProtocolEnum.REDFISH)
+                    if pOptions:
+                        port = pOptions.port
+                elif isinstance(self.pOptions, WsManOptions):
+                    port = self.pOptions.port
+                if ':' in self.ipaddr:
+                    entry['iDRACURL'] = "https://["+str(self.ipaddr) +"]:"+str(port)
+                else:
+                    entry['iDRACURL'] = "https://" + str(self.ipaddr) + ":" +str(port)
             if 'ChassisRF' in self.entityjson:
                 ChaSysDict = self.entityjson['ChassisRF'][0]
                 ChassisDict = None
@@ -2773,7 +3408,6 @@ class iDRACEntity(iDeviceDriver):
                     for attr in needAttr:
                         if attr in dAttr and dAttr[attr]:
                             entry.update({attr: dAttr[attr]})
-
         if component == 'iDRAC':
             if 'DellAttributes' in self.entityjson:
                 dellAttrList = self.entityjson['DellAttributes']
@@ -2781,7 +3415,7 @@ class iDRACEntity(iDeviceDriver):
 'NICDuplex', 'NICSpeed' ,'DNSDomainName','DNSRacName','IPv6Address', 'PermanentMACAddress']
                 for dAttr in dellAttrList:
                     for attr in needAttr:
-                        if attr in dAttr and dAttr[attr]:
+                        if dAttr.get(attr,None):
                             entry.update({attr: dAttr[attr]})
             if self.cfactory.work_protocols[0].name == "REDFISH":
                 port = 443
@@ -2798,6 +3432,10 @@ class iDRACEntity(iDeviceDriver):
                 if 'System' in self.entityjson:
                     self.entityjson["System"][0]["iDRACURL"] = entry['URLString']
 
+        if component == 'iDRACNIC':
+            if 'NICEnabled' in entry:
+                h_map = {"Enabled" : "Healthy", "Disabled" : "Critical", "Unknown" : "Unknown"}
+                entry['PrimaryStatus'] = h_map.get(entry.get('NICEnabled', "Unknown"),"Unknown")
         if component in ["Sensors_Battery"]:
            if "OtherSensorTypeDescription" in entry:
                 if not entry["OtherSensorTypeDescription"] == 'Battery':
@@ -2827,6 +3465,8 @@ class iDRACEntity(iDeviceDriver):
                     nicCapabilities=nicCapabilities+ncpDict[ncp]
             if(nicCapabilities != ""):
                 entry["NICCapabilities"] = nicCapabilities.rstrip(',')
+            if 'PrimaryStatus' not in entry:
+                entry['PrimaryStatus'] = {'Up':'Healthy','Down':'Critical', 'Unknown':'Unknown'}.get(entry.get('LinkStatus','Unknown'))
         if component == "BIOS":
             # SCOM Requirement to get 1 instance
             if not (entry["ComponentType"] == 'BIOS') or not ("INSTALLED#" in entry["InstanceID"]):
@@ -2846,6 +3486,26 @@ class iDRACEntity(iDeviceDriver):
                     if '|' in s:
                         entry[x] = s.split('|')[-1]
             cl = None
+        if component == "VFlash":
+            if 'PrimaryStatus' in entry:
+                if entry["PrimaryStatus"] == "Not Available":
+                    entry["PrimaryStatus"] = "Unknown"
+        if component == 'SystemBoardMetrics':
+            try:
+                entry['PeakAmperage'] = float(entry.get('PeakAmperage',0))/10
+            except ValueError:
+                logger.info(self.ipaddr+" Warning: Converting PeakAmperage not a number "+entry.get('PeakAmperage', 'Not Present'))
+                entry['PeakAmperage'] = "0"
+        if component == "PresenceAndStatusSensor":
+            if entry.get('ElementName') != "Chassis Controller":
+                return False
+        if 'Sensors_' in component:
+            if (entry.get('DeviceID', None)):
+                entry['DeviceID'] = entry.get('Key')#Redfish Case for SCOM to Adapt
+            # or change in Monitor file Sensor/NumericSensor/PSNumericSensor to ElementName
+            entry['Key'] = entry.get('Location', entry.get('Key', component))
+            if (entry.get('SensorType', "Not Available")):
+                entry["SensorType"] = component.split('_')[-1]
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
@@ -2855,6 +3515,10 @@ class iDRACEntity(iDeviceDriver):
             finalretjson[component] = list(filtered.values())
         if component == 'ChassisRF' or component == 'DellAttributes':
             del finalretjson[component]
+        # if component == 'Subsystem':
+        #     component = finalretjson.keys()
+        #     subsystem = finalretjson["Subsystem"]
+        #     finalretjson["Subsystem"] = list(filter(lambda eachdict: eachdict['Key'] in component, subsystem))
 
     def _get_topology_info(self):
         return iDRACTopologyInfo(self.get_json_device())
@@ -2866,6 +3530,27 @@ class iDRACEntity(iDeviceDriver):
                         'Model',
                         'GroupManager'
                 ] }
+
+    @property
+    def ContainmentTree(self):
+        """
+        Removing PowerSupply, Sensors_Fan and Sensor_intrusion Groups
+        :return: JSON
+        """
+        device_json = self.get_json_device()
+        ctree = self._build_ctree(self.protofactory.ctree, device_json)
+        syslist = self.entityjson.get('System', [{}])
+        sysdict = syslist[0]
+        blademodel = sysdict.get('Model', 'Not Available')
+        #logger.info(self.ipaddr+" BLAde Model "+blademodel)
+        if blademodel:
+            if ('poweredge m' in str(blademodel).lower()):
+                systree = ctree.get('System', {})
+                systree.pop('PowerSupply',None)
+                sensdict = systree.get('Sensors',{})
+                sensdict.pop('Sensors_Fan', None)
+                sensdict.pop('Sensors_Intrusion', None)
+        return ctree
 
 class iDRACTopologyInfo(iDeviceTopologyInfo):
     def __init__(self, json):

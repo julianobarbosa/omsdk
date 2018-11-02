@@ -52,19 +52,19 @@ if UsePyTz:
 logger = logging.getLogger(__name__)
 
 DownloadProtocolEnum = EnumWrapper('DPE', {
-   "HTTP" : 'HTTP',
-   "FTP" : 'FTP',
-   "NoOp" : 'NoOp',
-   'HashCheck' : 'HashCheck',
+   "HTTP": 'HTTP',
+   "FTP": 'FTP',
+   "NoOp": 'NoOp',
+   'HashCheck': 'HashCheck',
 }).enum_type
 
 DownloadedFileStatusEnum = EnumWrapper('DFSE', {
-   "NotExists" : 'NotExists',
-   "Same" : 'Same',
-   "Present" : 'Present',
-   "Different" : 'Different',
-   "RemoteIsNew" : 'RemoteIsNew',
-   "RemoteIsOld" : 'RemoteIsOld',
+   "NotExists": 'NotExists',
+   "Same": 'Same',
+   "Present": 'Present',
+   "Different": 'Different',
+   "RemoteIsNew": 'RemoteIsNew',
+   "RemoteIsOld": 'RemoteIsOld',
 }).enum_type
 
 
@@ -73,8 +73,9 @@ class FtpCredentials:
         self.user = user
         self.password = password
 
+
 class DownloadHelper:
-    def __init__(self, site, protocol = DownloadProtocolEnum.HTTP, creds=None):
+    def __init__(self, site, protocol=DownloadProtocolEnum.HTTP, creds=None):
         self.protocol = protocol
         self.creds = creds
         self.site = site
@@ -82,7 +83,7 @@ class DownloadHelper:
         self.connect()
 
     def connect(self):
-        try :
+        try:
             if self.conn:
                 return True
             if self.protocol == DownloadProtocolEnum.HTTP:
@@ -124,11 +125,11 @@ class DownloadHelper:
 
     def _normalize_date(self, date):
         if date is None: date = '1971-01-01T01:01:01Z',
-        try :
-            date = datetime.strptime(date,"%a, %d %b %Y %H:%M:%S %Z")
+        try:
+            date = datetime.strptime(date, "%a, %d %b %Y %H:%M:%S %Z")
         except Exception as ex:
             logger.debug(str(ex))
-        try :
+        try:
             if isinstance(date, str):
                 date = datetime.strptime(date[:19], "%Y-%m-%dT%H:%M:%S")
         except Exception as ex:
@@ -164,14 +165,14 @@ class DownloadHelper:
         logger.debug('Remote size=' + str(rfile['size']) +
                      ", Local size=" + str(file_metadata['size']))
         logger.debug('Remote time=' + self._str_date(rtime) +
-                     ", Local time="+ self._str_date(ltime))
+                     ", Local time=" + self._str_date(ltime))
         if rtime > ltime:
             return DownloadedFileStatusEnum.RemoteIsNew
         return DownloadedFileStatusEnum.RemoteIsOld
 
     def _get_hashMD5(self, filename):
         md5 = hashlib.md5()
-        with open(filename,'rb') as f:
+        with open(filename, 'rb') as f:
             for chunk in iter(lambda: f.read(8192), b''):
                 md5.update(chunk)
         return md5.hexdigest()
@@ -212,7 +213,7 @@ class DownloadHelper:
                 else:
                     stime = [str(time.gmtime().tm_year)] + fields[5:8]
                     date = datetime.strptime(' '.join(stime), "%Y %b %d %H:%M")
-                metadata ['dateTime'] = self._cdt_to_date(date)
+                metadata['dateTime'] = self._cdt_to_date(date)
                 metadata['size'] = int(fields[4])
         elif self.protocol == DownloadProtocolEnum.HTTP:
             metadata['size'] = int(response.getheader('Content-Length'))
@@ -223,15 +224,14 @@ class DownloadHelper:
 
     def _download_file(self, rfile, lfile):
         try:
-            fstatus =self._validate_file(rfile, lfile)
+            fstatus = self._validate_file(rfile, lfile)
 
             if fstatus in [DownloadedFileStatusEnum.Same]:
                 # if the file is same, no need to download file
                 logger.debug(rfile['path'] + " is as expected!")
                 if self.protocol in [DownloadProtocolEnum.HashCheck]:
-                    print("{0:16} {1}".format(TypeHelper.resolve(fstatus),lfile))
+                    print("{0:16} {1}".format(TypeHelper.resolve(fstatus), lfile))
                 return True
-
 
             if self.protocol == DownloadProtocolEnum.HashCheck:
                 # in case of hashcheck, return the status after printing
@@ -251,8 +251,8 @@ class DownloadHelper:
                 return False
 
             file_metadata = {
-                    'dateTime' :  '1971-01-01T01:01:01Z',
-                    'size' : 0
+                    'dateTime':  '1971-01-01T01:01:01Z',
+                    'size': 0
             }
             try:
                 if os.path.isfile(lfile + ".Metadata"):
@@ -270,30 +270,30 @@ class DownloadHelper:
                 response = self.conn.getresponse()
 
             rfile_metadata = self._get_file_metadata(rfile['path'], response)
-            fstatus =self._validate_file_metadata(rfile,
-                                         file_metadata, rfile_metadata)
+            fstatus = self._validate_file_metadata(rfile,
+                                                   file_metadata, rfile_metadata)
             logger.debug("_validate_file_metadata() returned" + str(fstatus))
             if fstatus not in [DownloadedFileStatusEnum.RemoteIsOld,
                                DownloadedFileStatusEnum.RemoteIsNew,
-                               DownloadedFileStatusEnum.Different ]:
-                if response : response.close()
+                               DownloadedFileStatusEnum.Different]:
+                if response: response.close()
                 return True
             logger.debug('Downloading ' + rfile['path'] + " to " + lfile)
             print('Downloading ' + rfile['path'])
             with open(lfile + ".Metadata", "w") as f1:
                 f1.write(json.dumps(rfile_metadata, sort_keys=True,
-                        indent=4, separators=(',', ': ')))
+                                    indent=4, separators=(',', ': ')))
             if self.protocol == DownloadProtocolEnum.HTTP:
                 with open(lfile, 'wb') as f:
                     f.write(response.read())
             elif self.protocol == DownloadProtocolEnum.FTP:
                 f = open(lfile, 'wb')
-                self.conn.retrbinary('RETR '+ rfile['path'], f.write)
+                self.conn.retrbinary('RETR ' + rfile['path'], f.write)
                 f.close()
             fstatus = self._validate_file(rfile, lfile)
             logger.debug("_validate_file() returned" + str(fstatus))
             return (fstatus in [DownloadedFileStatusEnum.Same,
-                                   DownloadedFileStatusEnum.Present])
+                                DownloadedFileStatusEnum.Present])
         except Exception as ex:
             print(str(ex))
             logger.debug("File Download failed:" + str(ex))
@@ -312,8 +312,8 @@ class DownloadHelper:
             return False
         return True
 
-    def download_newerfiles(self, flist, lfolder = "."):
-        counter = { 'success' : 0, 'failed' : 0 }
+    def download_newerfiles(self, flist, lfolder="."):
+        counter = {'success': 0, 'failed': 0}
 
         if not self._create_dir(lfolder):
             counter['failed'] = len(flist)
@@ -323,7 +323,7 @@ class DownloadHelper:
 
         for rfile in flist:
             if not isinstance(rfile, dict):
-                rfile = { 'path' : rfile, 'hashMD5' : None }
+                rfile = {'path': rfile, 'hashMD5': None}
             lfile = os.path.join(lfolder, *rfile['path'].split('/'))
             if self._download_file(rfile, lfile):
                 counter['success'] += 1
@@ -333,7 +333,7 @@ class DownloadHelper:
 
     def unzip_file(self, lfname, tfname=None):
         if not tfname:
-            tfname = lfname.rsplit('.gz',1)[0]
+            tfname = lfname.rsplit('.gz', 1)[0]
         retval = False
         if os.path.isfile(lfname):
             f_in = gzip.open(lfname, 'rb')

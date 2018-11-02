@@ -30,20 +30,21 @@ from omsdk.sdkcreds import UserCredentials
 from omsdk.sdkprint import PrettyPrint
 import sys
 
+
 def CollectInventory(arglist):
     parser = ArgumentParser(description='Inventory Collector')
-    parser.add_argument('-u', '--user', 
-        action="store", dest="user", type=str, nargs='?',
-        default='root', help="Username to use for iDRAC")
-    parser.add_argument('-p', '--password', 
-        action="store", dest="password", type=str,
-        default='calvin', help="Password to use for iDRAC")
+    parser.add_argument('-u', '--user',
+                        action="store", dest="user", type=str, nargs='?',
+                        default='root', help="Username to use for iDRAC")
+    parser.add_argument('-p', '--password',
+                        action="store", dest="password", type=str,
+                        default='calvin', help="Password to use for iDRAC")
     parser.add_argument('-i', '--ipaddress',
-        action="store", dest="idrac_ip", nargs='+',
-        help="ipaddress of iDRAC")
-    parser.add_argument('-f', '--folder', 
-        action="store", dest="folder", type=str,
-        help="folder from where inventory is serialized")
+                        action="store", dest="idrac_ip", nargs='+',
+                        help="ipaddress of iDRAC")
+    parser.add_argument('-f', '--folder',
+                        action="store", dest="folder", type=str,
+                        help="folder from where inventory is serialized")
 
     options = parser.parse_args(arglist)
 
@@ -60,8 +61,7 @@ def CollectInventory(arglist):
         print("iDRAC ip addresses must be provided")
         return -1
 
-
-    updshare = LocalFile(local = options.folder, isFolder=True)
+    updshare = LocalFile(local=options.folder, isFolder=True)
     if not updshare.IsValid:
         print("Folder is not writable!")
         return -2
@@ -84,6 +84,7 @@ def CollectInventory(arglist):
                 print("    failed to connect to iDRAC")
         except Exception as ex:
             print(str(ex))
+
 
 if __name__ == "__main__":
     CollectInventory(sys.argv[1:])

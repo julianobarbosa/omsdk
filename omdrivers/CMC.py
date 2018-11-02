@@ -20,13 +20,14 @@
 #
 # Authors: Vaideeswaran Ganesan
 #
+
+import sys
+
 from enum import Enum
 from omsdk.sdkdevice import iDeviceRegistry, iDeviceDriver, iDeviceDiscovery
 from omsdk.sdkdevice import iDeviceTopologyInfo
 from omsdk.sdkproto import PWSMAN
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
-from omsdk.sdkprint import PrettyPrint
-import sys
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
@@ -61,7 +62,8 @@ CMCMiscEnum = EnumWrapper("CMCMiscEnum", {
     "PSSlot" : "PSSlot",
     "PCISlot" : "PCISlot",
     "FanPackage" : "FanPackage",
-    "FanSlot" : "FanSlot"
+    "FanSlot" : "FanSlot",
+    "SystemChassis": "SystemChassis"
     }).enum_type
 
 CMCLogsEnum = EnumWrapper("CMCLogEnum", {
@@ -84,6 +86,7 @@ CMCComponentTree = {
         CMCCompEnum.PowerSupply,
         CMCCompEnum.PCIDevice,
         CMCCompEnum.ComputeModule,
+        CMCCompEnum.StorageModule,
         CMCCompEnum.Slots_Summary,
         "Storage"
     ],
@@ -108,6 +111,7 @@ CMCComponentTree = {
 
 CMCWsManViews = {
     CMCCompEnum.System: "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_ModularChassisView",
+    CMCMiscEnum.SystemChassis: "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/root/dell/Dell_Chassis",
     CMCCompEnum.ComputeModule : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_BladeServerView",
     CMCCompEnum.StorageModule : "http://schemas.dmtf.org/wbem/wscim/1/cim-schema/2/root/dcim/DCIM_StorageSledView",
     CMCCompEnum.Fan : "http://schemas.dell.com/wbem/wscim/1/cim-schema/2/Dell_Fan",
@@ -151,6 +155,16 @@ CMCUnionCompSpec = {
         ],
         "_remove_duplicates" : False
    }
+}
+
+CMC_more_details_spec = {
+    "System": {
+        "_components_enum": [
+            CMCCompEnum.System,
+            CMCCompEnum.ComputeModule,
+            CMCCompEnum.StorageModule
+        ]
+    }
 }
 
 CMCMergeJoinCompSpec = {
@@ -197,20 +211,25 @@ CMCMergeJoinCompSpec = {
             CMCMiscEnum.PCISlot
         ],
         "_overwrite" : False
+   },
+   "System": {
+        "_components": [
+            ["System", "PhysicalLocationChassisName", "SystemChassis", "Name"]
+        ],
+        "_components_enum": [
+            CMCCompEnum.System,
+            CMCMiscEnum.SystemChassis
+        ],
+        "_overwrite": False
    }
 }
-
-CMC_more_details_spec = {
-    "StorageModule":{
-        "_components_enum": [
-            CMCCompEnum.ComputeModule,
-            CMCCompEnum.StorageModule
-        ]
-    }
-}
 CMCWsManViews_FieldSpec = {
+    CMCMiscEnum.SystemChassis: {
+        "ElementName": {"Rename": "ProductShortName"}
+    },
     CMCCompEnum.PowerSupply : {
         "HealthState":  {
+            'Rename' : 'PrimaryStatus',
             'Lookup': 'True',
             'Values': {
                 "0" : "Unknown", "5" : "Healthy",
@@ -222,6 +241,7 @@ CMCWsManViews_FieldSpec = {
     },
     CMCCompEnum.Fan : {
         "HealthState":  {
+            'Rename' : 'PrimaryStatus',
             'Lookup': 'True',
             'Values': {
                 "0" : "Unknown", "5" : "Healthy",
@@ -235,11 +255,70 @@ CMCWsManViews_FieldSpec = {
     },
     CMCCompEnum.KVM : {
         "HealthState":  {
+            'Rename': 'PrimaryStatus',
             'Lookup': 'True',
             'Values': {
                 "0" : "Unknown", "5" : "Healthy",
                 "10" : "Warning", "15" : "Warning",
                 "20": "Critical", "25" : "Critical", "30" : "Critical"
+            }
+        },
+        "RequestedState": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "2": "Enabled",
+                "3": "Disabled",
+                "4": "Shut Down",
+                "5": "No Change",
+                "6": "Offline",
+                "7": "Test",
+                "8" : "Deferred",
+                "9": "Quiesce",
+                "10": "Reboot",
+                "11": "Reset",
+                "12": "Not Applicable "
+            }
+        },
+        "EnabledState": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Other",
+                "2": "Enabled",
+                "3": "Disabled",
+                "4": "Shutting Down",
+                "5": "Not Applicable",
+                "6": "Enabled but Offline",
+                "7": "In Test",
+                "8": "Deferred",
+                "9": "Quiesce",
+                "10": "Starting"
+            }
+        },
+        "OperationalStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown",
+                "1": "Other",
+                "2": "OK",
+                "3": "Degraded",
+                "4": "Stressed",
+                "5": "Predictive Failure",
+                "6": "Error",
+                "7": "Non-Recoverable Error",
+                "8": "Starting",
+                "9": "Stopping",
+                "10": "Stopped",
+                "11": "In Service",
+                "12": "No Contact",
+                "13": "Lost Communication",
+                "14": "Aborted",
+                "15": "Dormant",
+                "16": "Supporting Entity in Error",
+                "17": "Completed",
+                "18": "Power Mode",
+                "19": "Relocating"
             }
         }
     },
@@ -283,6 +362,24 @@ CMCWsManViews_FieldSpec = {
             'Lookup': 'True',
             'Values': {
                 "0" : "Healthy", "1" : "Warning"
+            }
+        },
+        "DriveFormFactor": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown", "1": "1.8 inch", "2": "2.5 inch", "3": "3.5 inch", "4": "2.5 inch Add-in card"
+            }
+        },
+        "HotSpareStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "No", "1": "Dedicated", "2": "Global"
+            }
+        },
+        "MaxCapableSpeed" : {
+            'Lookup': 'True',
+            'Values': {
+                "0":"Unknown", "1": "1.5 Gbps", "2": "3 Gbps", "3": "6 Gbps","4": "12 Gbps"
             }
         }
     },
@@ -358,7 +455,13 @@ CMCWsManViews_FieldSpec = {
         "LicenseType":  {
             'Lookup' : 'True',
             'Values' : {
-                "1" : "Perpertual", "2" : "Leased", "3" : "Evaluation", "4" : "Site"
+                "1" : "Perpetual", "2" : "Leased", "3" : "Evaluation", "4" : "Site"
+            }
+        },
+        "LicensePrimaryStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0": "Unknown", "1": "Healthy", "2": "Warning", "3": "Critical"
             }
         }
     },
@@ -412,13 +515,13 @@ CMCWsManViews_FieldSpec = {
         'SlicedVDCapability' : {
             'Lookup': 'True',
             'Values' : {
-                    "0" : "Not Supported", "1" : "Supported"
+                    "0" : "Sliced Virtual Disk creation not supported", "1" : "Sliced Virtual Disk creation supported"
             }
         },
         'CachecadeCapability' : {
             'Lookup': 'True',
             'Values' : {
-                    "0" : "Not Supported", "1" : "Supported"
+                    "0" : "Cachecade Virtual Disk not supported", "1" : "Cachecade Virtual Disk supported"
             }
         },
         'EncryptionMode' : {
@@ -441,7 +544,7 @@ CMCWsManViews_FieldSpec = {
                     "3" : "Short", "4" : "Long"
             }
         },
-        "CacheSizeInMB" : { 'Type' : 'Bytes' , 'InUnits' : 'MB' , 'OutUnits' : 'MB'}
+        "CacheSizeInMB": {'Type': 'Bytes', 'InUnits': 'MB', 'OutUnits': 'MB'},
     },
     CMCCompEnum.Enclosure : {
         "PrimaryStatus": {
@@ -484,6 +587,30 @@ CMCWsManViews_FieldSpec = {
             'Lookup': 'True',
             'Values': {
                 "1": "Other", "2": "Power On", "6": "Power Off"
+            }
+        }
+    },
+    CMCCompEnum.StorageModule: {
+        "PowerState": {
+            'Lookup': 'True',
+            'Values': {
+                "1": "Other", "2": "Power On", "6": "Power Off"
+            }
+        }
+    },
+    CMCCompEnum.System : {
+        "PrimaryStatus": {
+            'Lookup': 'True',
+            'Values': {
+                "0" : "Unknown", "1" : "Healthy", "2" : "Warning", "3" : "Critical"
+            }
+        },
+        "PowerState": {
+            'Lookup': 'True',
+            'Values': {
+                "1": "Other",
+                "2": "Power On",
+                "6": "Power Off - Hard"
             }
         }
     }
@@ -554,7 +681,8 @@ class CMCEntity(iDeviceDriver):
                 for d in diskids:
                     fd = d.strip().strip("'")
                     # print("FD is ",fd, " VD ",self._get_obj_index(childClsName,child))
-                    if fd == self._get_obj_index(childClsName,child):
+                    if (self._get_obj_index(childClsName,child) in fd):
+                        # print("Add to CTREE SUCCESS")
                         return True
             else:
                 return False
@@ -576,138 +704,112 @@ class CMCEntity(iDeviceDriver):
     def _should_i_include(self, component, entry):
         if component == "ComputeModule":
             # print("IN SHOULD I Include")
-            bladeslot = self.entityjson["ComputeModule"]
-            st_dict = {}
-            slt_ndict = {}
-            breakflag = False
-            for slot in bladeslot:
-                if 'FormFactor' in slot or 'ExtensionSlot' in slot:
-                    breakflag = True
-                    break #This is avoid repetition of logic for each Blade
-                slt_ndict.setdefault(slot['ServiceTag'], []).append(slot['SlotNumber'])
-                if slot['ServiceTag'] in st_dict:
-                    st_dict[slot['ServiceTag']] = st_dict[slot['ServiceTag']] + 1
-                else:
-                    st_dict[slot['ServiceTag']] = 1
-                if (not slot['SubSlot']) or (slot['SubSlot'] == "NA"):
-                    slot['FormFactor'] = 'Half length Blade'
-                else:
-                    slot['FormFactor'] = 'Quarter length Blade'
-                if slot['MasterSlotNumber'] != slot['SlotNumber']:
-                    slot['ExtensionSlot'] = slot['SlotNumber']
-                    slot['FormFactor'] = 'Full length Blade'
-            for slot in bladeslot:
-                if breakflag:
-                    break
-                if st_dict[slot['ServiceTag']] > 1:
-                    slot['FormFactor'] = 'Full length Blade'
-                    # if not 'ExtensionSlot' in slot:
-                        # slot['SlotNumber'] = slot['SlotNumber'] + "/" + str(int(slot['SlotNumber'])+slotArch)
-                    slot['SlotNumber'] = "/".join(sorted(slt_ndict[slot['ServiceTag']],key=int))
-                if 'FormFactor' in slot:
-                    if 'Quarter' in slot['FormFactor']:
-                        slot['SlotNumber'] = slot['SlotNumber'] + slot['SubSlot']
+            if (not entry.get('SubSlot') or (entry.get('SubSlot') == "NA")):
+                entry['FormFactor'] = 'Half length Blade'
+            else:
+                entry['FormFactor'] = 'Quarter length Blade'
+            if (entry.get('MasterSlotNumber') != entry.get('SlotNumber')) and (entry.get('SubSlot') == 'NA' or entry.get('SubSlot') == None):
+                entry['ExtensionSlot'] = entry.get('SlotNumber')
+                entry['FormFactor'] = 'Full length Blade'
+            if entry.get('Model'):
+                if 'FM' in entry.get('Model'):
+                    entry['FormFactor'] = 'Half length Blade'
 
         if component == "Slots_Summary":
-            cmcmodel = self.entityjson['System'][0]["Model"]
-            # print("SLOTS of ",cmcmodel)
-            if 'FX2' in cmcmodel:
-                slotArch = 1
-                freeslots = set(range(1,5))
-            if 'VRTX' in cmcmodel:
-                slotArch = 2
-                freeslots = set(range(1, 5))
-            if 'M1000e' in cmcmodel:
-                slotArch = 8
-                freeslots = set(range(1,17))
-
-            # print(freeslots)
-            occupiedSlots = set()
-            extensionSlots = set()
-            bladeslot = self.entityjson["Slots_Summary"]
-            for slot in bladeslot:
-                if 'StorageMode' in slot:#this is a Sled
-                    sledslot = int(slot['FQDD'][-2:])
-                    # print("Sledslot ",sledslot)
-                    freeslots.remove(sledslot)
-                    occupiedSlots.add(sledslot)
-                else:#this is a blade
-                    if 'FormFactor' in slot:
-                        if 'Full' in slot['FormFactor']:
-                            if 'ExtensionSlot' in slot:
-                                freeslots.remove(int(slot['ExtensionSlot']))
-                                extensionSlots.add(int(slot['ExtensionSlot']))
-                            else:
-                                freeslots.remove(int(slot['MasterSlotNumber']))
-                                occupiedSlots.add(int(slot['MasterSlotNumber']))
-                        if 'Half' in slot['FormFactor']:
-                            freeslots.remove(int(slot['MasterSlotNumber']))
-                            occupiedSlots.add(int(slot['MasterSlotNumber']))
-
-            quarterSlotdict = {'a' : 'b','b' : 'a','c' : 'd','d' : 'c'}
-            extSlotIndicator = {'a' : False,'b' : False,'c' : True,'d' : True}
-            for slot in bladeslot:
-                if 'FormFactor' in slot:
-                    if 'Quarter' in slot['FormFactor']:
-                        slotModifier = 0
-                        if extSlotIndicator[slot['SubSlot']]:
-                            slotModifier = slotArch
-                        extSlot = int(slot['MasterSlotNumber']) + slotModifier
-                        if extSlot in freeslots:
-                            freeslots.remove(extSlot)
-                        qSlot = slot['MasterSlotNumber'] + slot['SubSlot']
-                        if qSlot in freeslots:
-                            freeslots.remove(qSlot)
-                        occupiedSlots.add(qSlot)
-                        otherslot = slot['MasterSlotNumber'] + quarterSlotdict[slot['SubSlot']]
-                        if otherslot not in occupiedSlots:
-                            freeslots.add(otherslot)
-
-            Slot_Summary = {}
-            # Slot_Summary['Key'] = 'Slot_Summary'
-            if freeslots:
-                Slot_Summary['FreeSlots'] = ",".join(str(x) for x in freeslots)
-            else:
-                Slot_Summary['FreeSlots'] = "Chassis is fully occupied"
-            if occupiedSlots:
-                Slot_Summary['OccupiedSlots'] = ",".join(str(x) for x in occupiedSlots)
-            else:
-                Slot_Summary['OccupiedSlots'] = "Chassis is empty"
-            if extensionSlots:
-                Slot_Summary['ExtensionSlots'] = ",".join(str(x) for x in extensionSlots)
-            else:
-                if occupiedSlots:
-                    Slot_Summary['ExtensionSlots'] = "Chassis has only Half-length blades"
+            if not 'StorageMode' in entry:
+                if (not entry.get('SubSlot')) or (entry.get('SubSlot') == "NA"):
+                    entry['FormFactor'] = 'Half length Blade'
                 else:
-                    Slot_Summary['ExtensionSlots'] = "Chassis is empty"
-
-            for slot in bladeslot:
-                slot.update(Slot_Summary)
+                    entry['FormFactor'] = 'Quarter length Blade'
+                if (entry.get('MasterSlotNumber') != entry.get('SlotNumber')) and (entry.get('SubSlot') == 'NA' or entry.get('SubSlot') == None):
+                    entry['ExtensionSlot'] = entry.get('SlotNumber')
+                    entry['FormFactor'] = 'Full length Blade'
 
         if component == "StorageModule":
             if "StorageModule" in self.entityjson:
                 storageslot = self.entityjson["StorageModule"]
                 for slot in storageslot:
-                    slot['SlotNumber'] = int(slot['FQDD'][-2:])
-                    
+                    slot['MasterSlotNumber'] = int(slot['FQDD'][-2:])
+                    slot['FormFactor'] = 'Half length Blade'
+                    slot['SlotName'] = 'SLOT-'+str(slot['FQDD'][-2:])
+
+        if component == "CMC":
+            attrlist = ['PrimaryStatus', 'MgmtControllerFirmwareVersion', 'Model']
+            sysdict = self.entityjson.get('System',[None])[0]
+            cmcdict = self.entityjson.get('CMC',[None])[0]
+            if sysdict and cmcdict:
+                for attr in attrlist:
+                    cmcdict[attr] = sysdict.get(attr, 'Not Available')
+
+        if component == "System":
+            default, aisle, rack, rackslot = "NA", entry.get("PhysicalLocationAisle", "NA"), \
+                                             entry.get("PhysicalLocationRack", "NA"), \
+                                             entry.get("PhysicalLocationRackSlot", "NA")
+            if  aisle == None:
+                aisle = default
+            if rack == None:
+                rack = default
+            if rackslot == None:
+                rackslot = default
+            entry["Location"] = "AISLE:{}, RACK:{}, Slot on Rack:{}".format(
+                aisle, rack, rackslot )
+        compsList = ["PowerSupply", "Fan", "KVM"]
+        if component in compsList :
+            if "PrimaryStatus" in entry:
+                entry["HealthState"] = entry.get("PrimaryStatus", "Not Available")
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
-        # print("IN MODIFY COMP ",component)
         if component == 'ComputeModule':
             if "ComputeModule" in finalretjson:
                 bladeslot = finalretjson['ComputeModule']
-                newbladeList = []
+                st_dict = {}
+                slt_ndict = {}
                 for slot in bladeslot:
-                    if 'ExtensionSlot' in slot:
-                        if slot['ExtensionSlot'] == "Not Available":
-                            if 'Full' in slot['FormFactor']:
-                                extslot = slot['SlotNumber'].split('/')
-                                slot['ExtensionSlot'] = extslot[1]
+                    slot_srvtag = slot.get('MasterSlotNumber')
+                    slt_ndict.setdefault(slot_srvtag, []).append(slot.get('SlotNumber'))
+                    if slot_srvtag in st_dict:
+                        st_dict[slot_srvtag] = st_dict[slot_srvtag] + 1
+                    else:
+                        st_dict[slot_srvtag] = 1
+                for slot in bladeslot:
+                    if (st_dict[slot.get('MasterSlotNumber')] == 2) and (slot.get('SubSlot') == 'NA'):
+                        slot['FormFactor'] = 'Full length Blade'
+                        if slot.get('MasterSlotNumber') != slot.get('SlotNumber'):
+                            slot['ExtensionSlot'] = True
+                        slot['SlotNumber'] = "/".join(sorted(slt_ndict[slot.get('MasterSlotNumber')],key=int))
+                    if 'FormFactor' in slot:
+                        if 'Quarter' in slot['FormFactor']:
+                            if slot.get('SubSlot') not in slot.get('SlotNumber'):
+                                slot['SlotNumber'] = slot.get('SlotNumber') + slot.get('SubSlot')
+
+                newbladeList = []
+                tmpDupList = []
+                #TODO: Replacing 4 FM servers with Single - Will affect Nagios
+                fmSlotNumSet = {}
+                cmcmodel = self.entityjson['System'][0]["Model"]
+                slotArch = 1
+                if 'FX2' in cmcmodel:
+                    slotArch = 2
+                for slot in bladeslot:
+                    if 'FM' in slot.get('Model', 'Not Available'):
+                        fmSlotNumSet[slot.get('MasterSlotNumber')] = slot
+                    else:
+                        if slot.get('ExtensionSlot',False) != True:
+                            if 'Full' in slot.get('FormFactor',"Not Available"):
+                                extslot = slot.get('SlotNumber').split('/')
+                                slot['ExtensionSlot'] = extslot[-1]
+                                if abs(int(slot.get('MasterSlotNumber')) - int(slot['ExtensionSlot'])) == slotArch:
+                                    slot['FormFactor'] = "Half length Double width"
                             newbladeList.append(slot)
-                if newbladeList:
-                    del finalretjson["ComputeModule"]
-                    finalretjson['ComputeModule'] = newbladeList
+                            tmpDupList.append(slot)
+                #To remove FM servers who dont show Model - based on MasterSlotNumber
+                for slot in tmpDupList:
+                    if slot.get('MasterSlotNumber') in fmSlotNumSet:
+                        newbladeList.remove(slot)
+
+                del finalretjson["ComputeModule"]
+                finalretjson['ComputeModule'] = newbladeList + list(fmSlotNumSet.values())
 
                 storagelist = []
                 for m in finalretjson['ComputeModule']:
@@ -724,22 +826,114 @@ class CMCEntity(iDeviceDriver):
 
         if component == "Slots_Summary":
             if "Slots_Summary" in finalretjson:
-                bladeslot = finalretjson["Slots_Summary"]
-                slot_summary = {}
-                slotTypes = ['FreeSlots', 'OccupiedSlots', 'ExtensionSlots']
+                bladeslot = self.entityjson["Slots_Summary"]
+                st_dict = {}
+                slt_ndict = {}
                 for slot in bladeslot:
-                    if not slot_summary:
-                        slot_summary['Key'] = 'SlotSummary'
-                        for slotType in slotTypes:
-                            if slotType in slot:
-                                slot_summary[slotType] = slot[slotType]
-                        slot_summary['InstanceID'] = 'SlotSummary'
-                    else:
-                        break
+                    if not "StorageMode" in slot:
+                        slt_ndict.setdefault(slot.get('MasterSlotNumber'), []).append(slot.get('SlotNumber'))
+                        if slot.get('MasterSlotNumber') in st_dict:
+                            st_dict[slot.get('MasterSlotNumber')] = st_dict[slot.get('MasterSlotNumber')] + 1
+                        else:
+                            st_dict[slot.get('MasterSlotNumber')] = 1
+                for slot in bladeslot:
+                    if not "StorageMode" in slot:
+                        if (st_dict[slot.get('MasterSlotNumber')] == 2) and ((slot.get('SubSlot') == 'NA') or (slot.get('SubSlot') == None)):
+                            slot['FormFactor'] = 'Full length Blade'
+                        if 'FormFactor' in slot:
+                            if 'Quarter' in slot['FormFactor']:
+                                slot['SlotNumber'] = slot.get('MasterSlotNumber') + slot.get('SubSlot')
 
+                cmcmodel = self.entityjson['System'][0]["Model"]
+                freeslots = set()
+                occupiedSlots = set()
+                extensionSlots = set()
+                if 'FX2' in cmcmodel:
+                    slotArch = 1
+                    freeslots = set(range(1, 5))
+                if 'VRTX' in cmcmodel:
+                    slotArch = 2
+                    freeslots = set(range(1, 5))
+                if 'M1000e' in cmcmodel:
+                    slotArch = 8
+                    freeslots = set(range(1, 17))
+
+                bladeslot = self.entityjson["Slots_Summary"]
+                for slot in bladeslot:
+                    if 'StorageMode' in slot:  # this is a Sled
+                        sledslot = int(slot['FQDD'][-2:])
+                        freeslots.discard(sledslot)
+                        occupiedSlots.add(sledslot)
+                    else:  # this is a blade
+                        if 'FormFactor' in slot:
+                            if 'Full' in slot['FormFactor']:
+                                if 'ExtensionSlot' in slot:
+                                    freeslots.discard(int(slot['ExtensionSlot']))
+                                    extensionSlots.add(int(slot['ExtensionSlot']))
+                                else:
+                                    freeslots.discard(int(slot['MasterSlotNumber']))
+                                    occupiedSlots.add(int(slot['MasterSlotNumber']))
+                            if 'Half' in slot['FormFactor']:
+                                freeslots.discard(int(slot['MasterSlotNumber']))
+                                occupiedSlots.add(int(slot['MasterSlotNumber']))
+
+                quarterSlotdict = {'a': 'b', 'b': 'a', 'c': 'd', 'd': 'c'}
+                extSlotIndicator = {'a': False, 'b': False, 'c': True, 'd': True}
+                for slot in bladeslot:
+                    if 'FormFactor' in slot:
+                        if 'Quarter' in slot['FormFactor']:
+                            slotModifier = 0
+                            if (extSlotIndicator[slot['SubSlot']] and (slot['Model'] and 'FM' not in slot['Model'])):
+                                slotModifier = slotArch
+                            extSlot = int(slot['MasterSlotNumber']) + slotModifier
+                            if extSlot in freeslots:
+                                freeslots.discard(extSlot)
+                            qSlot = slot['MasterSlotNumber'] + slot['SubSlot']
+                            if qSlot in freeslots:
+                                freeslots.discard(qSlot)
+                            occupiedSlots.add(qSlot)
+                            otherslot = slot['MasterSlotNumber'] + quarterSlotdict[slot['SubSlot']]
+                            if otherslot not in occupiedSlots:
+                                freeslots.add(otherslot)
+
+                slot_summary = {}
+                slot_summary['Key'] = 'SlotSummary'
+                slot_summary['InstanceID'] = 'SlotSummary'
+                if freeslots:
+                    slot_summary['FreeSlots'] = ",".join(str(x) for x in freeslots)
+                else:
+                    slot_summary['FreeSlots'] = "Chassis is fully occupied"
+                if occupiedSlots:
+                    slot_summary['OccupiedSlots'] = ",".join(str(x) for x in occupiedSlots)
+                else:
+                    slot_summary['OccupiedSlots'] = "Chassis is empty"
+                if extensionSlots:
+                    slot_summary['ExtensionSlots'] = ",".join(str(x) for x in extensionSlots)
+                else:
+                    if occupiedSlots:
+                        slot_summary['ExtensionSlots'] = "Chassis does not have any Full length blades"
+                    else:
+                        slot_summary['ExtensionSlots'] = "Chassis is empty"
                 del finalretjson["Slots_Summary"]
                 finalretjson['Slots_Summary'] = []
                 finalretjson['Slots_Summary'].append(slot_summary)
+
+    @property
+    def ContainmentTree(self):
+        """
+        Removing storage component from M1000e and FX2 model chassis
+        :return: JSON
+        """
+        device_json = self.get_json_device()
+        ctree = self._build_ctree(self.protofactory.ctree, device_json)
+        cmcmodel = self.entityjson['System'][0]["Model"]
+        if 'M1000e' in cmcmodel or 'FX2' in cmcmodel:
+            if "Storage" in ctree:
+                del ctree["Storage"]
+            if "Storage" in ctree["System"]:
+                del ctree["System"]["Storage"]
+        return ctree
+
 
 class CMCTopologyInfo(iDeviceTopologyInfo):
     def __init__(self, json):
@@ -754,7 +948,7 @@ class CMCTopologyInfo(iDeviceTopologyInfo):
 
     def my_groups(self, tbuild):
         if 'Model' in self.system:
-            fmgrp = self.system['Model']
+            fmgrp = "Dell "+self.system['Model']
             tbuild.add_group(fmgrp, 'Dell Chassis')
             self._add_myself(tbuild, fmgrp)
 

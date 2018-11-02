@@ -28,12 +28,10 @@ import os
 from enum import Enum
 from sys import stdout
 import sys
-from omsdk.sdkcenum import TypeHelper,EnumWrapper
+from omsdk.sdkcenum import TypeHelper, EnumWrapper
 from omsdk.sdkcunicode import UnicodeWriter, UnicodeStringWriter, UnicodeHelper
 import threading
 import logging
-
-
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +39,7 @@ logger = logging.getLogger(__name__)
 class ConfigFactory(object):
     configmap = {}
     configmap_lock = threading.Lock()
+
     @staticmethod
     def get_config(config_dir, comp_spec):
         cf = ConfigFactory
@@ -53,9 +52,10 @@ class ConfigFactory(object):
 
 
 class AttribRegistryNames(dict):
-    __getattr__= dict.__getitem__
-    __setattr__= dict.__setitem__
-    __delattr__= dict.__delitem__
+    __getattr__ = dict.__getitem__
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
+
 
 class Config:
     def __init__(self, direct, complist):
@@ -134,18 +134,18 @@ class Config:
                     mygrps.remove(g)
         for group in mygrps:
             if not group in grps:
-                #logger.debug("Invalid Group defined!")
+                # logger.debug("Invalid Group defined!")
                 continue
             for i in grps[group]:
                 defval = self.get_def_value(self.complist[comp]["registry"], i)
                 if 'nogroup' in self.complist[comp] and self.complist[comp]['nogroup']:
                     self._write_output(stdout, "    <Attribute Name=\"" + i + "\">" + defval + "</Attribute>")
                 else:
-                    self._write_output(stdout, "    <Attribute Name=\"" + group + ".1#" + i + "\">" + defval + "</Attribute>")
+                    self._write_output(stdout,
+                                       "    <Attribute Name=\"" + group + ".1#" + i + "\">" + defval + "</Attribute>")
         self._write_output(stdout, "</Component>")
 
-
-    def _spit_scp(self, desiredcfg, output, depth = ""):
+    def _spit_scp(self, desiredcfg, output, depth=""):
         if depth == "":
             output._write_output("<SystemConfiguration>\n")
         for fqdd in desiredcfg:
@@ -163,7 +163,7 @@ class Config:
                 props = self.defs[comp]["definitions"][comp]["properties"]
                 compen = UnicodeHelper.stringize(compen)
                 if isinstance(compen, str):
-                    self._spit_scp({ compen : desiredcfg[fqdd][compen] }, output, depth + "  ")
+                    self._spit_scp({compen: desiredcfg[fqdd][compen]}, output, depth + "  ")
                     continue
                 if not TypeHelper.resolve(compen) in props:
                     logger.debug(TypeHelper.resolve(compen) + " is not found in props")
@@ -172,7 +172,7 @@ class Config:
                 idx = 1
                 if not isinstance(desiredcfg[fqdd][compen], list):
                     idx = self._attr_print(output, depth, _comp, cvalue, props,
-                                     desiredcfg[fqdd][compen], idx)
+                                           desiredcfg[fqdd][compen], idx)
                 else:
                     for ent in desiredcfg[fqdd][compen]:
                         idx = self._attr_print(output, depth, _comp, cvalue, props, ent, idx)
@@ -182,7 +182,7 @@ class Config:
 
     def _attr_print(self, output, depth, _comp, cvalue, props, desired, idx):
         if desired is None:
-            return (idx+1)
+            return (idx + 1)
         if isinstance(desired, tuple):
             idx = desired[0]
             desired = desired[1]
@@ -192,15 +192,15 @@ class Config:
             atname_postfix = cvalue
 
         if 'nogroup' in self.complist[_comp] and \
-            self.complist[_comp]['nogroup']:
-            atname =""
+                self.complist[_comp]['nogroup']:
+            atname = ""
         else:
             atname = props[cvalue]["qualifier"] + "." + str(idx) + "#"
         atname = atname + atname_postfix
-        output._write_output(depth + "    <Attribute Name=\""+atname+"\">")
+        output._write_output(depth + "    <Attribute Name=\"" + atname + "\">")
         output._write_output(str(desired))
         output._write_output("</Attribute>\n")
-        return (idx+1)
+        return (idx + 1)
 
     def format_scp(self, desiredcfg):
         with UnicodeStringWriter() as output:

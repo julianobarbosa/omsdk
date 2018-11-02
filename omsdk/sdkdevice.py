@@ -32,10 +32,12 @@ PY3 = sys.version_info[0] == 3
 class iDeviceRegistry(iBaseRegistry):
     pass
 
+
 class iDeviceDiscovery(iBaseDiscovery):
     pass
 
-class iDeviceDriver (iBaseDriver):
+
+class iDeviceDriver(iBaseDriver):
     def __str__(self):
         return self.ipaddr
 
@@ -50,10 +52,10 @@ class iDeviceDriver (iBaseDriver):
         self.comp_misc_join_spec = None
         self.more_details_spec = None
 
-    def get_json_device(self, monitorfilter = None, compScope = None):
+    def get_json_device(self, monitorfilter=None, compScope=None):
         return self._get_json_for_device(self.entityjson, monitorfilter, compScope)
 
-    def _get_field_device(self, compen, field, idx = 0):
+    def _get_field_device(self, compen, field, idx=0):
         return self._get_field(self.entityjson, compen, field, idx)
 
     def _get_field_device_for_all(self, compen, field):
@@ -62,8 +64,8 @@ class iDeviceDriver (iBaseDriver):
     @property
     def _DeviceKey(self):
         if ('System' in self.entityjson and
-            len(self.entityjson['System']) >= 1 and
-            'Key' in self.entityjson['System'][0]):
+                len(self.entityjson['System']) >= 1 and
+                'Key' in self.entityjson['System'][0]):
             return self.entityjson['System'][0]['Key']
         return "<invalid_key>"
 
@@ -76,11 +78,10 @@ class iDeviceTopologyInfo(iBaseTopologyInfo):
             super().__init__(mytype, json)
 
     def my_is_mytype(self, json):
-        return ('System' in json 
+        return ('System' in json
                 and len(json['System']) == 1
                 and '_Type' in json['System'][0]
                 and json['System'][0]['_Type'] == self.mytype)
 
     def my_load(self):
         return self.json['System'][0]
-

@@ -34,7 +34,6 @@ import requests.exceptions
 import requests.packages.urllib3
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-
 from omsdk.sdkprotobase import ProtocolBase
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.http.sdkrestpdu import RestRequest, RestResponse
@@ -44,10 +43,10 @@ PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 ReturnValueMap = {
-    'Success' : 0,
-    'Error' : 2,
-    'JobCreated' : 4096,
-    'Invalid' : -1
+    'Success': 0,
+    'Error': 2,
+    'JobCreated': 4096,
+    'Invalid': -1
 }
 
 ReturnValue = EnumWrapper('ReturnValue', ReturnValueMap).enum_type
@@ -55,19 +54,20 @@ ReturnValue = EnumWrapper('ReturnValue', ReturnValueMap).enum_type
 
 class RestOptions(HttpEndPointOptions):
     def __init__(
-                     self, authentication = AuthenticationType.Basic, port = 443, connection_timeout = 10,
-                     read_timeout = 10, max_retries = 1, verify_ssl = False 
-                     ):
+            self, authentication=AuthenticationType.Basic, port=443, connection_timeout=10,
+            read_timeout=10, max_retries=1, verify_ssl=False
+    ):
         if PY2:
             super(RestOptions, self).__init__(
-                     ProtocolEnum.REST, authentication, port, connection_timeout,
-                     read_timeout, max_retries, verify_ssl
-                     )
+                ProtocolEnum.REST, authentication, port, connection_timeout,
+                read_timeout, max_retries, verify_ssl
+            )
         else:
             super().__init__(
-                     ProtocolEnum.REST, authentication, port, connection_timeout,
-                     read_timeout, max_retries, verify_ssl
-                     )
+                ProtocolEnum.REST, authentication, port, connection_timeout,
+                read_timeout, max_retries, verify_ssl
+            )
+
 
 class RestProtocol(ProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
@@ -75,7 +75,7 @@ class RestProtocol(ProtocolBase):
             super(RestProtocol, self).__init__()
         else:
             super().__init__()
-        headers = { 'Content-Type' : 'application/json' }
+        headers = {'Content-Type': 'application/json'}
         self.proto = HttpEndPoint(ipaddr, creds, pOptions, headers)
         self._logger = logging.getLogger(__name__)
 
@@ -85,10 +85,10 @@ class RestProtocol(ProtocolBase):
         wsm.identify()
         return self._communicate(wsm)
 
-    def enumerate(self, clsName, resource, select = {}, resetTransport = False):
+    def enumerate(self, clsName, resource, select={}, resetTransport=False):
         wsm = RestRequest()
-        wsm.enumerate(to = self.proto.endpoint, ruri=resource,
-                      selectors = select)
+        wsm.enumerate(to=self.proto.endpoint, ruri=resource,
+                      selectors=select)
         return self._communicate(wsm)
 
     def operation(self, wsmancmds, cmdname, *args):
@@ -97,7 +97,7 @@ class RestProtocol(ProtocolBase):
         sset = {}
         tset = wsmancmds[cmdname]["SelectorSet"]
         for i in tset["w:Selector"]:
-            sset[i['@Name']]= i['#text']
+            sset[i['@Name']] = i['#text']
         toargs = self._build_ops(wsmancmds, cmdname, *args)
 
         wsm = RestRequest()
@@ -106,8 +106,8 @@ class RestProtocol(ProtocolBase):
         wsm.add_body(ruri, act, toargs['retval'])
         return self._communicate(wsm)
 
-    def _communicate(self, wsm, name = None):
-        try :
+    def _communicate(self, wsm, name=None):
+        try:
             self.proto.connect()
             self._logger.debug("Sending: " + wsm.get_text())
             result = self.proto.ship_payload(wsm.get_text())
@@ -131,8 +131,8 @@ class RestProtocol(ProtocolBase):
         if json_object is None:
             logger.debug("<empty json>")
             return False
-        logger.debug(json.dumps(json_object, sort_keys=True, indent=4, \
-              separators=(',', ': ')))
+        logger.debug(json.dumps(json_object, sort_keys=True, indent=4,
+                                separators=(',', ': ')))
 
     # retVal['Status'] = Success, Failed, Invalid JSON,
     # retval['Data'][component] = {}
@@ -154,7 +154,7 @@ class RestProtocol(ProtocolBase):
             retval['Status'] = 'Found Client (SDK) Side Fault'
             retval['Fault.Data'] = en["Body"]["ClientFault"]
             if "Reason" in en["Body"]["ClientFault"] and \
-               "Text" in en["Body"]["ClientFault"]["Reason"]:
+                    "Text" in en["Body"]["ClientFault"]["Reason"]:
                 retval['Message'] = RestResponse().get_message(en["Body"]["ClientFault"]["Reason"])
         elif "Fault" in en["Body"]:
             retval['Status'] = 'Found Fault'
@@ -176,8 +176,8 @@ class RestProtocol(ProtocolBase):
                 retval['Data'] = en["Body"]
                 retval['Status'] = 'Not understood the message. Sorry!'
                 if "Message" in en["Body"][entry]:
-                     retval['Status'] = en["Body"][entry]["Message"]
-                     retval['Message'] = en["Body"][entry]["Message"]
+                    retval['Status'] = en["Body"][entry]["Message"]
+                    retval['Message'] = en["Body"][entry]["Message"]
                 if "MessageID" in en["Body"][entry]:
                     retval['MessageID'] = en["Body"][entry]["MessageID"]
                 if "ReturnValue" in en["Body"][entry]:
@@ -185,7 +185,7 @@ class RestProtocol(ProtocolBase):
                     retval['Return'] = TypeHelper.get_name(ret, ReturnValueMap)
                     retval['Status'] = retval['Return']
                     if ret == TypeHelper.resolve(ReturnValue.JobCreated):
-                        retval['Job'] = { "ResourceURI" : "", "JobId" : "" }
+                        retval['Job'] = {"ResourceURI": "", "JobId": ""}
                         ss = en["Body"][entry]
                         if "Job" in ss:
                             ss = ss["Job"]
@@ -199,10 +199,9 @@ class RestProtocol(ProtocolBase):
                             ss = ss["SelectorSet"]
                         if "Selector" in ss:
                             ss = ss["Selector"]
-                        retval['Job']['JobId'] = ss[0] 
+                        retval['Job']['JobId'] = ss[0]
                         retval['Status'] = 'Success'
         if not 'Status' in retval:
             retval['Status'] = 'Dont understand the message'
             retval['Data'] = en["Body"]
         return retval
-

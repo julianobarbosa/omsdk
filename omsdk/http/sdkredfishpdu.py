@@ -27,22 +27,23 @@ import sys
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 class RedfishRequest:
     def __init__(self):
         self.root = {}
         self.selector = None
 
-    def enumerate(self, to, ruri, selectors, envSize = 512000, mid= None, opTimeout = 60):
+    def enumerate(self, to, ruri, selectors, envSize=512000, mid=None, opTimeout=60):
         return self
 
-    def set_header(self, to, ruri, action, envSize = 512000, mid= None, opTimeout = 60):
+    def set_header(self, to, ruri, action, envSize=512000, mid=None, opTimeout=60):
         return self
 
     def add_selectors(self, selectors):
         return self
 
     def add_body(self, ruri, action, args):
-        self.root = { }
+        self.root = {}
         return self
 
     def add_error(self, ex):
@@ -62,7 +63,7 @@ class RedfishResponse:
     def strip_ns(self, s, stripNS):
         return (re.sub(".*:", "", s) if stripNS else s)
 
-    def execute_str(self, value, stripNS = True):
+    def execute_str(self, value, stripNS=True):
         return json.loads(value)
 
     def get_message(self, fault):

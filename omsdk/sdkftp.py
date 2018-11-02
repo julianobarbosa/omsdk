@@ -23,6 +23,7 @@
 import os
 import sys
 import glob
+
 sys.path.append(os.getcwd())
 from ftplib import FTP, error_perm
 import socket
@@ -32,17 +33,18 @@ import gzip
 import shutil
 import logging
 
-
 logger = logging.getLogger(__name__)
+
 
 class FtpCredentials:
     def __init__(self, user='anonymous', password='anonymous@'):
         self.user = user
         self.password = password
 
+
 class FtpHelper:
     def __init__(self, site, creds):
-        try :
+        try:
             self.ftp = FTP(site, timeout=60)
         except socket.error as e:
             self.ftp = None
@@ -77,7 +79,7 @@ class FtpHelper:
         except Exception as err:
             logger.debug('ERROR:: ' + str(err))
 
-    #def list_files_to_download(self, lfolder="."):
+    # def list_files_to_download(self, lfolder="."):
     #    ldownload =[]
     #    for root, dirs, files in os.walk(lfolder):
     #        tdir = root.replace('\\', '/') + '/'
@@ -88,10 +90,10 @@ class FtpHelper:
 
     def list_files_to_download(self, flist, lfolder="."):
         dlist = [fname for fname in flist \
-                       if self._is_later_than(fname, lfolder)]
+                 if self._is_later_than(fname, lfolder)]
         return dlist
 
-    def _is_later_than(self, fname, lfolder ="."):
+    def _is_later_than(self, fname, lfolder="."):
         lfile = os.path.join(lfolder, *fname.split('/'))
         return self.is_later_than(fname, lfile)
 
@@ -129,9 +131,9 @@ class FtpHelper:
         try:
             if not self.ftp:
                 return False
-            #logger.debug('Downloading ' + fname + " to " + lfname)
+            # logger.debug('Downloading ' + fname + " to " + lfname)
             f = open(lfname, 'wb')
-            self.ftp.retrbinary('RETR '+ fname, f.write)
+            self.ftp.retrbinary('RETR ' + fname, f.write)
             f.close()
         except Exception as ex:
             logger.debug("File Download failed:" + str(ex))
@@ -154,15 +156,14 @@ class FtpHelper:
                 return False
         return self.download_file(fname, lfile)
 
-    def download_file_to_folder(self, fname, lfolder = "."):
+    def download_file_to_folder(self, fname, lfolder="."):
         if not os.path.exists(lfolder) or not os.path.isdir(lfolder):
             logger.debug("Need a folder name")
             return False
         return self._download_files(fname, lfolder)
 
-
-    def download_files(self, flist, lfolder = "."):
-        counter = { 'success' : 0, 'failed' : 0 }
+    def download_files(self, flist, lfolder="."):
+        counter = {'success': 0, 'failed': 0}
         for fname in flist:
             if self.download_file_to_folder(fname, lfolder):
                 counter['success'] += 1
@@ -170,18 +171,18 @@ class FtpHelper:
                 counter['failed'] += 1
         return counter
 
-    def download_newerfiles(self, flist, lfolder = "."):
+    def download_newerfiles(self, flist, lfolder="."):
         flist = self.list_files_to_download(flist, lfolder)
         return self.download_files(flist, lfolder)
 
-    def download_catalog(self, folder = "."):
+    def download_catalog(self, folder="."):
         c = 'Catalog.xml.gz'
         self.download_file_to_folder(c, folder)
         self.unzip_file(os.path.join(c, folder))
 
     def unzip_file(self, lfname, tfname=None):
         if not tfname:
-            tfname = lfname.rsplit('.gz',1)[0]
+            tfname = lfname.rsplit('.gz', 1)[0]
         with gzip.open(lfname, 'rb') as f_in:
             with open(tfname, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)

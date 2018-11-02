@@ -34,16 +34,18 @@ PY3 = sys.version_info[0] == 3
 
 logger = logging.getLogger(__name__)
 
+
 class OME(iConsoleDiscovery):
     def __init__(self, srcdir):
         if PY2:
             super(OME, self).__init__(iConsoleRegistry("OME", srcdir, None))
         else:
             super().__init__(iConsoleRegistry("OME", srcdir, None))
-        self.protofactory.add(PCONSOLE(obj = self))
+        self.protofactory.add(PCONSOLE(obj=self))
 
     def my_entitytype(self, pinfra, ipaddr, creds, protofactory):
         return OMEEntity(self.ref, protofactory, ipaddr, creds)
+
 
 class OMEEntity(iConsoleDriver):
     def __init__(self, ref, protofactory, ipaddr, creds):
@@ -54,7 +56,7 @@ class OMEEntity(iConsoleDriver):
 
     def my_connect(self, pOptions):
         status = False
-        try :
+        try:
             if os.path.isfile("d\\" + self.ipaddr + "\\topology"):
                 status = True
         except:

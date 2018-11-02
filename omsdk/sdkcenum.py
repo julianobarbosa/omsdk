@@ -52,20 +52,21 @@ if PY2Enum:
 #  TypeHelper.convert_to_enum('Value N', TestOptions) => None
 #
 
+
 class TypeHelper:
     @staticmethod
     def belongs_to(entype, value):
         if PY2Enum:
-            if  (type(entype) is Enum):
-                return (isinstance(value, EnumValue) and \
-                        value.enumtype == entype)
+            if (type(entype) is Enum):
+                return (isinstance(value,
+                                   EnumValue) and value.enumtype == entype)
             elif entype == type(value):
                 return True
             else:
                 return False
         else:
             return entype.__name__ == type(value).__name__
-            #if not isinstance(value, argtype) and \
+            # if not isinstance(value, argtype) and \
             #   argtype.__name__ != type(value).__name__:
 
     @staticmethod
@@ -79,7 +80,7 @@ class TypeHelper:
 
     @staticmethod
     def get_name(enval, mymap):
-        if PY2Enum or not isinstance(enval, Enum) :
+        if PY2Enum or not isinstance(enval, Enum):
             for i in mymap:
                 if mymap[i] == TypeHelper.resolve(enval):
                     return i
@@ -87,13 +88,14 @@ class TypeHelper:
             return (enval.name)
         else:
             return enval
+
     @staticmethod
     def get_enumname(enval):
-        if PY2Enum and TypeHelper.is_enum(enval) :
+        if PY2Enum and TypeHelper.is_enum(enval):
             mymap = enval.enumtype.__dict__
             enval_value = TypeHelper.resolve(enval)
             for i in mymap:
-                if hasattr(mymap[i],'_key') and mymap[i]._key == enval_value:
+                if hasattr(mymap[i], '_key') and mymap[i]._key == enval_value:
                     return i
         elif PY3Enum and isinstance(enval, Enum):
             return (enval.name)
@@ -101,7 +103,7 @@ class TypeHelper:
             return enval
 
     @staticmethod
-    def convert_to_enum(enval, entype, defval = None):
+    def convert_to_enum(enval, entype, defval=None):
         for i in entype:
             if enval == TypeHelper.resolve(i):
                 return i
@@ -115,18 +117,19 @@ class TypeHelper:
             return True
         return False
 
+
 class EnumWrapper(object):
     enum_entries = {}
     enum_name = None
+
     def __init__(self, name, entries):
         EnumWrapper.enum_entries[name] = entries
         if PY2Enum:
             EnumWrapper.enum_name = name
             ent = EnumWrapper.enum_entries[name].keys()
-            self.enum_type = Enum(*ent, value_type = EnumWrapper.mapvalue)
+            self.enum_type = Enum(*ent, value_type=EnumWrapper.mapvalue)
         else:
-            self.enum_type  = Enum(name, EnumWrapper.enum_entries[name])
-
+            self.enum_type = Enum(name, EnumWrapper.enum_entries[name])
 
     @staticmethod
     def mapvalue(self, i, value):

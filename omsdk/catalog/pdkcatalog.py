@@ -32,13 +32,12 @@ import xml.dom.minidom
 from omsdk.sdkprint import PrettyPrint
 import logging
 
-
 logger = logging.getLogger(__name__)
 
-class DellPDKCatalog:
 
+class DellPDKCatalog:
     OSTypes = {
-        "WIN" : "LWXP",
+        "WIN": "LWXP",
     }
 
     def __init__(self, source_file):
@@ -53,10 +52,10 @@ class DellPDKCatalog:
             self.root = self.tree.getroot()
             self.valid = True
 
-    #ostype = None => all os types
-    #ostype = "WIN" => only win32
-    #ostype = ["WIN", "LIN"] => only win32 and Lin32
-    def filter_bundle(self, model, ostype="WIN", tosource = None):
+    # ostype = None => all os types
+    # ostype = "WIN" => only win32
+    # ostype = ["WIN", "LIN"] => only win32 and Lin32
+    def filter_bundle(self, model, ostype="WIN", tosource=None):
         # Find all Software Bundles for this model
         model = model.upper()
         model_path = "./SoftwareBundle/TargetSystems/Brand/Model[@systemID='{0}']/.../.../...".format(model)
@@ -83,7 +82,7 @@ class DellPDKCatalog:
         comp_path = "./SoftwareComponent"
         lostype = [""]
         if ostype:
-            _ostype=ostype
+            _ostype = ostype
             lostype = []
             if not isinstance(ostype, list):
                 _ostype = [_ostype]
@@ -101,7 +100,7 @@ class DellPDKCatalog:
                     tosource.addComponent(model, node, firm)
         return count
 
-    def filter_by_model(self, model, ostype="WIN", firm = None, tosource=None):
+    def filter_by_model(self, model, ostype="WIN", firm=None, tosource=None):
         model = model.upper()
         return self._filter_byid(model, ostype, "", firm, tosource)
 
@@ -112,7 +111,7 @@ class DellPDKCatalog:
             compid_path = "[@componentID='{0}']".format(cid)
         return self._filter_byid(model, ostype, compid_path, firm, tosource)
 
-    def filter_by_pci(self, model, pcispec, ostype="WIN", firm=None, tosource = None):
+    def filter_by_pci(self, model, pcispec, ostype="WIN", firm=None, tosource=None):
         model = model.upper()
         compid_path = "/PCIInfo"
         for field in ['deviceID', 'subDeviceID', 'subVendorID', 'vendorID']:

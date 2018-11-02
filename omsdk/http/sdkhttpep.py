@@ -120,7 +120,7 @@ class HttpEndPoint(object):
 
         if self.session:
         # Prepare the http request
-            # self._logger.debug("Begin preparing POST request with payload:\n%s", payload)
+            #self._logger.debug("Begin preparing POST request with payload:\n%s", payload)
             try:
                 request = requests.Request('POST', self.endpoint, data=str(payload))
                 prepared_request = self.session.prepare_request(request)

@@ -39,14 +39,13 @@ class ProtocolBase(object):
     def operation(self, protocmds, cmdname, *args):
         pass
 
-
     def _build_ops(self, protocmds, cmdname, *args):
         toargs = {}
         if not "Parameters" in protocmds[cmdname]:
-            logger.debug("no parameters")
+            logger.debug(self.proto.ipaddr+": No parameters")
         elif len(protocmds[cmdname]["Parameters"]) != len(args):
-            logger.debug("Too many args")
-            return { 'Status' : 'Failed', 'Message' : 'Client Side: Too many arguments' }
+            logger.error(self.proto.ipaddr+ ": Too many args")
+            return {'Status': 'Failed', 'Message': 'Client Side: Too many arguments'}
         else:
             counter = 0
             for (var, arg, field, val, dest) in protocmds[cmdname]["Parameters"]:
@@ -57,8 +56,9 @@ class ProtocolBase(object):
                     if PY2 and (val == str and type(args_fixed) == unicode):
                         args_fixed = args_fixed.encode('ascii', 'ignore')
                     if not TypeHelper.belongs_to(val, args_fixed):
-                            return { 'Status' : 'Failed', 'Message' : 'Client Side: Argument ' + str(counter) + " got " + str(type(args_fixed))+ "! Must be: " + val.__name__ }
-                    try :
+                        return {'Status': 'Failed', 'Message': 'Client Side: Argument ' + str(counter) + " got " + str(
+                            type(args_fixed)) + "! Must be: " + val.__name__}
+                    try:
                         if (val == datetime) and args_fixed.year == 1970:
                             myval = "TIME_NOW"
                         elif (val == datetime):
@@ -70,6 +70,6 @@ class ProtocolBase(object):
                 toargs[var] = myval
                 if dest != None:
                     toargs[var] = dest(toargs[var])
-                # logger.debug(self.proto.ipaddr+" : var "+var + "<=>" + str(toargs[var]))
+                #logger.debug(self.proto.ipaddr+" : var "+var + "<=>" + str(toargs[var]))
                 counter = counter + 1
-        return { 'Status' : 'Success', 'retval' : toargs }
+        return {'Status': 'Success', 'retval': toargs}

@@ -20,7 +20,7 @@
 #
 # Authors: Vaideeswaran Ganesan
 #
-eemiregistry={
+eemiregistry = {
         "AMP0300": {
             "Description": "None.",
             "Message": "The system board %1 current is less than the lower warning threshold.",

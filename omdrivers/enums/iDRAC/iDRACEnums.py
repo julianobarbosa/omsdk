@@ -26,160 +26,159 @@ import logging
 logger = logging.getLogger(__name__)
 
 iDRACLicenseEnum = EnumWrapper("iDRACLicenseEnum", {
-    "License" : "License",
-    "LicensableDevice" : "LicensableDevice",
-    }).enum_type
+    "License": "License",
+    "LicensableDevice": "LicensableDevice",
+}).enum_type
 
 iDRACFirmEnum = EnumWrapper("iDRACFirmEnum", {
-    "Firmware" : "Firmware",
-    }).enum_type
-
+    "Firmware": "Firmware",
+}).enum_type
 
 iDRACLogsEnum = EnumWrapper("iDRACLogEnum", {
-    "Logs" : "Logs",
-    "SELLog" : "SELLog"
-    }).enum_type
+    "Logs": "Logs",
+    "SELLog": "SELLog"
+}).enum_type
 
-JobStatusEnum = EnumWrapper("iDRACJSE",  {
-    'Success' : 'Success',
-    'InProgress' : 'InProgress',
-    'Failed' : 'Failed',
-    'Invalid' : 'Invalid',
-    }).enum_type
+JobStatusEnum = EnumWrapper("iDRACJSE", {
+    'Success': 'Success',
+    'InProgress': 'InProgress',
+    'Failed': 'Failed',
+    'Invalid': 'Invalid',
+}).enum_type
 
 ReturnValue = EnumWrapper("RV", {
-    "Success" : 0,
-    "Error" : 2,
-    "JobCreated" : 4096,
-    "Invalid" : -1,
-    }).enum_type
+    "Success": 0,
+    "Error": 2,
+    "JobCreated": 4096,
+    "Invalid": -1,
+}).enum_type
 
 iDRACJobsEnum = EnumWrapper("iDRACJobEnum", {
-    "Jobs" : "Jobs",
-    }).enum_type
+    "Jobs": "Jobs",
+}).enum_type
 
 iDRACOSDJobsEnum = EnumWrapper("iDRACOSDJobEnum", {
-    "OSDJobs" : "OSDJobs",
-    }).enum_type
+    "OSDJobs": "OSDJobs",
+}).enum_type
 
-PowerStateEnum = EnumWrapper("PSE",  { "PowerOn" : 2,
-    "SoftPowerCycle" : 5,
-    "SoftPowerOff" : 8,
-    "PowerCycle" : 9,
-    "HardReset" : 10,
-    "DiagnosticInterrupt" : 11,
-    "GracefulPowerOff" : 12
-    }).enum_type
+PowerStateEnum = EnumWrapper("PSE", {"PowerOn": 2,
+                                     "SoftPowerCycle": 5,
+                                     "SoftPowerOff": 8,
+                                     "PowerCycle": 9,
+                                     "HardReset": 10,
+                                     "DiagnosticInterrupt": 11,
+                                     "GracefulPowerOff": 12
+                                     }).enum_type
 
-PowerBootEnum = EnumWrapper("PBE",  { "Enabled" : 2,
-    "Disabled" : 3,
-    "Reset" : 11,
-    }).enum_type
+PowerBootEnum = EnumWrapper("PBE", {"Enabled": 2,
+                                    "Disabled": 3,
+                                    "Reset": 11,
+                                    }).enum_type
 
-ConfigStateEnum = EnumWrapper("CSE",  {
-    "Enabled" : 'Enabled',
-    "Disabled" : 'Disabled',
-    "Unknown" : 'Unknown',
-    }).enum_type
+ConfigStateEnum = EnumWrapper("CSE", {
+    "Enabled": 'Enabled',
+    "Disabled": 'Disabled',
+    "Unknown": 'Unknown',
+}).enum_type
 
 RebootJobType = EnumWrapper("RJT", {
-    'PowerCycle' : 1, # 30 s
-    'GracefulRebootWithoutShutdown' : 2, # 5 min
-    'GracefulRebootWithForcedShutdown' :  3 # 5 min
+    'PowerCycle': 1,  # 30 s
+    'GracefulRebootWithoutShutdown': 2,  # 5 min
+    'GracefulRebootWithForcedShutdown': 3  # 5 min
 }).enum_type
 
 BootModeEnum = EnumWrapper('BME', {
-    'Bios' : 'Bios',
-    'Uefi' : 'Uefi',
-    'Unknown' : 'Unknown'
+    'Bios': 'Bios',
+    'Uefi': 'Uefi',
+    'Unknown': 'Unknown'
 }).enum_type
 
 BlinkLEDEnum = EnumWrapper('BL', {
     # Off and Disable are same
-    'Off'     : 0,
-    'Disable' : 0,
+    'Off': 0,
+    'Disable': 0,
     # On and Enable are same
-    'On'      : 1,
-    'Enable'  : 1,
+    'On': 1,
+    'Enable': 1,
     # OnForDuration and EnableForDuration are same
-    'OnForDuration'     : 2,
-    'EnableForDuration' : 2
+    'OnForDuration': 2,
+    'EnableForDuration': 2
 }).enum_type
 
 BIOSPasswordTypeEnum = EnumWrapper("BIOSPasswordType", {
-    'System' : 1,
-    'Setup' : 2
+    'System': 1,
+    'Setup': 2
 }).enum_type
 
 ExportMethodEnum = EnumWrapper("ExportMethod", {
-    'Default' : 'Default',
-    'Clone' : 'Clone',
-    'Replace' : 'Replace',
+    'Default': 'Default',
+    'Clone': 'Clone',
+    'Replace': 'Replace',
 }).enum_type
 
 ExportFormatEnum = EnumWrapper("ExportFormatEnum", {
-    'XML' : 'XML',
-    'JSON' : 'JSON',
+    'XML': 'XML',
+    'JSON': 'JSON',
 }).enum_type
 
 ExportFormatWsmanEnum = EnumWrapper("ExportFormatWsmanEnum", {
-    'XML' : 0,
-    'JSON' : 1,
+    'XML': 0,
+    'JSON': 1,
 }).enum_type
 
 ExportFormatRedfishEnum = EnumWrapper("ExportFormatRedfishEnum", {
-    'XML' : 'XML',
-    'JSON' : 'JSON',
+    'XML': 'XML',
+    'JSON': 'JSON',
 }).enum_type
 
 ResetToFactoryPreserveEnum = EnumWrapper('ResetToFactoryPreserveEnum', {
-    'ResetExceptNICAndUsers' : 0,
-    'ResetAll' : 1,
-    'ResetAllExceptDefaultUser' : 2
+    'ResetExceptNICAndUsers': 0,
+    'ResetAll': 1,
+    'ResetAllExceptDefaultUser': 2
 }).enum_type
 
 ResetForceEnum = EnumWrapper('ResetForceEnum', {
-    'Graceful' : 0,
-    'Force' : 1,
+    'Graceful': 0,
+    'Force': 1,
 }).enum_type
 
 SCPTargetEnum = EnumWrapper("SCPTargetEnum", {
-    'ALL' :'ALL',
-    'IDRAC' : 'IDRAC',
-    'BIOS' : 'BIOS',
-    'NIC' : 'NIC',
-    'RAID' : 'RAID',
-    }).enum_type
+    'ALL': 'ALL',
+    'IDRAC': 'IDRAC',
+    'BIOS': 'BIOS',
+    'NIC': 'NIC',
+    'RAID': 'RAID',
+}).enum_type
 
 RAIDLevelsEnum = EnumWrapper("RLE", {
-    'RAID_0' : 'RAID 0',
-    'RAID_1' : 'RAID 1',
-    'RAID_5' : 'RAID 5',
-    'RAID_6' : 'RAID 6',
-    'RAID_10' : 'RAID 10',
-    'RAID_50' : 'RAID 50',
-    'RAID_60' : 'RAID 60',
-    }).enum_type
+    'RAID_0': 'RAID 0',
+    'RAID_1': 'RAID 1',
+    'RAID_5': 'RAID 5',
+    'RAID_6': 'RAID 6',
+    'RAID_10': 'RAID 10',
+    'RAID_50': 'RAID 50',
+    'RAID_60': 'RAID 60',
+}).enum_type
 
 LicenseApiOptionsEnum = EnumWrapper("LAO", {
-    'NoOptions' : 0,
-    'Force' : 1,
-    'All' : 2
+    'NoOptions': 0,
+    'Force': 1,
+    'All': 2
 }).enum_type
 
 TLSOptions_Map = {
-    'TLS_1_0' : 'TLS 1.0 and Higher',
-    'TLS_1_1' : 'TLS 1.1 and Higher',
-    'TLS_1_2' : 'TLS 1.2 Only'
+    'TLS_1_0': 'TLS 1.0 and Higher',
+    'TLS_1_1': 'TLS 1.1 and Higher',
+    'TLS_1_2': 'TLS 1.2 Only'
 }
 
 TLSOptions = EnumWrapper("TLS", TLSOptions_Map).enum_type
 
-SSLBits_Map =  {
-    'S128' : '128-Bit or higher',
-    'S168' : '168-Bit or higher',
-    'S256' : '256-Bit or higher',
-    'Auto' : 'Auto Negotiate'
+SSLBits_Map = {
+    'S128': '128-Bit or higher',
+    'S168': '168-Bit or higher',
+    'S256': '256-Bit or higher',
+    'Auto': 'Auto Negotiate'
 }
 
 SSLBits = EnumWrapper("SSL", SSLBits_Map).enum_type
@@ -192,45 +191,45 @@ SSLCertTypeEnum = EnumWrapper("SSLCertTypeEnum", {
 }).enum_type
 
 ShutdownTypeEnum = EnumWrapper('ShutdownTypeEnum', {
-    'Graceful' : 'Graceful',
-    'Forced' : 'Forced',
-    'NoReboot' : 'NoReboot'
+    'Graceful': 'Graceful',
+    'Forced': 'Forced',
+    'NoReboot': 'NoReboot'
 }).enum_type
 
 ShutdownTypeWsmanEnum = EnumWrapper('ShutdownTypeWsmanEnum', {
-    'Graceful' : 0,
-    'Forced' : 1,
-    'NoReboot' : 2
+    'Graceful': 0,
+    'Forced': 1,
+    'NoReboot': 2
 }).enum_type
 
 ShutdownTypeRedfishEnum = EnumWrapper('ShutdownTypeRedfishEnum', {
-    'Graceful' : 'Graceful',
-    'Forced' : 'Forced',
-    'NoReboot' : 'NoReboot'
+    'Graceful': 'Graceful',
+    'Forced': 'Forced',
+    'NoReboot': 'NoReboot'
 }).enum_type
 
 HostEndPowerStateEnum = EnumWrapper('EPSE', {
-    'On' : 1,
-    'Off' : 2,
+    'On': 1,
+    'Off': 2,
 }).enum_type
 
 UserPrivilegeEnum = EnumWrapper("UserPrivilegeEnum", {
-    "Administrator" : 511,
-    "Operator" : 499,
-    "ReadOnly" : 1,
-    "NoPrivilege" : 0,
-    }).enum_type
+    "Administrator": 511,
+    "Operator": 499,
+    "ReadOnly": 1,
+    "NoPrivilege": 0,
+}).enum_type
 
 SNMPTrapFormatEnum = EnumWrapper("SNMPTrapFormatEnum", {
-    "SNMPv1" : 'SNMPv1',
-    "SNMPv2" : 'SNMPv2',
-    "SNMPv3" : 'SNMPv3',
-    }).enum_type
+    "SNMPv1": 'SNMPv1',
+    "SNMPv2": 'SNMPv2',
+    "SNMPv3": 'SNMPv3',
+}).enum_type
 
 SNMPProtocolEnum = EnumWrapper("SPE", {
-    "All" : 'All',
-    "SNMPv3" : 'SNMPv3',
-    }).enum_type
+    "All": 'All',
+    "SNMPv3": 'SNMPv3',
+}).enum_type
 
 ShareTypeEnum = EnumWrapper('ShareTypeEnum', {
     'NFS': 0,
@@ -246,45 +245,45 @@ VideoLogsFileTypeEnum = EnumWrapper("VideoLogsFileTypeEnum", {
 }).enum_type
 
 FileOperationEnum = EnumWrapper('FileOperationEnum', {
-    'Import' : 1,
-    'Export' : 2,
-    'Both'   : 3,
+    'Import': 1,
+    'Export': 2,
+    'Both': 3,
 }).enum_type
 
 FileTypeEnum = EnumWrapper('FileTypeEnum', {
-    'All' : 0,
-    'SystemConfigXML' : 1,
-    'LCLogs'   : 2,
-    'Inventory' : 3,
-    'FactoryConfig' : 4,
-    'TSR'   : 5,
-    'BootVideoLogs' : 6,
-    'Diagnostics' : 7,
-    'LCFullLogs'   : 8,
-    'CrashVideoLogs'   : 9
+    'All': 0,
+    'SystemConfigXML': 1,
+    'LCLogs': 2,
+    'Inventory': 3,
+    'FactoryConfig': 4,
+    'TSR': 5,
+    'BootVideoLogs': 6,
+    'Diagnostics': 7,
+    'LCFullLogs': 8,
+    'CrashVideoLogs': 9
 }).enum_type
 
 PayLoadEncodingEnum = EnumWrapper('PayLoadEncodingEnum', {
-    'Text' : 1,
-    'Base64' : 2,
+    'Text': 1,
+    'Base64': 2,
 }).enum_type
 
 ExportUseEnum = EnumWrapper('ExportUseEnum', {
-    'Default' : 'Default',
-    'Clone' : 'Clone',
-    'Replace' : 'Replace'
+    'Default': 'Default',
+    'Clone': 'Clone',
+    'Replace': 'Replace'
 }).enum_type
 
 ExportUseWsmanEnum = EnumWrapper("ExportUseWsmanEnum", {
-    'Default' : 0,
-    'Clone' : 1,
-    'Replace' : 2,
+    'Default': 0,
+    'Clone': 1,
+    'Replace': 2,
 }).enum_type
 
 ExportUseRedfishEnum = EnumWrapper('ExportUseRedfishEnum', {
-    'Default' : 'Default',
-    'Clone' : 'Clone',
-    'Replace' : 'Replace'
+    'Default': 'Default',
+    'Clone': 'Clone',
+    'Replace': 'Replace'
 }).enum_type
 
 IncludeInExportEnum = EnumWrapper('IncludeInExportEnum', {
@@ -309,19 +308,19 @@ IncludeInExportRedfishEnum = EnumWrapper('IncludeInExportRedfishEnum', {
 }).enum_type
 
 ProxySupportEnum = EnumWrapper('ProxySupportEnum', {
-    'Off' : 1,
-    'Use_Default_Settings' : 2,
-    'Use_Custom_Settings' : 3
+    'Off': 1,
+    'Use_Default_Settings': 2,
+    'Use_Custom_Settings': 3
 }).enum_type
 
 ProxyTypeEnum = EnumWrapper('ProxyTypeEnum', {
-    'HTTP' : 0,
-    'SOCKS' : 1
+    'HTTP': 0,
+    'SOCKS': 1
 }).enum_type
 
 IgnoreCertWarningEnum = EnumWrapper('IgnoreCertWarningEnum', {
-    'Off' : 1,
-    'On' : 2
+    'Off': 1,
+    'On': 2
 }).enum_type
 
 EndHostPowerStateEnum = EnumWrapper('EndHostPowerStateEnum', {
@@ -351,12 +350,12 @@ DataSelectorArrayInEnum = EnumWrapper("DataSelectorArrayInEnum", {
     'Debug_Logs': 3
 }).enum_type
 
-SupportAssistCollectionFilterEnum  = EnumWrapper("SupportAssistCollectionFilterEnum", {
+SupportAssistCollectionFilterEnum = EnumWrapper("SupportAssistCollectionFilterEnum", {
     'No': 0,
     'Yes': 1
 }).enum_type
 
-SupportAssistCollectionTransmitEnum  = EnumWrapper("SupportAssistCollectionTransmitEnum", {
+SupportAssistCollectionTransmitEnum = EnumWrapper("SupportAssistCollectionTransmitEnum", {
     'No': 0,
     'Yes': 1
 }).enum_type
@@ -375,15 +374,14 @@ ServerGenerationEnum = EnumWrapper('ServerGenerationEnum', {
 }).enum_type
 
 ComputerSystemResetTypesEnum = EnumWrapper("ComputerSystemResetTypesEnum", {
-    "On" : "On",
-    "ForceOff" : "ForceOff",
-    "GracefulRestart" : "GracefulRestart",
-    "GracefulShutdown"  : "GracefulShutdown",
-    "PushPowerButton" : "PushPowerButton",
-    "Nmi" : "Nmi",
+    "On": "On",
+    "ForceOff": "ForceOff",
+    "GracefulRestart": "GracefulRestart",
+    "GracefulShutdown": "GracefulShutdown",
+    "PushPowerButton": "PushPowerButton",
+    "Nmi": "Nmi",
 }).enum_type
 
 ManagerTypesEnum = EnumWrapper("ManagerTypesEnum", {
-    "GracefulRestart" : "GracefulRestart",
+    "GracefulRestart": "GracefulRestart",
 }).enum_type
-

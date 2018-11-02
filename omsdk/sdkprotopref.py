@@ -22,19 +22,20 @@
 #
 from omsdk.sdkcenum import EnumWrapper
 
-ProtocolEnum = EnumWrapper('ProtocolEnum',  {
-        'SNMP' : 1,
-        'WSMAN' : 2,
-        'REDFISH' : 3,
-        'REST' : 4,
-        'Other' : 100,
-        'Simulator' : 101
-    }).enum_type
+ProtocolEnum = EnumWrapper('ProtocolEnum', {
+    'SNMP': 1,
+    'WSMAN': 2,
+    'REDFISH': 3,
+    'REST': 4,
+    'Other': 100,
+    'Simulator': 101
+}).enum_type
 
 ProtoMethods = EnumWrapper("FST", {
-    "HuntMode" : "HuntMode",
-    "MergeMode" : "MergeMode"
+    "HuntMode": "HuntMode",
+    "MergeMode": "MergeMode"
 }).enum_type
+
 
 class ProtoPreference:
     def __init__(self, *args):
@@ -61,6 +62,14 @@ class ProtoPreference:
                 self.orig_protocols.append(protoenum)
                 self.protocols.append(protoenum)
                 self.include_flag.append(True)
+
+    def remIndex(self, ix, protoenum):
+        if protoenum in self.orig_protocols:
+            self.orig_protocols.remove(protoenum)
+        if protoenum in self.protocols:
+            self.protocols.remove(protoenum)
+        if ix < len(self.include_flag):
+            self.include_flag.pop(ix)
 
     def clone(self):
         s = ProtoPreference()
@@ -94,10 +103,10 @@ class ProtoPreference:
         tt2 = []
         tt3 = []
         for i in range(len(moveit), 0, -1):
-            tt2.insert(0, self.protocols[moveit[i-1]])
-            tt3.insert(0, self.include_flag[moveit[i-1]])
-            del self.protocols[moveit[i-1]]
-            del self.include_flag[moveit[i-1]]
+            tt2.insert(0, self.protocols[moveit[i - 1]])
+            tt3.insert(0, self.include_flag[moveit[i - 1]])
+            del self.protocols[moveit[i - 1]]
+            del self.include_flag[moveit[i - 1]]
         self.protocols[0:0] = tt2
         self.include_flag[0:0] = tt3
 
@@ -130,5 +139,4 @@ class ProtoPreference:
         counter = 0
         for i in range(0, len(self.protocols)):
             counter = counter + 1
-            print (str(counter) + " :" + str(self.protocols[i]) + "(" + str(self.include_flag[i]) + ")")
-
+            print(str(counter) + " :" + str(self.protocols[i]) + "(" + str(self.include_flag[i]) + ")")

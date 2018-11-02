@@ -28,6 +28,7 @@ import xml.etree.ElementTree as ET
 from enum import Enum
 from datetime import datetime
 from omsdk.sdkdevice import iDeviceRegistry, iDeviceDriver, iDeviceDiscovery
+from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkproto import PWSMAN, PREDFISH, PSNMP
 from omsdk.sdkfile import FileOnShare, Share, LocalFile
 from omsdk.sdkcreds import UserCredentials
@@ -2325,6 +2326,23 @@ iDRACWsManCmds = {
         "Parameters": [
             ('ResetType', "reboot_type", None, type(""), None)
         ]
+    },
+
+    "_create_bios_config_job_redfish": {
+        "ResourceURI": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs",
+        "Action": "",
+        "HttpMethod": "post",
+        "SuccessCode": [200],
+        "ReturnsJobid": True,
+        "Args": {
+            "target_uri": type("")
+        },
+        "Return": {
+            "File": "file"
+        },
+        "Parameters": [
+            ('TargetSettingsURI', "target_uri", None, type(""), None)
+        ]
     }
 
     #############Above are Redfish specific commands, need to be moved once testing completed and protocol issue addressed###########
@@ -2560,7 +2578,8 @@ class iDRACConfig(iBaseConfigApi):
                         'Message': 'Configuration Liason Share not registered.'}
 
             tempshare = self.liason_share.mkstemp(prefix='scp', suffix='.xml')
-            filename = tempshare.local_full_path
+            if tempshare:
+                filename = tempshare.local_full_path
 
             with open(filename, "w") as f:
                 f.write(content)
@@ -2596,7 +2615,8 @@ class iDRACConfig(iBaseConfigApi):
                         'Message': 'Configuration Liason Share not registered.'}
 
             tempshare = self.liason_share.mkstemp(prefix='scp', suffix='.xml')
-            filename = tempshare.local_full_path
+            if tempshare:
+                filename = tempshare.local_full_path
 
             msg = self.scp_export(tempshare)
             logger.debug(msg)
@@ -2787,7 +2807,7 @@ class iDRACConfig(iBaseConfigApi):
         """
         return self.entity._power_boot(state=power_state)
 
-    def reboot_after_config(self, reboot_type=RebootJobType.GracefulRebootWithForcedShutdown, job_wait = True):
+    def reboot_after_config(self, reboot_type=RebootJobType.GracefulRebootWithForcedShutdown, job_wait=True):
         """
             Reboot Server after Configuration
 
@@ -2806,7 +2826,7 @@ class iDRACConfig(iBaseConfigApi):
                 # Reboot a server after configuration
                 msg = idrac.config_mgr.reboot_after_config(reboot_type=RebootJobType.PowerCycle)
         """
-        rjson = self.entity._reboot_job(reboot = reboot_type)
+        rjson = self.entity._reboot_job(reboot=reboot_type)
 
         rjson['file'] = '<reboot>'
         if job_wait:
@@ -2919,7 +2939,7 @@ class iDRACConfig(iBaseConfigApi):
             }
 
         self.BootMode.set_value(boot_mode)
-        #return self.apply_changes(reboot=False)
+        # return self.apply_changes(reboot=False)
 
     def configure_boot_sequence(self, boot_mode=None, boot_sequence=None):
         """
@@ -2968,7 +2988,7 @@ class iDRACConfig(iBaseConfigApi):
                 'Message': 'Invalid Boot Mode'
             }
 
-        #return self.apply_changes(reboot=True)
+            # return self.apply_changes(reboot=True)
 
     #############################################
     ##  BIOS NVME Mode
@@ -3010,7 +3030,7 @@ class iDRACConfig(iBaseConfigApi):
             }
 
         self.NvmeMode.set_value(nvme_mode)
-        #return self.apply_changes(reboot=True)
+        # return self.apply_changes(reboot=True)
 
     #############################################
     ##  BIOS Secure Boot Mode
@@ -3052,7 +3072,7 @@ class iDRACConfig(iBaseConfigApi):
             }
 
         self.SecureBootMode.set_value(secure_boot_mode)
-        #return self.apply_changes(reboot=True)
+        # return self.apply_changes(reboot=True)
 
     #############################################
     ##  BIOS One-Time Boot Mode
@@ -3094,7 +3114,7 @@ class iDRACConfig(iBaseConfigApi):
             }
 
         self.OneTimeBootMode.set_value(onetime_boot_mode)
-        #return self.apply_changes(reboot=True)
+        # return self.apply_changes(reboot=True)
 
     def bios_reset_to_defaults(self):
         self._sysconfig.LifecycleController.LCAttributes.BIOSRTDRequested_LCAttributes = BIOSRTDRequested_LCAttributes.T_True
@@ -3121,7 +3141,7 @@ class iDRACConfig(iBaseConfigApi):
                 msg = idrac.config_mgr.enable_csior()
         """
         self.CSIOR.set_value(CollectSystemInventoryOnRestart_LCAttributesTypes.Enabled)
-        #return self.apply_changes(reboot=True)
+        # return self.apply_changes(reboot=True)
 
     def disable_csior(self):
         """
@@ -3139,7 +3159,7 @@ class iDRACConfig(iBaseConfigApi):
                 msg = idrac.config_mgr.disable_csior()
         """
         self.CSIOR.set_value(CollectSystemInventoryOnRestart_LCAttributesTypes.Disabled)
-        #return self.apply_changes(reboot=True)
+        # return self.apply_changes(reboot=True)
 
     @property
     def Location(self):
@@ -3272,7 +3292,7 @@ class iDRACConfig(iBaseConfigApi):
         if state is not None:
             snmp_trap_destination.State_SNMPAlert.set_value(state)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def SNMPConfiguration(self):
@@ -3338,7 +3358,7 @@ class iDRACConfig(iBaseConfigApi):
         if trap_format is not None:
             self.SNMPConfiguration.TrapFormat_SNMP.set_value(trap_format)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     #############################################
     ##  Web Server Configuration
@@ -3413,7 +3433,7 @@ class iDRACConfig(iBaseConfigApi):
         if tls_protocol is not None:
             self.WebServerConfiguration.TLSProtocol_WebServer.set_value(tls_protocol)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def SMTPServerSettings(self):
@@ -3479,7 +3499,7 @@ class iDRACConfig(iBaseConfigApi):
         if password is not None:
             self.SMTPServerSettings.SMTPPassword_RemoteHosts.set_value(password)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def SyslogServers(self):
@@ -3489,11 +3509,12 @@ class iDRACConfig(iBaseConfigApi):
     def SyslogConfig(self):
         return self._sysconfig.iDRAC.SysLog
 
-    def enable_syslog(self):
+    def enable_syslog(self, apply_changes=True):
         """
             Enable Sys Log Configuration
-
-            :return: success/failure response
+            :param apply_changes: ApplyCanges
+            :type apply_changes: bool
+            :return: success/failure response ,when apply_changes is True
             :rtype: JSON
 
 
@@ -3514,13 +3535,15 @@ class iDRACConfig(iBaseConfigApi):
         # if len(self.SyslogServers) > 0:
         self._sysconfig.iDRAC.SysLog.PowerLogEnable_SysLog = PowerLogEnable_SysLogTypes.Enabled
         self._sysconfig.iDRAC.SysLog.SysLogEnable_SysLog = SysLogEnable_SysLogTypes.Enabled
-        return self.apply_changes(reboot=False)
+        if apply_changes:
+            return self.apply_changes(reboot=False)
 
-    def disable_syslog(self):
+    def disable_syslog(self, apply_changes=True):
         """
             Enable Sys Log Configuration
-
-            :return: success/failure response
+            :param apply_changes: ApplyCanges
+            :type apply_changes: bool
+            :return: success/failure response ,when apply_changes is True
             :rtype: JSON
 
 
@@ -3541,7 +3564,8 @@ class iDRACConfig(iBaseConfigApi):
         # if len(self.SyslogServers) > 0:
         self._sysconfig.iDRAC.SysLog.PowerLogEnable_SysLog = PowerLogEnable_SysLogTypes.Disabled
         self._sysconfig.iDRAC.SysLog.SysLogEnable_SysLog = SysLogEnable_SysLogTypes.Disabled
-        return self.apply_changes(reboot=False)
+        if apply_changes:
+            return self.apply_changes(reboot=False)
 
     #############################################
     ##  Timezone
@@ -3583,7 +3607,7 @@ class iDRACConfig(iBaseConfigApi):
             }
 
         self.TimeZone.set_value(timezone)
-        #return self.apply_changes(reboot=False)
+        # return self.apply_changes(reboot=False)
 
     @property
     def Time(self):
@@ -3655,7 +3679,7 @@ class iDRACConfig(iBaseConfigApi):
         if ntp_server_3 is not None:
             self.NTPConfiguration.NTP3_NTPConfigGroup.set_value(ntp_server_3)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     #############################################
     ##  Email Alerts
@@ -3722,7 +3746,7 @@ class iDRACConfig(iBaseConfigApi):
         if custom_message is not None:
             email_alert.CustomMsg_EmailAlert.set_value(custom_message)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     #############################################
     ##  End Email Alerts
@@ -3762,11 +3786,15 @@ class iDRACConfig(iBaseConfigApi):
 
         self.SystemConfiguration.iDRAC.IPMILan.AlertEnable_IPMILan.set_value(enable_alerts)
 
-        #return self.apply_changes(reboot=False)
+        # return self.apply_changes(reboot=False)
 
     @property
     def iDRAC_NIC(self):
         return self._sysconfig.iDRAC.NIC
+
+    @property
+    def iDRAC_NICStatic(self):
+        return self._sysconfig.iDRAC.NICStatic
 
     def configure_network_settings(self, enable_nic=None, nic_selection=None, failover_network=None, auto_detect=None,
                                    auto_negotiation=None, network_speed=None, duplex_mode=None, nic_mtu=None):
@@ -3844,7 +3872,7 @@ class iDRACConfig(iBaseConfigApi):
         if nic_mtu is not None:
             self.iDRAC_NIC.MTU_NIC.set_value(nic_mtu)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     def configure_dns(self, register_idrac_on_dns=None, dns_idrac_name=None, auto_config=None, static_dns=None):
         """
@@ -3895,12 +3923,12 @@ class iDRACConfig(iBaseConfigApi):
             self.iDRAC_NIC.DNSRacName_NIC.set_value(dns_idrac_name)
 
         if auto_config is not None:
-            self.iDRAC_NIC.DNSDomainNameFromDHCP_NIC.set_value(auto_config)
+            self.iDRAC_NICStatic.DNSDomainFromDHCP_NICStatic.set_value(auto_config)
 
         if static_dns is not None:
             self.iDRAC_NIC.DNSDomainName_NIC.set_value(static_dns)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     def configure_nic_vlan(self, vlan_enable=None, vlan_id=None, vlan_priority=None):
         """
@@ -3949,7 +3977,7 @@ class iDRACConfig(iBaseConfigApi):
         if vlan_priority is not None:
             self.iDRAC_NIC.VLanPriority_NIC.set_value(vlan_priority)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def iDRAC_IPv4Static(self):
@@ -4020,7 +4048,7 @@ class iDRACConfig(iBaseConfigApi):
         if net_mask is not None:
             self.iDRAC_IPv4Static.Netmask_IPv4Static.set_value(net_mask)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def iDRAC_IPv4(self):
@@ -4101,7 +4129,7 @@ class iDRACConfig(iBaseConfigApi):
         if net_mask is not None:
             self.iDRAC_IPv4.Netmask_IPv4.set_value(net_mask)
 
-        #return self.apply_changes(reboot=False)
+            # return self.apply_changes(reboot=False)
 
     @property
     def iDRAC_IPv6Static(self):
@@ -4235,7 +4263,7 @@ class iDRACConfig(iBaseConfigApi):
         target = ",".join(str(TypeHelper.resolve(component)) if TypeHelper.belongs_to(SCPTargetEnum, component)
                           else str(component) for component in target) if isinstance(target, list) \
             else (TypeHelper.resolve(target) if TypeHelper.belongs_to(SCPTargetEnum, target) else target)
-
+        logger.info(self.entity.ipaddr+" : Triggering scp import")
         if self.entity.use_redfish and isinstance(share, LocalFile):
             return self.scp_import_from_local_share_redfish(file_path=share.local_full_path, target=target,
                                                             shutdown_type=shutdown_type,
@@ -4247,9 +4275,11 @@ class iDRACConfig(iBaseConfigApi):
             rjson = self.entity._scp_import_redfish(share=share, creds=share_path.creds, target=target,
                                                     shutdown_type=ShutdownTypeRedfishEnum[shutdown_type.value],
                                                     time_to_wait=time_to_wait,
-                                                    end_host_power_state=EndHostPowerStateRedfishEnum[end_host_power_state.value])
+                                                    end_host_power_state=EndHostPowerStateRedfishEnum[
+                                                        end_host_power_state.value])
             rjson['file'] = str(share)
             if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
+                logger.info(self.entity.ipaddr + ": Tracking scp import job")
                 rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
 
             return rjson
@@ -4270,6 +4300,7 @@ class iDRACConfig(iBaseConfigApi):
             rjson['file'] = str(share)
 
             if job_wait:
+                logger.info(self.entity.ipaddr+ ": Tracking scp import job")
                 rjson = self._job_mgr._job_wait(rjson['file'], rjson)
 
         return rjson
@@ -4279,7 +4310,8 @@ class iDRACConfig(iBaseConfigApi):
         rjson = self.entity._scp_import_to_local_share(share_type=ShareTypeEnum.Local, target=target,
                                                        shutdown_type=ShutdownTypeWsmanEnum[shutdown_type.value],
                                                        time_to_wait=time_to_wait,
-                                                       end_host_power_state=EndHostPowerStateWsmanEnum[end_host_power_state.value])
+                                                       end_host_power_state=EndHostPowerStateWsmanEnum[
+                                                           end_host_power_state.value])
 
         if job_wait:
             rjson = self._job_mgr._job_wait(rjson['Message'], rjson)
@@ -4399,27 +4431,39 @@ class iDRACConfig(iBaseConfigApi):
                 export_format=ExportFormatEnum.JSON, export_use=ExportUseEnum.Clone,
                 include_in_export=IncludeInExportEnum.Default)
         """
-        share = share_path.format(ip=self.entity.ipaddr)
+        if share_path:
+            share = share_path.format(ip=self.entity.ipaddr)
+        else:
+            logger.error("Share path or mount point does not exist")
+            raise ValueError("Share path or mount point does not exist")
 
         target = ",".join(
             str(TypeHelper.resolve(component)) if TypeHelper.belongs_to(SCPTargetEnum, component) else str(component)
             for component in target) if isinstance(target, list) \
             else (TypeHelper.resolve(target) if TypeHelper.belongs_to(SCPTargetEnum, target) else target)
-
+        logger.info(self.entity.ipaddr+" : Triggering scp export")
         if self.entity.use_redfish and isinstance(share, LocalFile):
-            return self.scp_export_to_local_share_redfish(share.local_full_path, target=target,
+            rjson = self.scp_export_to_local_share_redfish(share.local_full_path, target=target,
                                                           export_format=export_format,
                                                           export_use=export_use,
                                                           include_in_export=include_in_export)
+            if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
+                logger.info(self.entity.ipaddr + " : Tracking scp export job")
+                rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
+            rjson['file'] = str(share)
+            return rjson
 
         if self.entity.use_redfish:
             rjson = self.entity._scp_export_redfish(share=share, creds=share_path.creds,
-                                                    target=target, export_format=ExportFormatRedfishEnum[export_format.value],
+                                                    target=target,
+                                                    export_format=ExportFormatRedfishEnum[export_format.value],
                                                     export_use=ExportUseRedfishEnum[export_use.value],
-                                                    include_in_export=IncludeInExportRedfishEnum[include_in_export.value])
-            rjson['file'] = str(share)
+                                                    include_in_export=IncludeInExportRedfishEnum[
+                                                        include_in_export.value])
             if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
+                logger.info(self.entity.ipaddr + " : Tracking scp export job")
                 rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
+            rjson['file'] = str(share)
             return rjson
 
         if isinstance(share, LocalFile):
@@ -4440,6 +4484,7 @@ class iDRACConfig(iBaseConfigApi):
             rjson['file'] = str(share)
 
             if job_wait:
+                logger.info(self.entity.ipaddr + " : Tracking scp export job")
                 rjson = self._job_mgr._job_wait(rjson['file'], rjson)
 
         return rjson
@@ -4447,12 +4492,15 @@ class iDRACConfig(iBaseConfigApi):
     def scp_export_to_local_share(self, target=SCPTargetEnum.ALL, export_format=ExportFormatEnum.XML,
                                   export_use=ExportUseEnum.Default, include_in_export=IncludeInExportEnum.Default,
                                   job_wait=True):
+        logger.debug(self.entity.ipaddr+" : Triggering scp export to local share")
         rjson = self.entity._scp_export_to_local_share(share_type=ShareTypeEnum.Local, target=target,
                                                        export_format=ExportFormatWsmanEnum[export_format.value],
                                                        export_use=ExportUseWsmanEnum[export_use.value],
-                                                       include_in_export=IncludeInExportWsmanEnum[include_in_export.value])
+                                                       include_in_export=IncludeInExportWsmanEnum[
+                                                           include_in_export.value])
 
         if job_wait:
+            logger.info(self.entity.ipaddr + " : Tracking scp export job")
             rjson = self._job_mgr._job_wait(rjson['Message'], rjson)
 
         return rjson
@@ -4890,14 +4938,15 @@ class iDRACConfig(iBaseConfigApi):
         uefitarget = {"UefiTargetBootSourceOverride": target_path}
         rjsontargetboot = self.entity._configure_attributes_redfish(rpath="/Systems/System.Embedded.1",
                                                                     parent_attr="Boot", attr_val=uefitarget)
-        if 'Data' in rjsontargetboot and 'StatusCode' in rjsontargetboot['Data'] and rjsontargetboot['Data']['StatusCode'] == 200:
+        if 'Data' in rjsontargetboot and 'StatusCode' in rjsontargetboot['Data'] and rjsontargetboot['Data'][
+            'StatusCode'] == 200:
             rjsontargetboot['Status'] = 'Success'
         else:
             rjsontargetboot['Status'] = 'Failed'
             return rjsontargetboot
         next_ruri = rjsontargetboot['Data']['next_ruri']
         tokens = next_ruri.split("/")
-        job_id=''
+        job_id = ''
         if tokens and tokens.__len__() > 0:
             job_id = tokens[-1]
         self.reboot_system()
@@ -4911,15 +4960,18 @@ class iDRACConfig(iBaseConfigApi):
                                           export_use=ExportUseEnum.Default,
                                           include_in_export=IncludeInExportEnum.Default):
         try:
-            rjson = self.entity._scp_export_to_local_share_redfish(target=target, export_format=ExportFormatRedfishEnum[export_format.value],
+            logger.debug(self.entity.ipaddr+" : Triggering scp export from local share.")
+            rjson = self.entity._scp_export_to_local_share_redfish(target=target, export_format=ExportFormatRedfishEnum[
+                export_format.value],
                                                                    export_use=ExportUseRedfishEnum[export_use.value],
-                                                                   include_in_export=IncludeInExportRedfishEnum[include_in_export.value])
+                                                                   include_in_export=IncludeInExportRedfishEnum[
+                                                                       include_in_export.value])
             if rjson and rjson['Status'] == 'Success' and 'Data' in rjson and 'next_ruri' in rjson['Data']:
                 task_uri = rjson['Data']['next_ruri']
             else:
                 return rjson
         except:
-            logger.debug("Exception while executing scp export to local share")
+            logger.error(self.entity.ipaddr+" : Exception while executing scp export to local share")
             return {'Status': 'Failed', 'Message': 'Unable to export scp, exception occurred'}
 
         # task_uri = "/redfish/v1/TaskService/Tasks/JID_133688612609"
@@ -4932,14 +4984,14 @@ class iDRACConfig(iBaseConfigApi):
                 if 'body' in scp_stream['Data']:
                     scp_xml_string = scp_stream['Data']['body']
 
-                    if (export_format is ExportFormatEnum.XML and "<SystemConfiguration Model" in str(scp_xml_string))\
+                    if (export_format is ExportFormatEnum.XML and "<SystemConfiguration Model" in str(scp_xml_string)) \
                             or (export_format is ExportFormatEnum.JSON and "SystemConfiguration" in scp_xml_string):
                         break
                 elif count >= 20:
                     return {'Status': 'Failed', 'Message': 'Unable to get Export content, timed out'}
                 count = count + 1
             except Exception as exp:
-                logger.error("Exception while exporting scp : {}".format(str(exp)))
+                logger.error(self.entity.ipaddr+" : Exception while exporting scp : {}".format(str(exp)))
                 return {'Status': 'Failed', 'Message': 'Unable to perform Export'}
         try:
             if scp_xml_string:
@@ -4947,9 +4999,10 @@ class iDRACConfig(iBaseConfigApi):
                 f.write(scp_xml_string if export_format is ExportFormatEnum.XML
                         else json.dumps(scp_xml_string, indent=4))
         except:
+            logger.error(self.entity.ipaddr+" : Failed to write exported content to local file")
             return {'Status': 'Failed', 'Message': 'Unable to write exported content to local file'}
 
-        return {'Status': 'Success', 'Message': 'Exported content written to local file'}
+        return rjson
 
     def _get_xml_string_fromlocalscp(self, file_path):
         try:
@@ -4960,22 +5013,272 @@ class iDRACConfig(iBaseConfigApi):
         except:
             return None
 
-    def scp_import_from_local_share_redfish(self, file_path, target=SCPTargetEnum.ALL, shutdown_type=ShutdownTypeEnum.Graceful,
+    def scp_import_from_local_share_redfish(self, file_path, target=SCPTargetEnum.ALL,
+                                            shutdown_type=ShutdownTypeEnum.Graceful,
                                             time_to_wait=300, end_host_power_state=EndHostPowerStateEnum.On,
                                             job_wait=True):
         xml_string = self._get_xml_string_fromlocalscp(file_path)
         if not xml_string:
             return {'Status': 'Failed', 'Message': 'Failed to get xml string'}
         rjson = self.entity._scp_import_from_local_share_redfish(target=target, import_string=xml_string,
-                                                                 shutdown_type=ShutdownTypeRedfishEnum[shutdown_type.value],
+                                                                 shutdown_type=ShutdownTypeRedfishEnum[
+                                                                     shutdown_type.value],
                                                                  time_to_wait=time_to_wait,
-                                                                 end_host_power_state=EndHostPowerStateRedfishEnum[end_host_power_state.value])
+                                                                 end_host_power_state=EndHostPowerStateRedfishEnum[
+                                                                     end_host_power_state.value])
         rjson['file'] = str(file_path)
 
         if job_wait and rjson['Status'] == 'Success' and 'jobid' in rjson['Data']:
+            logger.info(self.entity.ipaddr + " : Tracking scp import job")
             rjson = self.entity.job_mgr.job_wait(rjson['Data']['jobid'])
         return rjson
 
     def reboot_system(self):
         rjson = self.entity._reboot_system_redfish(reboot_type="GracefulRestart")
         return rjson
+
+    def is_change_applicable(self):
+        """when check_mode is enabled ,checks if changes are applicable or not"""
+        try:
+            logger.info(self.entity.ipaddr + " : Interface is_change_applicable enter")
+            if self._sysconfig and not self._sysconfig.is_changed():
+                msg = {'Status': 'Success', 'Message': 'No changes found to commit!', 'changes_applicable': False}
+            else:
+                msg = {'Status': 'Success', 'Message': 'Changes found to commit!', 'changes_applicable': True}
+        except Exception as e:
+            logger.error(self.entity.ipaddr + " : Interface is_change_applicable failed to execute")
+            msg = {'Status': 'Failed', 'Message': 'Failed to execute the command!', 'changes_applicable': False}
+        logger.info(self.entity.ipaddr + " : Interface is_change_applicable exit")
+        return msg
+
+    def configure_bios(self, bios_attr_val=None):
+        """ set the bios attributes in the systemconfig object for apply
+
+        :param bios_attr_val: attributes and corresponding values as dictionary
+        :param bios_attr_val: dict
+        :return: status
+        """
+        try:
+            logger.debug(self.entity.ipaddr + " : setting bios attributes.")
+            self._get_and_set_scp_attr_object({"BIOS": bios_attr_val}, self._sysconfig)
+        except AttributeError as attr_err:
+            logger.error(self.entity.ipaddr + " : " + attr_err.args[0])
+            msg = {'Status': 'Failed', 'Message': attr_err.args[0]}
+            return msg
+        except:
+            logger.error(self.entity.ipaddr + " : Exception occurred while setting attributes.")
+            msg = {'Status': 'Failed', 'Message': 'Failed to set attributes'}
+            return msg
+        logger.info(self.entity.ipaddr + " : successfully set attributes.")
+        return {'Status': 'Success', 'Message': 'Succeessfully set attributes'}
+
+    def _get_and_set_scp_attr_object(self, attr_val, obj):
+
+        for key in attr_val:
+            try:
+                logger.debug(self.entity.ipaddr + " : getting object for : " + str(key))
+                newobj = getattr(obj, key)
+                logger.debug(self.entity.ipaddr + " : got the attribute object")
+            except AttributeError as attr_err:
+                logger.error(self.entity.ipaddr + " : " + attr_err.args[0])
+                raise
+
+            if not isinstance(attr_val[key], dict):
+                logger.debug(
+                    self.entity.ipaddr + " : setting value for attribute : " + str(key) + " : value : " + attr_val[key])
+                try:
+                    newobj.set_value(attr_val[key])
+                except:
+                    logger.error(self.entity.ipaddr + " : Failed to set value for attribute " + str(key))
+                    raise AttributeError("Failed to set value for attribute " + str(key))
+            else:
+                logger.debug(self.entity.ipaddr + " : calling method recursively as key is of dict type.")
+                self._get_and_set_scp_attr_object(attr_val[key], newobj)
+
+        return
+
+    def _get_curr_boot_seq(self):
+        try:
+            response = self.entity._get_resource_redfish(resource_uri="/redfish/v1/Systems/System.Embedded.1/Bios")
+            if response and response['Status'] == 'Success':
+                curr_boot_mode = response['Data']['body']['Attributes']['BootMode']
+            else:
+                raise Exception("Failed to get  BootMode.")
+
+            logger.info(self.entity.ipaddr + " : BootMode is : "+curr_boot_mode)
+            if curr_boot_mode == "Uefi":
+                return "UefiBootSeq"
+
+            return "BootSeq"
+        except KeyError as keyerror:
+            logger.error(self.entity.ipaddr+" : Keyerror:"+str(keyerror.args[0]))
+            raise KeyError("Failed to get :"+str(keyerror.args[0])+" from response. ")
+        except:
+            raise
+
+    def _get_boot_sources(self):
+        try:
+            response = self.entity._get_resource_redfish(
+                resource_uri="/redfish/v1/Systems/System.Embedded.1/BootSources")
+            if response and response['Status'] == 'Success':
+                boot_sources = response['Data']['body']['Attributes']
+            else:
+                raise Exception("Failed to get  BootSources.")
+
+            return boot_sources
+        except KeyError as keyerror:
+            logger.error(self.entity.ipaddr + " : Keyerror:" + str(keyerror.args[0]))
+            raise KeyError("Failed to get :" + str(keyerror.args[0]) + " from response. ")
+        except:
+            raise
+
+    def _get_boot_sources_setting_payload(self, input_boot_devices, boot_devices, boot_seq):
+        payload_device_list = []
+        index_modified = False
+        enable_modified = False
+        partial_input = False
+        if len(input_boot_devices) == 0:
+            return {'Payload' : None, 'Modified' : False}
+        for input_boot_device in input_boot_devices:
+            device_exists = False
+            for boot_device in boot_devices:
+                if boot_device['Name'] == input_boot_device['Name']:
+                    device_exists = True
+                    payload_device = {}
+                    payload_device['Name'] = boot_device['Name']
+                    payload_device['Id'] = boot_device['Id']
+                    if 'Enabled' in input_boot_device  and boot_device['Enabled'] != input_boot_device['Enabled']:
+                        payload_device['Enabled'] = input_boot_device['Enabled']
+                        enable_modified = True
+                    else:
+                        payload_device['Enabled'] = boot_device['Enabled']
+
+                    if 'Index' in input_boot_device and boot_device['Index'] != input_boot_device['Index']:
+                        payload_device['Index'] = input_boot_device['Index']
+                        index_modified = True
+                    else:
+                        payload_device['Index'] = boot_device['Index']
+                        if boot_device['Index'] > (len(input_boot_devices)-1):
+                            partial_input = True
+                    payload_device_list.append(payload_device)
+                    break
+            if not device_exists:
+                logger.error(self.entity.ipaddr + " : Boot Device with name : " + str(
+                    input_boot_device['Name']) + "does not exists")
+                raise KeyError('Boot Device with name : ' + str(input_boot_device['Name']) + ' does not exists')
+        if not enable_modified and not index_modified:
+            return {'Payload' : None, 'Modified' : False}
+        if partial_input and not index_modified:
+            remaining_device_list = []
+            for boot_device in boot_devices:
+                flag = False
+                for payload_device in payload_device_list:
+                    if boot_device['Name'] == payload_device['Name']:
+                        flag = True
+                        break
+                if not flag:
+                    remaining_device_list.append(boot_device)
+            if len(remaining_device_list) > 0:
+                payload_device_list.extend(remaining_device_list)
+        return {'Payload' : {boot_seq:payload_device_list}, 'Modified' : True}
+
+    def _prepare_boot_sources_paylaoad(self, input_boot_devices):
+        curr_boot_seq = self._get_curr_boot_seq()
+        boot_sources = self._get_boot_sources()
+        boot_devices = boot_sources[curr_boot_seq]
+        boot_source_payload = self._get_boot_sources_setting_payload(input_boot_devices, boot_devices, curr_boot_seq)
+        return boot_source_payload
+
+    def configure_boot_sources(self, input_boot_devices):
+        if not input_boot_devices or len(input_boot_devices) == 0:
+            msg = {'Status': 'Failed', 'Message': 'Invalid input, nothing to be done.'}
+            return msg
+        try:
+            payload = self._prepare_boot_sources_paylaoad(input_boot_devices)
+            if not payload['Modified']:
+                return {'Status': 'Success', 'Message': 'No changes found to apply.'}
+            boot_source_payload = payload['Payload']
+            logger.info(self.entity.ipaddr+": boot_source payload:"+str(boot_source_payload))
+        except Exception as exception:
+            logger.error(self.entity.ipaddr+" : Failed to get payload : "+str(exception.args[0]))
+            msg = {'Status': 'Failed', 'Message': str(exception.args[0])}
+            return msg
+
+
+        config_attr_response = self.entity._configure_attributes_redfish(
+            rpath="/Systems/System.Embedded.1/BootSources/Settings",
+            parent_attr="Attributes",
+            attr_val=boot_source_payload)
+        if config_attr_response['Status']!='Success':
+            logger.error(self.entity.ipaddr + " : Failed to set Boot Sources")
+            msg = {'Status': 'Failed', 'Message': config_attr_response['error']['error']['@Message.ExtendedInfo'][0]['Message']}
+            return msg
+
+        bios_config_job_response = self.entity._create_bios_config_job_redfish(
+            target_uri="/redfish/v1/Systems/System.Embedded.1/Bios/Settings")
+        if bios_config_job_response['Status']!='Success':
+            logger.error(self.entity.ipaddr + " : Failed to set Boot Sources")
+            msg = {'Status': 'Failed', 'Message': bios_config_job_response['error']['error']['@Message.ExtendedInfo'][0]['Message']}
+            return msg
+
+        job_id = bios_config_job_response['Job']['JobId']
+        job_status = self._job_mgr.get_job_status_redfish(job_id)
+        if job_status['JobState'] == 'Scheduled':
+            logger.info(
+                self.entity.ipaddr + " : bios config job with job id : " + str(job_id) + " successfully scheduled")
+        else:
+            logger.info(self.entity.ipaddr + " : bios config job with job id : " + str(
+                job_id) + " is not scheduled, current state is " + str(job_status['JobState']))
+
+        reboot_status = self.reboot_system()
+        if reboot_status['Status'] == 'Success':
+           logger.info(self.entity.ipaddr + ": reboot triggered")
+           time.sleep(100)
+        else:
+            logger.error(self.entity.ipaddr + ": failed to trigger reboot.")
+            return {'Status': 'Failed', 'Message':'Failed to trigger reboot. Please reboot the system to apply changes.'}
+
+        job_response = self.entity.job_mgr.job_wait(job_id)
+        return job_response
+
+    def is_bootsources_modified(self, input_boot_devices):
+        """
+        when check_mode is enabled ,checks if boot sources settings are modified or not.
+        :param input_boot_devices:
+        :return:
+        """
+        try:
+            logger.info("{} : checking if boot sources settings changed.".format(self.entity.ipaddr))
+            curr_boot_seq = self._get_curr_boot_seq()
+            logger.info("{} : current boot sequence: {}".format(self.entity.ipaddr, curr_boot_seq))
+            boot_sources = self._get_boot_sources()
+            boot_devices = boot_sources[curr_boot_seq]
+            logger.debug("{} : current boot sources settings : {}.".format(self.entity.ipaddr, boot_devices))
+            is_modified = False
+            for input_boot_device in input_boot_devices:
+                device_exists = False
+                for boot_device in boot_devices:
+                    if boot_device['Name'] == input_boot_device['Name']:
+                        device_exists = True
+                        if boot_device['Index'] != input_boot_device['Index']:
+                            is_modified = True
+                        if boot_device['Enabled'] != input_boot_device['Enabled']:
+                            is_modified = True
+                        break
+                if not device_exists:
+                    logger.error(self.entity.ipaddr + " : Boot Device with name : " + str(
+                        input_boot_device['Name']) + "does not exists")
+                    raise KeyError('Boot Device with name : ' + str(input_boot_device['Name']) + ' does not exists')
+            if is_modified:
+                msg = {'Status': 'Success', 'Message': 'Changes found to commit!', 'changes_applicable': True}
+            else:
+                msg = {'Status': 'Success', 'Message': 'No changes found to commit!', 'changes_applicable': False}
+        except KeyError as kerror:
+            logger.error("{} : method is_bootsources_modified failed to execute. error : {}".format(self.entity.ipaddr,
+                                                                                                    kerror.args[0]))
+            msg = {'Status': 'Failed', 'Message': 'error : {}.'.format(kerror.args[0]), 'changes_applicable': False}
+        except Exception as ex:
+            logger.error("{} : method is_bootsources_modified failed to execute.".format(self.entity.ipaddr))
+            msg = {'Status': 'Failed', 'Message': 'Failed to execute the command!', 'changes_applicable': False}
+        logger.info("{} : exiting is_bootsources_modified method.".format(self.entity.ipaddr))
+        return msg

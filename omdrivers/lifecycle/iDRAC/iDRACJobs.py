@@ -27,26 +27,30 @@ import xml.etree.ElementTree as ET
 import logging
 from enum import Enum
 from datetime import datetime
+from omsdk.sdkprint import PrettyPrint
 from omsdk.sdkproto import PWSMAN, PREDFISH, PSNMP
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
 from omsdk.lifecycle.sdkjobs import iBaseJobApi
 
 import sys
 import logging
+
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
-logger = logging.getLogger(__name__)
+
 
 try:
     from pysnmp.hlapi import *
     from pysnmp.smi import *
+
     PySnmpPresent = True
 except ImportError:
     PySnmpPresent = False
 
 from omdrivers.enums.iDRAC.iDRACEnums import *
 
+logger = logging.getLogger(__name__)
 class iDRACJobs(iBaseJobApi):
     def __init__(self, entity):
         if PY2:
@@ -58,7 +62,7 @@ class iDRACJobs(iBaseJobApi):
     def queue_jobs(self, job_list, schtime):
         if not isinstance(job_list, list):
             job_list = [job_list]
-        return self.entity._jobq_setup(jobs = job_list, startat=schtime)
+        return self.entity._jobq_setup(jobs=job_list, startat=schtime)
 
     def delete_job(self, jobid):
         """
@@ -78,9 +82,9 @@ class iDRACJobs(iBaseJobApi):
             job_status = idrac.job_mgr.delete_job(jobid="jid_1234")
         """
         if self.entity.use_redfish:
-            rjson = self.entity._delete_job_redfish(job_id = jobid)
+            rjson = self.entity._delete_job_redfish(job_id=jobid)
             return rjson
-        return self.entity._jobq_delete(jobid = jobid)
+        return self.entity._jobq_delete(jobid=jobid)
 
     def delete_all_jobs(self):
         """
@@ -97,27 +101,27 @@ class iDRACJobs(iBaseJobApi):
             # Delete all jobs
             job_status = idrac.job_mgr.delete_all_jobs()
         """
-        return self.entity._jobq_delete(jobid ="JID_CLEARALL")
+        return self.entity._jobq_delete(jobid="JID_CLEARALL")
 
     def _get_osd_job_details(self):
         self.osd_job_json = {}
         self.entity._get_entries(self.osd_job_json, iDRACOSDJobsEnum)
         if 'OSDJobs' not in self.osd_job_json:
-            return { 'Status' : 'Failed',
-                     'Message' : 'Cannot fetch OSD Job status' }
+            return {'Status': 'Failed',
+                    'Message': 'Cannot fetch OSD Job status'}
         osdjobs = self.osd_job_json['OSDJobs']
-        job = { 'InstanceID' : None }
+        job = {'InstanceID': None}
         if len(osdjobs) >= 1:
             job = osdjobs[len(osdjobs) - 1]
         return {
-            'Data' : { 'Jobs' : job },
-            'Status' : 'Success'
+            'Data': {'Jobs': job},
+            'Status': 'Success'
         }
 
     def get_job_details(self, jobid):
         if self.entity.use_redfish:
             return self.get_job_details_redfish(jobid)
-        selector = { "InstanceID" : jobid }
+        selector = {"InstanceID": jobid}
         return self.entity.cfactory.opget(iDRACJobsEnum.Jobs, selector)
 
     def get_job_status(self, jobid):
@@ -140,21 +144,21 @@ class iDRACJobs(iBaseJobApi):
         if self.entity.use_redfish:
             return self.get_job_status_redfish(jobid)
         jobs = {}
-        jobret = { "Status" : TypeHelper.resolve(JobStatusEnum.InProgress) }
+        jobret = {"Status": TypeHelper.resolve(JobStatusEnum.InProgress)}
         if jobid.startswith('DCIM_OSD'):
             # Poll for OSD Concrete Job
             jobs = self._get_osd_job_details()
         else:
             jobs = self.get_job_details(jobid)
-        logger.debug(jobs)
+        logger.debug(self.entity.ipaddr+": job: "+str(jobs))
         if "Status" in jobs and jobs['Status'] != "Success":
-            logger.debug("ERROR: get_job_status failed: " + jobs['Status'])
-            logger.debug("ERROR: get_job_status failed: " + jobs['Message'])
+            logger.error(self.entity.ipaddr+" : get_job_status failed: jobid: " + jobid + " : Status " + jobs['Status'])
+            logger.error(self.entity.ipaddr+" : get_job_status failed: jobid: " + jobid + " : Message " + jobs['Message'])
             return jobs
 
         jb = jobs['Data']['Jobs']
         if jb['InstanceID'] != jobid:
-            logger.debug("ERROR: Job instance not found")
+            logger.error(self.entity.ipaddr + " : get_job_status failed: jobid: " + jobid + " : ERROR: Job instance not found")
             return jobs
         if 'JobStatus' in jb:
             jobstatus = jb['JobStatus']
@@ -183,27 +187,26 @@ class iDRACJobs(iBaseJobApi):
             jb['Status'] = TypeHelper.resolve(jobstaten)
         return jb
 
-
     def _parse_status_obj(self, retval):
-        if not 'Status' in retval :
+        if not 'Status' in retval:
             retval['Status'] = "Invalid"
             retval['Message'] = "<empty result>"
             return (False, 'Invalid', None)
         elif retval['Status'] != 'Success':
             return (False, retval['Status'], None)
-        logger.debug(retval)
+        logger.debug(self.entity.ipaddr + ": retval: " + str(retval))
         if retval['Return'] != "JobCreated":
             return (False, retval['Status'], None)
         if not 'Job' in retval or not 'JobId' in retval['Job']:
-            logger.debug("Error: Jobid is not found, even though return says jobid")
+            logger.error(self.entity.ipaddr + ": Error: Jobid is not found, even though return says jobid")
             return (True, retval['Status'], None)
         jobid = retval['Job']['JobId']
-        logger.debug("Job is " + jobid)
+        logger.debug(self.entity.ipaddr +" : Jobid " + jobid)
         if jobid is None:
             return (True, retval['Status'], None)
         return (True, retval['Status'], jobid)
 
-    def _job_wait(self, fname, rjson, track_jobid = True, show_progress=False):
+    def _job_wait(self, fname, rjson, track_jobid=True, show_progress=False):
         (is_job_created, job_status, jobid) = self._parse_status_obj(rjson)
         rjson['file'] = fname
         if job_status != 'Success':
@@ -219,8 +222,8 @@ class iDRACJobs(iBaseJobApi):
         rjson['file'] = fname
         return rjson
 
-    def job_wait(self, jobid, track_jobid = True, show_progress=False,
-                       wait_for = 2*60*60):  # wait for a 2 hours (longgg time)
+    def job_wait(self, jobid, track_jobid=True, show_progress=False,
+                 wait_for=2 * 60 * 60):  # wait for a 2 hours (longgg time)
         """Wait for the job to finish(fail/success)
 
         :param jobid: id of the job.
@@ -228,6 +231,7 @@ class iDRACJobs(iBaseJobApi):
         :returns: returns a json/dict containing job details
 
         """
+        logger.info(self.entity.ipaddr + " : Waiting for the job to finish : " + jobid)
         if track_jobid:
             self.last_job = jobid
         ret_json = {}
@@ -240,9 +244,9 @@ class iDRACJobs(iBaseJobApi):
             else:
                 status = self.get_job_status(jobid)
             if not 'Status' in status:
-                logger.debug("Invalid Status")
+                logger.debug(self.entity.ipaddr + " : " + jobid + " : Invalid Status")
             else:
-                logger.debug(status)
+                logger.debug(self.entity.ipaddr+" : "+jobid+ ": status: "+str(status))
 
                 pcc = "0"
                 msg = ""
@@ -251,21 +255,22 @@ class iDRACJobs(iBaseJobApi):
                 if 'Message' in status:
                     msg = status['Message']
                 if show_progress:
-                    logger.debug("{0} : {1} : Percent Complete: {2} | Message = {3}".format(jobid, status['Status'], pcc, msg))
+                    logger.debug(self.entity.ipaddr+
+                        "{0} : {1} : Percent Complete: {2} | Message = {3}".format(jobid, status['Status'], pcc, msg))
                 if status['Status'] == TypeHelper.resolve(JobStatusEnum.Success):
                     if show_progress:
-                        logger.debug("Message:" + status['Message'])
+                        logger.debug(self.entity.ipaddr+" : "+jobid+ ":Message:" + status['Message'])
                     job_ret = True
                     ret_json = status
                     break
                 elif status['Status'] != TypeHelper.resolve(JobStatusEnum.InProgress):
                     if show_progress:
-                        logger.debug("Message:" + status['Message'])
+                        logger.debug(self.entity.ipaddr+" : "+jobid+ ":Message:" + status['Message'])
                     job_ret = False
                     ret_json = status
                     break
                 else:
-                    logger.debug(str(status))
+                    logger.debug(self.entity.ipaddr+" : "+jobid+ ": status: "+str(status))
             time.sleep(5)
             if time.time() > wait_till:
                 ret_json['Status'] = 'Failed'
@@ -286,20 +291,22 @@ class iDRACJobs(iBaseJobApi):
         detail = None
         try:
             detail = self.entity._get_idracjobdeatilbyid_redfish(job_id=jobid)
+            logger.debug(self.entity.ipaddr+" : "+jobid+ " : Detail : "+str(detail))
         except:
-            logger.debug("Exception in getting job details")
+            logger.error(self.entity.ipaddr+" : "+jobid+ ": Exception in getting job details")
 
-        if detail and 'Status' in detail and detail['Status']=='Success' and 'Data' in detail and 'body' in detail['Data']:
+        if detail and 'Status' in detail and detail['Status'] == 'Success' and 'Data' in detail and 'body' in detail[
+            'Data']:
             jobs = detail['Data']['body']
-            detail['Data']={}
-            detail['Data']['Jobs']=jobs
+            detail['Data'] = {}
+            detail['Data']['Jobs'] = jobs
             return detail
 
-        retval ={}
+        retval = {}
         if detail:
-            retval['StatusCode']=detail['StatusCode']
+            retval['StatusCode'] = detail['StatusCode']
         retval["Status"] = "Failed"
-        if detail and detail['StatusCode']==501:
+        if detail and detail['StatusCode'] == 501:
             retval["Data"] = {"Status": "Failed",
                               "Message": "Failed to get job detail. Your iDRAC Firmware does not support this operation."}
         else:
@@ -309,9 +316,9 @@ class iDRACJobs(iBaseJobApi):
         return retval
 
     def get_job_status_by_msgid(self, msg_id):
-        print("msg_id="+msg_id)
+        print("msg_id=" + msg_id)
         severity = self.entity.eemi_registry[msg_id]["Severity"]
-        print("Severity="+severity)
+        print("Severity=" + severity)
         if severity is "Informational":
             return JobStatusEnum.Success
         return JobStatusEnum.Failed
@@ -325,13 +332,13 @@ class iDRACJobs(iBaseJobApi):
 
         """
         jobdetail = self.get_job_details_redfish(jobid)
-        if jobdetail['Status']=='Failed':
+        if jobdetail['Status'] == 'Failed':
             return jobdetail
 
         jobdetail_data = jobdetail['Data']['Jobs']
         if jobdetail_data['PercentComplete'] < 100:
             jobstaten = JobStatusEnum.InProgress
-        elif jobdetail_data['JobState'] =='Completed':
+        elif jobdetail_data['JobState'] == 'Completed':
             jobstaten = self.get_job_status_by_msgid(jobdetail_data['MessageId'])
         elif jobdetail_data['JobState'] == 'Failed' or 'Errors' in jobdetail_data['JobState']:
             jobstaten = JobStatusEnum.Failed

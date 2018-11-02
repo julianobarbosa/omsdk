@@ -22,54 +22,28 @@ Dell EMC OpenManage Python SDK is supported for python 2.7 and above.
     ``` pip3 install -r requirements-python3x.txt ```
 
 # Installation
-  * Install the latest stable omsdk version from [pypi.org](https://pypi.python.org/pypi/omsdk) using pip:
-
-    ``` pip install omsdk ```
-
-  * Install the latest stable omdrivers version from [pypi.org](https://pypi.org/project/omdrivers/) using pip:
-
-    ``` pip install omdrivers ```
-	
   * Install the latest development version from github:
 
-    ```
-    git clone https://github.com/dell/omsdk.git
-    cd omsdk
-    sh build.sh 1.1 267
-    cd dist
-    pip install omsdk-1.1.267-py2.py3-none-any.whl
+	```
+	git clone https://github.com/dell/omsdk.git
+	cd omsdk
+	sh build.sh 1.1 322
+	cd dist
+	pip install omsdk-1.1.322-py2.py3-none-any.whl
 	```
 	
+	* Upgrading to latest version of python setuptools is recommended.
+	* omsdk installation may fail with pip version 10.0 and above, follow one of the following steps in such scenario
 	
-  * Install the latest development version of omsdk drivers for storage and network switches from github:
-    ```
-	pip install omdrivers-1.1.267-py2.py3-none-any.whl
-    ```
-
-
-  * Upgrading to latest version of python setuptools is recommended.
-  * omsdk installation may fail with pip version 10.0 and above, follow one of the following steps in such scenario
-
-	* Downgrade pip version to lower than 10.0 and then install omsdk
-	* Force install omsdk using:
-
-		* If installing from PyPi.
-          ```
-          pip install --ignore-installed omsdk
-          ```
-
-		* If installing from GitHub.
-          ```
-          pip install --ignore-installed omsdk-1.1.267-py2.py3-none-any.whl
-          ```
-
-
+		* Downgrade pip version to lower than 10.0 and then install omsdk
+		* Force install omsdk using:
+		  ```pip install --ignore-installed omsdk-1.1.322-py2.py3-none-any.whl```
+		  
 # Uninstallation
   * Uninstall this module as follows:
 
     ```
 	   pip uninstall omsdk
-	   pip uninstall omdrivers
 	```
 
 # Documentation
@@ -81,8 +55,8 @@ Licensed under the Apache Software License, version 2.0 (the "License"); you may
 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
 
 # Support
-  * Dell EMC OpenManage Python SDK is supported by OpenManage developers team.
-  * In addition, if you want to report any issue, then please report it by creating a new issue [here](https://github.com/dell/omsdk/issues)
+  * This devel branch corresponds to the release actively under development.
+  * If you want to report any issue, then please report it by creating a new issue [here](https://github.com/dell/omsdk/issues)
   * If you have any requirements that is not currently addressed, then please let us know by creating a new issue [here](https://github.com/dell/omsdk/issues)
   * If you want to provide any feedback to the development team, then you can do so by sending an email to OpenManageSDK@Dell.com
 

@@ -21,18 +21,18 @@
 # Authors: Vaideeswaran Ganesan
 #
 import sys
-from omsdk.http.sdkwsmanbase import WsManProtocolBase,WsManOptions
+from omsdk.http.sdkwsmanbase import WsManProtocolBase, WsManOptions
 from winrm.transport import Transport
 from winrm.protocol import Protocol
 from omsdk.sdkprint import PrettyPrint
 import traceback
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+
 
 class WmiOptions(WsManOptions):
     def __init__(self):
@@ -44,6 +44,7 @@ class WmiOptions(WsManOptions):
         self.connection_timeout = 9
         self.auth_method = 'ntlm'
         self.port = 5985
+
 
 class WmiProtocol(WsManProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
@@ -67,7 +68,7 @@ class WmiProtocol(WsManProtocolBase):
         if not self.transport:
             try:
                 self.protocol = Protocol(self.endpoint, transport='plaintext',
-                   username=self.creds.username, password=self.creds.password)
+                                         username=self.creds.username, password=self.creds.password)
                 self.transport = self.protocol.transport
             except Exception as s:
                 logger.debug(str(s))

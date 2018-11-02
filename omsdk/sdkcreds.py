@@ -27,20 +27,20 @@ import json
 from omsdk.sdkprint import PrettyPrint
 import logging
 
-
 logger = logging.getLogger(__name__)
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
 CredentialsEnum = EnumWrapper('CredentialsEnum', {
-    'User' : 'User',
-    'SNMPv1_v2c' : 'SNMPv1_v2c',
-    'SNMPv3' : 'SNMPv3'
+    'User': 'User',
+    'SNMPv1_v2c': 'SNMPv1_v2c',
+    'SNMPv3': 'SNMPv3'
 }).enum_type
 
+
 class iCredentials(object):
-    def __init__(self, credsEnum = CredentialsEnum.User):
+    def __init__(self, credsEnum=CredentialsEnum.User):
         self.enid = credsEnum
 
     def __str__(self):
@@ -49,8 +49,9 @@ class iCredentials(object):
     def __repr__(self):
         return TypeHelper.resolve(self.enid)
 
+
 class Snmpv2Credentials(iCredentials):
-    def __init__(self, community, writeCommunity = None):
+    def __init__(self, community, writeCommunity=None):
         if PY2:
             super(Snmpv2Credentials, self).__init__(CredentialsEnum.SNMPv1_v2c)
         else:
@@ -66,12 +67,17 @@ class Snmpv2Credentials(iCredentials):
     def __repr__(self):
         return (TypeHelper.resolve(self.enid) + "(community=" + self.community + ")")
 
+
 class UserCredentials(iCredentials):
     def __init__(self, username, password, work_group="."):
         if PY2:
             super(UserCredentials, self).__init__(CredentialsEnum.User)
         else:
             super().__init__(CredentialsEnum.User)
+        #if username is not None and "@" in username:
+        #    username_domain = username.split("@")
+        #    username = username_domain[0]
+        #    work_group = username_domain[1]
         self.username = username
         self.password = password
         self.work_group = work_group
@@ -83,7 +89,8 @@ class UserCredentials(iCredentials):
         return (TypeHelper.resolve(self.enid) + "(username=" + str(self.username) + ")")
 
     def json_encode(self):
-        return { 'type' : 'UserCredentials', 'username' : self.username }
+        return {'type': 'UserCredentials', 'username': self.username}
+
 
 class ProtocolCredentialsFactory:
     def __init__(self):
@@ -117,17 +124,18 @@ class ProtocolCredentialsFactory:
             retval[TypeHelper.resolve(i)] = str(self.creds[i])
         return retval
 
+
 class CredentialStore:
     DEFAULT_CREDS = {
-        "default" : {
-            "User" : { "username" : "root", "password" : "calvin" },
-            "SNMPv2" : { "community" : "public" }
+        "default": {
+            "User": {"username": "root", "password": "calvin"},
+            "SNMPv2": {"community": "public"}
         }
     }
+
     def __init__(self):
         self.creds_store = {}
         self._load(self.DEFAULT_CREDS)
-
 
     def load_file(self, filename):
         with open(filename) as creds_data:
@@ -139,11 +147,11 @@ class CredentialStore:
             credfact = ProtocolCredentialsFactory()
             if "User" in cred_spec[cred]:
                 credfact.add(UserCredentials(
-                        cred_spec[cred]["User"]["username"],
-                        cred_spec[cred]["User"]["password"]))
+                    cred_spec[cred]["User"]["username"],
+                    cred_spec[cred]["User"]["password"]))
             if "SNMPv2" in cred_spec[cred]:
                 credfact.add(Snmpv2Credentials(
-                        cred_spec[cred]["SNMPv2"]["community"]))
+                    cred_spec[cred]["SNMPv2"]["community"]))
             self.creds_store[cred] = credfact
 
     def get_creds(self, cred_name, default=None):

@@ -38,12 +38,13 @@ from requests.auth import HTTPBasicAuth
 
 from omsdk.sdkprotobase import ProtocolBase
 from omsdk.sdkcenum import EnumWrapper, TypeHelper
-from omsdk.http.sdkrestpdu import RestRequest,RestResponse
+from omsdk.http.sdkrestpdu import RestRequest, RestResponse
 from omsdk.http.sdkhttpep import HttpEndPoint, HttpEndPointOptions
 from pprint import pprint
 
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
+
 
 class RestOptions(HttpEndPointOptions):
     def __init__(self):
@@ -51,6 +52,7 @@ class RestOptions(HttpEndPointOptions):
             super(RestOptions, self).__init__()
         else:
             super().__init__()
+
 
 class RestProtocolBase(ProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
@@ -71,13 +73,13 @@ class RestProtocolBase(ProtocolBase):
         """
         # wsm = RestRequest()
         # wsm.identify()
-        system = self._communicate("System","/redfish/v1/Systems")
+        system = self._communicate("System", "/redfish/v1/Systems")
         if 'Dell' in str(system['Data']['System'][0]['Manufacturer']):
             return system
         else:
             return None
 
-    def enumerate(self, clsName, resource, select = {}, resetTransport = False):
+    def enumerate(self, clsName, resource, select={}, resetTransport=False):
         # wsm = RestRequest()
         # print("sdkrestbase: ",clsName," ",resource," ",self.ipaddr," user ",self.username," pass ",self.password)
         # wsm.enumerate(to = self._proto_endpoint(), ruri=resource, selectors = select)
@@ -110,8 +112,8 @@ class RestProtocolBase(ProtocolBase):
         if json_object is None:
             print("<empty json>")
             return False
-        print(json.dumps(json_object, sort_keys=True, indent=4, \
-              separators=(',', ': ')))
+        print(json.dumps(json_object, sort_keys=True, indent=4,
+                         separators=(',', ': ')))
 
     # retVal['Status'] = Success, Failed, Invalid JSON,
     # retval['Data'][component] = {}
@@ -138,7 +140,7 @@ class RestProtocolBase(ProtocolBase):
                 oDataList = oDataList[resource[ix]]
                 # print("WHILE ODATALIST is ",ix)
                 # pprint(oDataList)
-                ix = ix+1
+                ix = ix + 1
                 try:
                     interMemb = oDataList[resource[ix]]
                 except IndexError:
@@ -146,7 +148,7 @@ class RestProtocolBase(ProtocolBase):
 
             # print("ODATALIST is")
             # pprint(oDataList)
-            #if 'Members' in jData:
+            # if 'Members' in jData:
             comp = []
             for mem in oDataList:
                 # print("Member FOUND ", mem)

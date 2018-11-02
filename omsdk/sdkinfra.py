@@ -26,9 +26,10 @@ import logging
 import socket
 import sys, glob
 from collections import OrderedDict
-from omsdk.sdkcenum import EnumWrapper,TypeHelper
+from omsdk.sdkcenum import EnumWrapper, TypeHelper
 
 logger = logging.getLogger(__name__)
+
 
 class sdkinfra:
     """
@@ -41,15 +42,15 @@ class sdkinfra:
     
     def load_from_file(self, filepath):
         mod_name = None
-        mod_name,file_ext = os.path.splitext(os.path.split(filepath)[-1])
+        mod_name, file_ext = os.path.splitext(os.path.split(filepath)[-1])
         logger.debug("Loading " + filepath + "...")
         if file_ext.lower() == '.py':
             py_mod = imp.load_source(mod_name, filepath)
         elif file_ext.lower() == '.pyc':
             py_mod = imp.load_compiled(mod_name, filepath)
-        return { "name" : mod_name, "module" : py_mod }
+        return {"name": mod_name, "module": py_mod}
     
-    def importPath(self, srcdir = None):
+    def importPath(self, srcdir=None):
         oldpaths = sys.path
         if not srcdir is None:
             oldpaths = [srcdir]
@@ -87,7 +88,7 @@ class sdkinfra:
         self.disc_modules = tempdict
         self.driver_enum = EnumWrapper("Driver", self.driver_names).enum_type
     
-    def find_driver(self, ipaddr, creds, protopref = None, pOptions = None):
+    def find_driver(self, ipaddr, creds, protopref=None, pOptions=None, msgFlag=False):
         """Find a device driver for the given IPAddress or host name
 
                 :param ipaddr: ipaddress or hostname of the device
@@ -97,25 +98,31 @@ class sdkinfra:
                 :type ipaddr: str
                 :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
                 :type protopref: enumeration of preferred protocol
-                :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+                :type pOptions: object <SNMPOptions or WSMANOptions or REDFISHOptions>
                 :return: a driver handle for further configuration/monitoring
                 :rtype: object <iBaseDriver>
 
         """
         duplicSet = set()
+        msg = ipaddr + " : Connection to Dell EMC device failed, please check device status and credentials."
+        drv = None
         for mod in self.disc_modules:
             if (self.disc_modules[mod] in duplicSet) or (str(mod) == "FileList"):
                 continue
             drv = self._create_driver(mod, ipaddr, creds, protopref, pOptions)
             if drv:
-                return drv
+                msg = ipaddr + " : Connected to Dell EMC device"
+                break
             duplicSet.add(self.disc_modules[mod])
-        return None
+
+        if msgFlag:
+            return drv, msg
+        return drv
 
     # Return:
     #    None - if driver not found, not classifed
     #    instance of iBaseEntity  - if device of the proper type
-    def get_driver(self, driver_en, ipaddr, creds, protopref = None, pOptions = None):
+    def get_driver(self, driver_en, ipaddr, creds, protopref=None, pOptions=None):
         """Get a device driver for the given IPAddress or host name, also checking for a particular device type
 
             :param ipaddr: ipaddress or hostname of the device
@@ -127,7 +134,7 @@ class sdkinfra:
             :type driver_en: enumerate of the device type
             :type creds: dict of obj <Snmpv2Credentials or UserCredentials>
             :type protopref: enumeration of preferred protocol
-            :type pOptions: object <SNMPOptions or WSMANOptions or REFISHOptions>
+            :type pOptions: object <SNMPOptions or WSMANOptions or REDFISHOptions>
             :return: a driver handle for further configuration/monitoring
             :rtype: object <iBaseDriver>
 
@@ -137,28 +144,33 @@ class sdkinfra:
         return self._create_driver(mod, ipaddr, creds, protopref, pOptions)
 
     def _create_driver(self, mod, host, creds, protopref, pOptions):
+        msg = "Connection to Dell EMC device failed, please check device status and credentials."
         logger.debug("get_driver(): Asking for " + mod)
         ipaddr = host
         try:
-            result = socket.getaddrinfo(host, None);
+            result = socket.getaddrinfo(host, None)
             lastuple = result[-1]
             ipaddress = lastuple[-1][0]
             if ipaddress:
                 ipaddr = ipaddress
         except socket.gaierror as err:
-            logger.debug(err)
+            logger.error("{}: {}: {}".format(host, err, "cannot resolve hostname!"))
         if not mod in self.disc_modules:
             # TODO: Change this to exception
+            logger.error("{}: {}".format(host, msg))
             logger.debug(mod + " not found!")
             return None
         try:
             logger.debug(mod + " driver found!")
             drv = self.disc_modules[mod].is_entitytype(self, ipaddr, creds, protopref, mod, pOptions)
+            if drv is None:
+                logger.info("{}: {}".format(host, msg))
             if drv:
+                logger.info("{}: {}".format(host, "Connection to Dell EMC device success!"))
                 hostname = None
                 try:
                     hostname, aliaslist, addresslist = socket.gethostbyaddr(ipaddr)
-                    logger.debug("Found host name for " + ipaddr+ " as "+hostname)
+                    logger.debug("Found host name for " + ipaddr + " as " + hostname)
                 except socket.herror:
                     hostname = None
                     logger.debug("No host name found for " + ipaddr)
@@ -189,3 +201,19 @@ class sdkinfra:
         drv = self.disc_modules.get(driver_name, None)
         if drv:
             drv.protofactory.prefProtocol = protopref
+
+    def excludeDrivers(self, excList):
+        for drv in excList:
+            self.disc_modules.pop(drv)
+
+    def includeDriversOnly(self, incList):
+        drvkeys = self.disc_modules.keys()
+        for drv in drvkeys:
+            if drv not in incList:
+                self.disc_modules.pop(drv)
+
+    def removeProtoDriver(self, driver_name, protList):
+        drv = self.disc_modules.get(driver_name, None)
+        if drv:
+            for protoenum in protList:
+                drv.protofactory.removeProto(protoenum)

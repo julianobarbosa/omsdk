@@ -28,6 +28,7 @@ from omsdk.http.sdkhttpep import HttpEndPoint, HttpEndPointOptions
 PY2 = sys.version_info[0] == 2
 PY3 = sys.version_info[0] == 3
 
+
 class WsManProtocol(WsManProtocolBase):
     def __init__(self, ipaddr, creds, pOptions):
         if PY2:
@@ -35,7 +36,7 @@ class WsManProtocol(WsManProtocolBase):
         else:
             super().__init__(ipaddr, creds, pOptions)
         headers = {
-            'Content-Type' : 'application/soap+xml;charset=UTF-8'
+            'Content-Type': 'application/soap+xml;charset=UTF-8'
         }
         self.proto = HttpEndPoint(ipaddr, creds, pOptions, headers)
 
