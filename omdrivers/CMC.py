@@ -665,29 +665,28 @@ class CMCEntity(iDeviceDriver):
                 js['ServiceTag'] = self.ipaddr
             retval = js['ServiceTag']
         if retval is None:
-            retval = self.ipaddr + "cmc_null"
+            retval = f"{self.ipaddr}cmc_null"
         return retval
 
     def _isin(self, parentClsName, parent, childClsName, child):
         if TypeHelper.resolve(parentClsName) == "Controller" and \
-           TypeHelper.resolve(childClsName) == "PhysicalDisk" and \
-           ("Disk.Direct" not in self._get_obj_index(childClsName, child)):
+               TypeHelper.resolve(childClsName) == "PhysicalDisk" and \
+               ("Disk.Direct" not in self._get_obj_index(childClsName, child)):
            return False
         if TypeHelper.resolve(parentClsName) == "VirtualDisk" and \
-           TypeHelper.resolve(childClsName) == "PhysicalDisk":
-            if 'PhysicalDiskIDs' in parent:
-                parentdiskListStr = parent['PhysicalDiskIDs'].strip("[]")
-                diskids = parentdiskListStr.split(',')
-                for d in diskids:
-                    fd = d.strip().strip("'")
-                    # print("FD is ",fd, " VD ",self._get_obj_index(childClsName,child))
-                    if (self._get_obj_index(childClsName,child) in fd):
-                        # print("Add to CTREE SUCCESS")
-                        return True
-            else:
+               TypeHelper.resolve(childClsName) == "PhysicalDisk":
+            if 'PhysicalDiskIDs' not in parent:
                 return False
+            parentdiskListStr = parent['PhysicalDiskIDs'].strip("[]")
+            diskids = parentdiskListStr.split(',')
+            for d in diskids:
+                fd = d.strip().strip("'")
+                # print("FD is ",fd, " VD ",self._get_obj_index(childClsName,child))
+                if (self._get_obj_index(childClsName,child) in fd):
+                    # print("Add to CTREE SUCCESS")
+                    return True
         return self._get_obj_index(parentClsName, parent) in \
-               self._get_obj_index(childClsName, child)
+                   self._get_obj_index(childClsName, child)
 
     def get_idrac_ips(self):
         self.get_partial_entityjson(self.ComponentEnum.ComputeModule)
@@ -708,7 +707,9 @@ class CMCEntity(iDeviceDriver):
                 entry['FormFactor'] = 'Half length Blade'
             else:
                 entry['FormFactor'] = 'Quarter length Blade'
-            if (entry.get('MasterSlotNumber') != entry.get('SlotNumber')) and (entry.get('SubSlot') == 'NA' or entry.get('SubSlot') == None):
+            if entry.get('MasterSlotNumber') != entry.get('SlotNumber') and (
+                entry.get('SubSlot') == 'NA' or entry.get('SubSlot') is None
+            ):
                 entry['ExtensionSlot'] = entry.get('SlotNumber')
                 entry['FormFactor'] = 'Full length Blade'
             if entry.get('Model'):
@@ -716,12 +717,14 @@ class CMCEntity(iDeviceDriver):
                     entry['FormFactor'] = 'Half length Blade'
 
         if component == "Slots_Summary":
-            if not 'StorageMode' in entry:
+            if 'StorageMode' not in entry:
                 if (not entry.get('SubSlot')) or (entry.get('SubSlot') == "NA"):
                     entry['FormFactor'] = 'Half length Blade'
                 else:
                     entry['FormFactor'] = 'Quarter length Blade'
-                if (entry.get('MasterSlotNumber') != entry.get('SlotNumber')) and (entry.get('SubSlot') == 'NA' or entry.get('SubSlot') == None):
+                if entry.get('MasterSlotNumber') != entry.get('SlotNumber') and (
+                    entry.get('SubSlot') == 'NA' or entry.get('SubSlot') is None
+                ):
                     entry['ExtensionSlot'] = entry.get('SlotNumber')
                     entry['FormFactor'] = 'Full length Blade'
 
@@ -734,25 +737,24 @@ class CMCEntity(iDeviceDriver):
                     slot['SlotName'] = 'SLOT-'+str(slot['FQDD'][-2:])
 
         if component == "CMC":
-            attrlist = ['PrimaryStatus', 'MgmtControllerFirmwareVersion', 'Model']
             sysdict = self.entityjson.get('System',[None])[0]
             cmcdict = self.entityjson.get('CMC',[None])[0]
             if sysdict and cmcdict:
+                attrlist = ['PrimaryStatus', 'MgmtControllerFirmwareVersion', 'Model']
                 for attr in attrlist:
                     cmcdict[attr] = sysdict.get(attr, 'Not Available')
 
         if component == "System":
             default, aisle, rack, rackslot = "NA", entry.get("PhysicalLocationAisle", "NA"), \
-                                             entry.get("PhysicalLocationRack", "NA"), \
-                                             entry.get("PhysicalLocationRackSlot", "NA")
-            if  aisle == None:
+                                                 entry.get("PhysicalLocationRack", "NA"), \
+                                                 entry.get("PhysicalLocationRackSlot", "NA")
+            if aisle is None:
                 aisle = default
-            if rack == None:
+            if rack is None:
                 rack = default
-            if rackslot == None:
+            if rackslot is None:
                 rackslot = default
-            entry["Location"] = "AISLE:{}, RACK:{}, Slot on Rack:{}".format(
-                aisle, rack, rackslot )
+            entry["Location"] = f"AISLE:{aisle}, RACK:{rack}, Slot on Rack:{rackslot}"
         compsList = ["PowerSupply", "Fan", "KVM"]
         if component in compsList :
             if "PrimaryStatus" in entry:
@@ -788,9 +790,7 @@ class CMCEntity(iDeviceDriver):
                 #TODO: Replacing 4 FM servers with Single - Will affect Nagios
                 fmSlotNumSet = {}
                 cmcmodel = self.entityjson['System'][0]["Model"]
-                slotArch = 1
-                if 'FX2' in cmcmodel:
-                    slotArch = 2
+                slotArch = 2 if 'FX2' in cmcmodel else 1
                 for slot in bladeslot:
                     if 'FM' in slot.get('Model', 'Not Available'):
                         fmSlotNumSet[slot.get('MasterSlotNumber')] = slot
@@ -811,11 +811,11 @@ class CMCEntity(iDeviceDriver):
                 del finalretjson["ComputeModule"]
                 finalretjson['ComputeModule'] = newbladeList + list(fmSlotNumSet.values())
 
-                storagelist = []
-                for m in finalretjson['ComputeModule']:
-                    if m.get('Model',"") == "PS-M4110":
-                        storagelist.append(m)
-                if storagelist:
+                if storagelist := [
+                    m
+                    for m in finalretjson['ComputeModule']
+                    if m.get('Model', "") == "PS-M4110"
+                ]:
                     storagemod = finalretjson.get('StorageModule', None)
                     if not storagemod:
                         storagemod = []
@@ -830,15 +830,18 @@ class CMCEntity(iDeviceDriver):
                 st_dict = {}
                 slt_ndict = {}
                 for slot in bladeslot:
-                    if not "StorageMode" in slot:
+                    if "StorageMode" not in slot:
                         slt_ndict.setdefault(slot.get('MasterSlotNumber'), []).append(slot.get('SlotNumber'))
                         if slot.get('MasterSlotNumber') in st_dict:
                             st_dict[slot.get('MasterSlotNumber')] = st_dict[slot.get('MasterSlotNumber')] + 1
                         else:
                             st_dict[slot.get('MasterSlotNumber')] = 1
                 for slot in bladeslot:
-                    if not "StorageMode" in slot:
-                        if (st_dict[slot.get('MasterSlotNumber')] == 2) and ((slot.get('SubSlot') == 'NA') or (slot.get('SubSlot') == None)):
+                    if "StorageMode" not in slot:
+                        if st_dict[slot.get('MasterSlotNumber')] == 2 and (
+                            slot.get('SubSlot') == 'NA'
+                            or slot.get('SubSlot') is None
+                        ):
                             slot['FormFactor'] = 'Full length Blade'
                         if 'FormFactor' in slot:
                             if 'Quarter' in slot['FormFactor']:
@@ -896,17 +899,16 @@ class CMCEntity(iDeviceDriver):
                             if otherslot not in occupiedSlots:
                                 freeslots.add(otherslot)
 
-                slot_summary = {}
-                slot_summary['Key'] = 'SlotSummary'
-                slot_summary['InstanceID'] = 'SlotSummary'
-                if freeslots:
-                    slot_summary['FreeSlots'] = ",".join(str(x) for x in freeslots)
-                else:
-                    slot_summary['FreeSlots'] = "Chassis is fully occupied"
-                if occupiedSlots:
-                    slot_summary['OccupiedSlots'] = ",".join(str(x) for x in occupiedSlots)
-                else:
-                    slot_summary['OccupiedSlots'] = "Chassis is empty"
+                slot_summary = {
+                    'Key': 'SlotSummary',
+                    'InstanceID': 'SlotSummary',
+                    'FreeSlots': ",".join(str(x) for x in freeslots)
+                    if freeslots
+                    else "Chassis is fully occupied",
+                    'OccupiedSlots': ",".join(str(x) for x in occupiedSlots)
+                    if occupiedSlots
+                    else "Chassis is empty",
+                }
                 if extensionSlots:
                     slot_summary['ExtensionSlots'] = ",".join(str(x) for x in extensionSlots)
                 else:
@@ -915,8 +917,7 @@ class CMCEntity(iDeviceDriver):
                     else:
                         slot_summary['ExtensionSlots'] = "Chassis is empty"
                 del finalretjson["Slots_Summary"]
-                finalretjson['Slots_Summary'] = []
-                finalretjson['Slots_Summary'].append(slot_summary)
+                finalretjson['Slots_Summary'] = [slot_summary]
 
     @property
     def ContainmentTree(self):

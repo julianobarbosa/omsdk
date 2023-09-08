@@ -79,10 +79,7 @@ def CompareInventory(arglist):
 
     UpdateManager.configure(updshare)
     rjson = UpdateHelper.get_firmware_inventory()
-    dev_fw = {}
-    if rjson['Status'] == 'Success':
-        dev_fw = rjson['retval']
-
+    dev_fw = rjson['retval'] if rjson['Status'] == 'Success' else {}
     updmgr = UpdateManager.get_instance()
     (ignore, cache_cat) = updmgr.getCatalogScoper(options.catalog)
     devcompare = {}

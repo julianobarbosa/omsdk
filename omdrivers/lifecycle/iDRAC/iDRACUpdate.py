@@ -61,12 +61,12 @@ class iDRACUpdate(Update):
         self._job_mgr = entity.job_mgr
 
     def _sw_instance(self, comp):
-        ilist = []
         clist = self._comp_to_fqdd(comp)
-        for firmware in self.firmware_json["Firmware"]:
-            if firmware['FQDD'] in clist and firmware['Status'] == "Installed":
-                ilist.append(firmware['InstanceID'])
-        return ilist
+        return [
+            firmware['InstanceID']
+            for firmware in self.firmware_json["Firmware"]
+            if firmware['FQDD'] in clist and firmware['Status'] == "Installed"
+        ]
 
     def _update_from_uri(self, firm_image_path, componentFQDD, job_wait=True):
         rjson = self.entity._install_from_uri(uri=firm_image_path, target=componentFQDD)
@@ -98,7 +98,7 @@ class iDRACUpdate(Update):
         self.get_swidentity()
         for comp in self.firmware_json:
             for swentry in self.firmware_json[comp]:
-                if not "FQDD" in swentry:
+                if "FQDD" not in swentry:
                     continue
                 if swentry["FQDD"] in self._swidentity:
                     if not isinstance(self._swidentity[swentry["FQDD"]], list):
@@ -116,10 +116,10 @@ class iDRACUpdate(Update):
                 for val in ["ComponentType", "InstanceID", "VersionString", "Status"]:
                     self._swidentity[swentry["FQDD"]][val] = swentry[val]
                 self._swidentity[swentry["FQDD"]]["ComponentClass"] = "unknown"
-                # TODO RESTORE
-                # for mycomp in self.protocolspec.compmap:
-                #    if re.match(self.protocolspec.compmap[mycomp],swentry["FQDD"]):
-                #        self.swidentity[swentry["FQDD"]]["ComponentClass"] = mycomp
+                        # TODO RESTORE
+                        # for mycomp in self.protocolspec.compmap:
+                        #    if re.match(self.protocolspec.compmap[mycomp],swentry["FQDD"]):
+                        #        self.swidentity[swentry["FQDD"]]["ComponentClass"] = mycomp
         self.sw_inited = True
         return self._swidentity
 
@@ -136,8 +136,7 @@ class iDRACUpdate(Update):
             for member in members_uris:
                 member_uri = member['@odata.id']
                 if "Previous" not in member_uri:
-                    rjson = self.get_fwdetail_using_uri(str(member_uri))
-                    if rjson:
+                    if rjson := self.get_fwdetail_using_uri(str(member_uri)):
                         fwlist.append(rjson)
             return {"Firmware": fwlist}
         except:
@@ -149,15 +148,15 @@ class iDRACUpdate(Update):
             rjson = self.entity._get_resource_redfish(resource_uri=r_uri)
             if 'Data' not in rjson or rjson['Status'] != 'Success' or 'body' not in rjson['Data']:
                 return None
-            fw_json = {}
-            fw_json['Name'] = rjson['Data']['body']['Name']
-            fw_json['Id'] = rjson['Data']['body']['Id']
-            fw_json['Status'] = rjson['Data']['body']['Status']
-            fw_json['Updateable'] = rjson['Data']['body']['Updateable']
-            fw_json['Version'] = rjson['Data']['body']['Version']
-            return fw_json
+            return {
+                'Name': rjson['Data']['body']['Name'],
+                'Id': rjson['Data']['body']['Id'],
+                'Status': rjson['Data']['body']['Status'],
+                'Updateable': rjson['Data']['body']['Updateable'],
+                'Version': rjson['Data']['body']['Version'],
+            }
         except:
-            logger.debug("Error in getting fw deatil from uri:" + r_uri)
+            logger.debug(f"Error in getting fw deatil from uri:{r_uri}")
             return None
 
     def get_redfishjson_using_responsecode(self, r_json):
@@ -200,13 +199,12 @@ class iDRACUpdate(Update):
         return self.get_updates_matching(catalog='Catalog', criteria=criteria)
 
     def get_updates_matching(self, catalog='Catalog', criteria=None):
-        updmgr = UpdateManager.get_instance()
-        if not updmgr:
-            updates = RepoComparator(self.InstalledFirmware).final()
-        else:
+        if updmgr := UpdateManager.get_instance():
             (ignore, cache_cat) = updmgr.getCatalogScoper(catalog)
             updates = cache_cat.compare(self.entity.SystemIDInHex,
                                         self.InstalledFirmware)
+        else:
+            updates = RepoComparator(self.InstalledFirmware).final()
         if not criteria:
             return updates
 
@@ -245,10 +243,10 @@ class iDRACUpdate(Update):
         rebootNeeded = rebootLookup[reboot_needed]
 
         if isinstance(catalog_path, str):
-            # Catalog name
-            updmgr = UpdateManager.get_instance()
-            if not updmgr: return {}
-            (cache_share, ignore) = updmgr.getCatalogScoper(catalog_path)
+            if updmgr := UpdateManager.get_instance():
+                (cache_share, ignore) = updmgr.getCatalogScoper(catalog_path)
+            else:
+                return {}
         else:
             # DRM Repo
             cache_share = catalog_path
@@ -288,7 +286,11 @@ class iDRACUpdate(Update):
 
         """
         catalog_path_str = catalog_dir.remote_full_path
-        scp_file = 'scp_' + self.entity.ServiceTag + '_' + datetime.now().strftime('%Y%m%d_%H%M%S') + ".xml"
+        scp_file = (
+            f'scp_{self.entity.ServiceTag}_'
+            + datetime.now().strftime('%Y%m%d_%H%M%S')
+            + ".xml"
+        )
         scp_path = catalog_path_str + os.path.sep + scp_file
         return (scp_path, scp_file)
 
@@ -334,7 +336,7 @@ class iDRACUpdate(Update):
         tree = ET.parse(file_location)
         root = tree.getroot()
         for attr in attr_val_dict:
-            xpath = ".//*[@Name='" + str(attr) + "']"
+            xpath = f".//*[@Name='{str(attr)}']"
             attribute_element = root.find(xpath)
             attribute_element.text = str(attr_val_dict.get(attr))
         tree.write(file_location)
@@ -354,7 +356,12 @@ class iDRACUpdate(Update):
         if "System" in self.entity.entityjson:
             for (invstr, field) in [("Model", "Model"), ("systemID", "SystemID"), ("Name", "HostName")]:
                 if field in self.entity.entityjson["System"]:
-                    output._write_output(" " + invstr + "=\"" + self.entity.entityjson["System"][field] + "\"")
+                    output._write_output(
+                        f" {invstr}"
+                        + "=\""
+                        + self.entity.entityjson["System"][field]
+                        + "\""
+                    )
         output._write_output(
             ' InventoryTime="{0}">\n'.format(str(datetime.strftime(datetime.now(), "%Y-%m-%dT%H:%M:%S"))))
         for ent in self._swidentity:
@@ -365,7 +372,9 @@ class iDRACUpdate(Update):
                                     ("subVendorID", "SubVendorID"),
                                     ("subDeviceID", "SubDeviceID")]:
                 if field in self._swidentity[ent]:
-                    output._write_output(" " + invstr + "=\"" + self._swidentity[ent][field] + "\"")
+                    output._write_output(
+                        f" {invstr}" + "=\"" + self._swidentity[ent][field] + "\""
+                    )
             output._write_output(' bus="" display="">\n')
             output._write_output('            <Application componentType="{0}" version="{1}" display="" />\n'.format(
                 self._swidentity[ent]["ComponentType"], self._swidentity[ent]["VersionString"]))

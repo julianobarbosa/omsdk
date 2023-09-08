@@ -41,7 +41,7 @@ class T(ET.TreeBuilder):
         k = data.strip()
         if re.match('<[^ >]+( [^>]+)*>[^<]*</[^>]+>', k):
             t = ET.fromstring(k)
-            self.start(t.tag, dict([(k, v) for (k, v) in t.items()]))
+            self.start(t.tag, dict(list(t.items())))
             if not t.text: t.text = ""
             self.data(t.text)
             self.end(t.tag)
@@ -90,7 +90,7 @@ class XMLParser(object):
                 # plain attribute
                 if attrname not in entry.__dict__:
                     entry.__setattr__(attrname, StringField(child.text, parent=entry))
-                    logging.debug(attrname + ' not found in ' + type(entry).__name__)
+                    logging.debug(f'{attrname} not found in {type(entry).__name__}')
                     logging.debug("Ensure the attribute registry is updated.")
                     continue
 
@@ -103,13 +103,13 @@ class XMLParser(object):
                     try:
                         entry.__dict__[attrname]._value = child.text.strip()
                     except Exception as e:
-                        logger.debug('Error while loading SCP for attribute "{}" : {}'.format(attrname, str(e)))
+                        logger.debug(f'Error while loading SCP for attribute "{attrname}" : {str(e)}')
                         continue
                 continue
 
             match = re.match('(.*)\.([0-9]+)#(.*)', attrname)
             if not match:
-                print(attrname + ' not good ')
+                print(f'{attrname} not good ')
                 continue
 
             (group, index, field) = match.groups()
@@ -121,10 +121,10 @@ class XMLParser(object):
                     subentry = grp.find_or_create(index=int(index))
 
                 if field not in subentry.__dict__:
-                    field = field + '_' + group
+                    field = f'{field}_{group}'
                 if field not in subentry.__dict__:
                     subentry.__dict__[field] = StringField(child.text, parent=subentry)
-                    logging.debug(field + ' not found in ' + type(subentry).__name__)
+                    logging.debug(f'{field} not found in {type(subentry).__name__}')
                     logging.debug("Ensure the attribute registry is updated.")
                     continue
                 if child.text is None or child.text.strip() == '':
@@ -135,13 +135,13 @@ class XMLParser(object):
                     try:
                         subentry.__dict__[field]._value = child.text.strip()
                     except Exception as ex:
-                        print(group + "..." + field)
+                        print(f"{group}...{field}")
                         print(subentry._state)
-                        print("ERROR:" + str(ex))
+                        print(f"ERROR:{str(ex)}")
 
     def _load_scp(self, node, sysconfig):
         if sysconfig._alias and node.tag != sysconfig._alias:
-            logger.debug(node.tag + " no match to " + sysconfig._alias)
+            logger.debug(f"{node.tag} no match to {sysconfig._alias}")
 
         for attrib in node.attrib:
             sysconfig.add_attribute(attrib, node.attrib[attrib])

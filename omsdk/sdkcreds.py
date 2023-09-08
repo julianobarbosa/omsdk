@@ -62,10 +62,10 @@ class Snmpv2Credentials(iCredentials):
             self.writeCommunity = community
 
     def __str__(self):
-        return (TypeHelper.resolve(self.enid) + "(community=" + self.community + ")")
+        return f"{TypeHelper.resolve(self.enid)}(community={self.community})"
 
     def __repr__(self):
-        return (TypeHelper.resolve(self.enid) + "(community=" + self.community + ")")
+        return f"{TypeHelper.resolve(self.enid)}(community={self.community})"
 
 
 class UserCredentials(iCredentials):
@@ -83,10 +83,10 @@ class UserCredentials(iCredentials):
         self.work_group = work_group
 
     def __str__(self):
-        return (TypeHelper.resolve(self.enid) + "(username=" + str(self.username) + ")")
+        return f"{TypeHelper.resolve(self.enid)}(username={str(self.username)})"
 
     def __repr__(self):
-        return (TypeHelper.resolve(self.enid) + "(username=" + str(self.username) + ")")
+        return f"{TypeHelper.resolve(self.enid)}(username={str(self.username)})"
 
     def json_encode(self):
         return {'type': 'UserCredentials', 'username': self.username}
@@ -114,15 +114,10 @@ class ProtocolCredentialsFactory:
         return self
 
     def get(self, creden):
-        if creden in self.creds:
-            return self.creds[creden]
-        return None
+        return self.creds[creden] if creden in self.creds else None
 
     def json_encode(self):
-        retval = {}
-        for i in self.creds:
-            retval[TypeHelper.resolve(i)] = str(self.creds[i])
-        return retval
+        return {TypeHelper.resolve(i): str(self.creds[i]) for i in self.creds}
 
 
 class CredentialStore:

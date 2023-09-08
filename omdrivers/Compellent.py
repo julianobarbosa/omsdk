@@ -269,21 +269,22 @@ class CompellentEntity(iDeviceDriver):
 
     def _call_it(self, keyComp):
         # pass
-        if(keyComp == "System"):
-            # self._add_ctrl_details(keyComp)
-            systemList = self.entityjson['System']
-            for sysDict in systemList:
-                if 'Controller' in self.entityjson:
-                    ctrlList = self.entityjson['Controller']
-                    for ctrlDict in ctrlList:
-                        if ctrlDict['Leader'] == '1':
-                            sysDict.update({'PrimaryController{0}'.format(k): v for k, v in ctrlDict.items()})
-                        elif ctrlDict['Leader'] == '2':
-                            sysDict.update({'SecondaryController{0}'.format(k): v for k, v in ctrlDict.items()})
-                sysDict['isManagementIP'] = 'False'
-                sysDict['isControllerIP'] = 'True'
-                if sysDict['ManagementIP'] == self.ipaddr:
-                    sysDict['isManagementIP'] = 'True'
-                    sysDict['isControllerIP'] = 'False'
+        if keyComp != "System":
+            return
+        # self._add_ctrl_details(keyComp)
+        systemList = self.entityjson['System']
+        for sysDict in systemList:
+            if 'Controller' in self.entityjson:
+                ctrlList = self.entityjson['Controller']
+                for ctrlDict in ctrlList:
+                    if ctrlDict['Leader'] == '1':
+                        sysDict.update({'PrimaryController{0}'.format(k): v for k, v in ctrlDict.items()})
+                    elif ctrlDict['Leader'] == '2':
+                        sysDict.update({'SecondaryController{0}'.format(k): v for k, v in ctrlDict.items()})
+            sysDict['isManagementIP'] = 'False'
+            sysDict['isControllerIP'] = 'True'
+            if sysDict['ManagementIP'] == self.ipaddr:
+                sysDict['isManagementIP'] = 'True'
+                sysDict['isControllerIP'] = 'False'
 
 

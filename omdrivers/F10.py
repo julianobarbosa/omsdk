@@ -56,8 +56,8 @@ class NoConfig:
 
 if not Pyconfig_mgr:
     F10Config = NoConfig
-if not Pyconfig_mgr and PyPSNMP:
-    F10PSNMPCmds = {}
+    if PyPSNMP:
+        F10PSNMPCmds = {}
 
 F10CompEnum = EnumWrapper('F10CompEnum', {
     "System" : "System",
@@ -588,9 +588,9 @@ class F10Entity(iDeviceDriver):
                    self._get_obj_index(childClsName, child)
     def _should_i_include(self, component, entry):
         comp_list = ["Flash", "SwModule", "SysCores", "Chassis", "CpuUtil", "FanTray", \
-                     "PowerSupplyTray", "Processor", "PEBinding", "StackPort"]
+                         "PowerSupplyTray", "Processor", "PEBinding", "StackPort"]
         if component in comp_list:
-            if entry.get("Name", "NA") == component+"_Name_null":
+            if entry.get("Name", "NA") == f"{component}_Name_null":
                 entry['Name'] = component
         if component in ["Fan", "FanTray", "PowerSupplyTray", "PowerSupply"]:
             if entry.get("OperStatus") == 'Absent':
@@ -599,24 +599,24 @@ class F10Entity(iDeviceDriver):
             if entry.get("Status") == 'Testing':
                 return False
             if 'ifIndex' in entry:
-                if entry.get("ifIndex") == component + '_ifIndex_null':
+                if entry.get("ifIndex") == f'{component}_ifIndex_null':
                     return False
             # This is implimented to ignore virtual port instances
-            if not 'SysIfName' in entry:
-                    return False
+            if 'SysIfName' not in entry:
+                return False
         if component in ["System"]:
             name = entry.get("Hostname", "Not Available")
             entry["Hostname"] = name.strip('\"\'')
             if 'SwitchUptime' in entry:
                 x = entry.get("SwitchUptime", "Seconds").split()
-                if "Seconds" not in x :
+                if "Seconds" not in x:
                     s = float(entry.get("SwitchUptime", 0)) / 100.0
                     m, s = divmod(s, 60)
                     h, m = divmod(m, 60)
                     l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
-                    entry["SwitchUptime"] = ' '.join('{} {}'.format(value, name)
-                                        for name, value in l
-                                        if value)
+                    entry["SwitchUptime"] = ' '.join(
+                        f'{value} {name}' for name, value in l if value
+                    )
             if 'Model' in entry:
                 entry["SwitchType"] = entry.get('Model')[:1].upper()+"Series"
             if ':' in self.ipaddr:
@@ -627,34 +627,31 @@ class F10Entity(iDeviceDriver):
         if component in ["Processor"]:
             if 'UpTime' in entry:
                 x = entry.get("UpTime", "Seconds").split()
-                if "Seconds" not in x :
+                if "Seconds" not in x:
                     s = float(entry.get("UpTime", 0)) / 100.0
                     m, s = divmod(s, 60)
                     h, m = divmod(m, 60)
                     l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
-                    entry["UpTime"] = ' '.join('{} {}'.format(value, name)
-                                        for name, value in l
-                                        if value)
+                    entry["UpTime"] = ' '.join(
+                        f'{value} {name}' for name, value in l if value
+                    )
         if component in ["EntityPortMap"]:
             if 'ifIndex' in entry:
-                if entry.get("ifIndex") == component + '_ifIndex_null':
-                        return False
+                if entry.get("ifIndex") == f'{component}_ifIndex_null':
+                    return False
                 temp = entry.get("ifIndex", "NA").split(".")[-1]
                 entry["ifIndex"] =  temp
         return True
 
     def _should_i_modify_component(self, finalretjson, component):
         if component == 'Port':
-            if "Port" and "EntityPortMap" in finalretjson:
-                 Portlist = finalretjson.get('Port')
-                 entportlist = finalretjson.get('EntityPortMap')
-                 tempEntPortDict = {}
-                 for ep in entportlist:
-                     if "ifIndex" in ep:
-                        tempEntPortDict[ep['ifIndex']] = ep
-                 for dnp in Portlist:
-                     if "ifIndex" in dnp:
-                         dnp['Class'] = tempEntPortDict.get(dnp.get('ifIndex', "NA"),{}).get('Class', 'Not Available')
+            if "EntityPortMap" in finalretjson:
+                Portlist = finalretjson.get('Port')
+                entportlist = finalretjson.get('EntityPortMap')
+                tempEntPortDict = {ep['ifIndex']: ep for ep in entportlist if "ifIndex" in ep}
+                for dnp in Portlist:
+                    if "ifIndex" in dnp:
+                        dnp['Class'] = tempEntPortDict.get(dnp.get('ifIndex', "NA"),{}).get('Class', 'Not Available')
         if component == 'EntityPortMap':
             del finalretjson[component]
 
@@ -669,60 +666,52 @@ class F10Entity(iDeviceDriver):
         mf10model = self.entityjson.get('System',[None])[0].get('Model', "")
         if 'm-MXL' in mf10model or 'm-IOA' in mf10model:
             return ctree
-        fn = {"Fan":[]}
-        ps = {"PowerSupply":[]}
-        if not "Fan" in ctree.get("System"):
+        if "Fan" not in ctree.get("System"):
+            fn = {"Fan":[]}
             ctree["System"].update(fn)
-        if not "PowerSupply" in ctree.get("System"):
+        if "PowerSupply" not in ctree.get("System"):
+            ps = {"PowerSupply":[]}
             ctree.get("System", "NA").update(ps)
         return ctree
 
     def get_basic_entityjson(self):
-        plist = []
-        for comp in self.protofactory.classifier:
-            plist.append(comp)
-        entj = self.get_partial_entityjson(*plist)
-        if entj:
+        plist = list(self.protofactory.classifier)
+        if entj := self.get_partial_entityjson(*plist):
             compList = ["Fan", "PowerSupply"]
             for comp in compList:
-                tmp = {}
-                compiList = entj.pop(comp, [])
-                if compiList:
+                if compiList := entj.pop(comp, []):
                     finalStat = 'Healthy'
                     for iComp in compiList:
                         iStat = iComp.get('OperStatus','Unknown')
                         if iStat == 'Critical':
                             finalStat = iStat
                             break
-                        elif iStat == 'Warning':
+                        elif (
+                            iStat == 'Warning'
+                            or iStat == 'Unknown'
+                            and finalStat != 'Warning'
+                        ):
                             finalStat = iStat
-                        elif iStat == 'Unknown' and finalStat != 'Warning':
-                            finalStat = iStat
-                    tmp.update({"Key": comp})
-                    tmp.update({"PrimaryStatus": finalStat})
+                    tmp = {"Key": comp, "PrimaryStatus": finalStat}
                     entj.get("Subsystem", []).append(tmp)
 
     def get_entityjson(self):
-        plist = []
-        for comp in self.ComponentEnum:
-            plist.append(comp)
-        entj = self.get_partial_entityjson(*plist)
-        if entj:
+        plist = list(self.ComponentEnum)
+        if entj := self.get_partial_entityjson(*plist):
             compList = ["Fan", "PowerSupply"]
             for comp in compList:
-                tmp = {}
-                compiList = entj.get(comp, [])
-                if compiList:
+                if compiList := entj.get(comp, []):
                     finalStat = 'Healthy'
                     for iComp in compiList:
                         iStat = iComp.get('OperStatus','Unknown')
                         if iStat == 'Critical':
                             finalStat = iStat
                             break
-                        elif iStat == 'Warning':
+                        elif (
+                            iStat == 'Warning'
+                            or iStat == 'Unknown'
+                            and finalStat != 'Warning'
+                        ):
                             finalStat = iStat
-                        elif iStat == 'Unknown' and finalStat != 'Warning':
-                            finalStat = iStat
-                    tmp.update({"Key": comp})
-                    tmp.update({"PrimaryStatus": finalStat})
+                    tmp = {"Key": comp, "PrimaryStatus": finalStat}
                     entj.get("Subsystem", "NA").append(tmp)

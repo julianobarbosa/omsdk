@@ -58,7 +58,7 @@ class Storage:
         return self.my_load(component, array, ctree, ejson, entity)
 
     def my_load(self, component, array, ctree, ejson, entity):
-        if not component in ctree:
+        if component not in ctree:
             return False
         count = 0
         for count in range(1, len(ejson[component]) + 1):
@@ -71,7 +71,7 @@ class Storage:
                     try:
                         comp[field] = int(float(comp[field]))
                     except Exception as ex:
-                        print(str(ex))
+                        print(ex)
             entry = array.flexible_new(index=count, **comp)
             if comp['FQDD'] not in ctree[component]:
                 continue
@@ -85,7 +85,7 @@ class Storage:
         return True
 
     def _load_comp(self, comp, entry, ctree, ejson, entity):
-        func = getattr(self, comp + '_load')
+        func = getattr(self, f'{comp}_load')
         return func(comp, entry.__dict__[comp], ctree, ejson, entity)
 
     def load(self, ctree, entity):
@@ -124,11 +124,11 @@ class RAIDHelper:
             return self.storage
         # filtering should not be called in case of reset config True
         self.storage.Controller.remove(PrimaryStatus='0')
+        filter_query_to_remove_used_disks = '(entry.RaidStatus != "Ready" or entry.RaidStatus != "Non-RAID") and entry.FreeSize._value == 0'
         for controller in self.storage.Controller:
             controller.Enclosure.remove(PrimaryStatus='0')
             fqdd = str(controller.FQDD)
-            filter_query_to_remove_used_disks = '(entry.RaidStatus != "Ready" or entry.RaidStatus != "Non-RAID") and entry.FreeSize._value == 0'
-            filter_query_to_remove_invalid_fqdd = '"' + fqdd + '" not in entry.FQDD._value'
+            filter_query_to_remove_invalid_fqdd = f'"{fqdd}" not in entry.FQDD._value'
             for encl in controller.Enclosure:
                 if reset_config == 'False':
                     encl.PhysicalDisk.remove_matching(filter_query_to_remove_used_disks)
@@ -151,13 +151,13 @@ class RAIDHelper:
         for controller in self.storage.Controller:
             direct_pd_count = controller.PhysicalDisk.Length
             if direct_pd_count >= n_disks:
-                s_disks = [i for i in controller.PhysicalDisk]
-                return s_disks[0:n_disks]
+                s_disks = list(controller.PhysicalDisk)
+                return s_disks[:n_disks]
             for enclosure in controller.Enclosure:
                 encl_pd_count = enclosure.PhysicalDisk.Length
                 if encl_pd_count >= n_disks:
-                    s_disks = [i for i in enclosure.PhysicalDisk]
-                return s_disks[0:n_disks]
+                    s_disks = list(enclosure.PhysicalDisk)
+                return s_disks[:n_disks]
         return s_disks
 
     def filter_disks(self, n_disks, criteria, dhspare=False, restconfig=RAIDresetConfigTypes.T_False):
@@ -170,15 +170,11 @@ class RAIDHelper:
         for controller in self.storage.Controller:
             s_disks = controller.PhysicalDisk.find_matching(criteria)
             if len(s_disks) >= n_disks:
-                if dhspare:
-                    return s_disks
-                return s_disks[0:n_disks]
+                return s_disks if dhspare else s_disks[:n_disks]
             for enclosure in controller.Enclosure:
                 s_disks = enclosure.PhysicalDisk.find_matching(criteria)
                 if len(s_disks) >= n_disks:
-                    if dhspare:
-                        return s_disks
-                    return s_disks[0:n_disks]
+                    return s_disks if dhspare else s_disks[:n_disks]
         return s_disks
 
     @staticmethod
@@ -219,27 +215,25 @@ class RAIDHelper:
         return {"Status": status, "Message": message}
 
     def get_dhs_disks(self, av_disks, sel_disks, n_dhs):
-        logger.info("{} : {}".format(self.entity.ipaddr, "Enter: Dedicated hot spare!"))
+        logger.info(f"{self.entity.ipaddr} : Enter: Dedicated hot spare!")
         disks = None
         try:
-            av_disks_key = set([i.Key for i in av_disks])
-            sel_disks_key = set([i.Key for i in sel_disks])
+            av_disks_key = {i.Key for i in av_disks}
+            sel_disks_key = {i.Key for i in sel_disks}
             av_dhs = av_disks_key.difference(sel_disks_key)
-            dhs = list(av_dhs)[0:n_dhs]
+            dhs = list(av_dhs)[:n_dhs]
             disks = [d for k in dhs for d in av_disks if d.Key == k]
-            logger.info("{} : {}".format(self.entity.ipaddr, "Exit: Dedicated hot spare!"))
+            logger.info(f"{self.entity.ipaddr} : Exit: Dedicated hot spare!")
         except Exception:
-            logger.error("{} : {}".format(self.entity.ipaddr, "Exception: Dedicated hot spare!"))
+            logger.error(f"{self.entity.ipaddr} : Exception: Dedicated hot spare!")
         return disks
 
     def create_virtual_disk(self, sysconfig, **kwargs):
-        logger.info(self.entity.ipaddr + " : Interface create_virtual_disk enter")
+        logger.info(f"{self.entity.ipaddr} : Interface create_virtual_disk enter")
         filter_query = ""
         for i in ['SpanLength', 'SpanDepth']:
             if i not in kwargs:
-                return {
-                    'Status': 'Failed',
-                    'Message': 'Parameter ' + i + ' is missing'}
+                return {'Status': 'Failed', 'Message': f'Parameter {i} is missing'}
 
         ndisks = self.compute_disk_count(kwargs['SpanLength'], kwargs['SpanDepth'],
                                          kwargs['NumberDedicatedHotSpare'])
@@ -264,20 +258,21 @@ class RAIDHelper:
                     if isinstance(slots_list, str):
                         slots_list = eval(slots_list)
                     slots_list = list(map(str, slots_list))
-                    filter_query += ' and entry.Slot._value in ' + str(slots_list)
+                    filter_query += f' and entry.Slot._value in {slots_list}'
                 if kwargs.get('FQDD'):
                     id_list = kwargs.get('FQDD')
-                    filter_query += ' and entry.FQDD._value in ' + str(id_list)
+                    filter_query += f' and entry.FQDD._value in {str(id_list)}'
                 disks = self.filter_disks(ndks, filter_query, restconfig=kwargs['RAIDresetConfig'])
         else:
             disks = self.get_disks(ndks, restconfig=kwargs['RAIDresetConfig'])
 
         if len(disks) <= 0:
-            logger.debug(self.entity.ipaddr + " : No sufficient disks found in Controller!")
+            logger.debug(
+                f"{self.entity.ipaddr} : No sufficient disks found in Controller!"
+            )
             con_msg = 'Number of sufficient disks not found in Controller!'
             if kwargs.get('ControllerFQDD') is not None:
-                con_msg = 'Number of sufficient disks not found in Controller \'{}\'!'.format(
-                        kwargs['ControllerFQDD'])
+                con_msg = f"Number of sufficient disks not found in Controller \'{kwargs['ControllerFQDD']}\'!"
             return {'Status': 'Failed',
                     'Message': con_msg}
         # Assumption: All disks are part of same enclosure or direct attached!
@@ -291,7 +286,7 @@ class RAIDHelper:
 
         cntrl = sysconfig.Controller.find_first(FQDD=controller.FQDD)
         if cntrl is None:
-            logger.debug(self.entity.ipaddr + " :  No such controller found!")
+            logger.debug(f"{self.entity.ipaddr} :  No such controller found!")
             return {'Status': 'Failed',
                     'Message': 'No such controller found!'}
 
@@ -300,8 +295,7 @@ class RAIDHelper:
         # Ensures that existing senarios are not broken
         enclosure_fqdd = ""
         if controller.FQDD != kwargs.get('ControllerFQDD') and len(disks) >= 0:
-            ctrlst = sysconfig.Controller.Properties
-            if ctrlst:
+            if ctrlst := sysconfig.Controller.Properties:
                 for c in ctrlst:
                     if c.Json['FQDD'] == kwargs.get('ControllerFQDD'):
                         controller = c
@@ -343,7 +337,6 @@ class RAIDHelper:
                 else:
                     tgt_encl._attribs['FQDD'] = enclosure.FQDD
             target = tgt_encl
-        counter = 0
         n_dhs = kwargs['NumberDedicatedHotSpare']
         raid_disks = ndisks - n_dhs
 
@@ -352,10 +345,7 @@ class RAIDHelper:
         # Ensures that existing senarios are not broken
         try:
             if n_dhs > 0:
-                if filter_query:
-                    sp_query = filter_query
-                else:
-                    sp_query = kwargs['PhysicalDiskFilter']
+                sp_query = filter_query if filter_query else kwargs['PhysicalDiskFilter']
                 pd_query = filter(None, re.compile(r"^(\(.*)\sand (?:disk|entry).Slot._value.*$").split(sp_query))[0]
                 av_disks = self.filter_disks(n_dhs, pd_query, dhspare=True, restconfig=kwargs['RAIDresetConfig'])
                 dhs_msg = "physical disks are not available for dedicated hot spare!"
@@ -366,11 +356,10 @@ class RAIDHelper:
                     return {"Status": "Failed", "Message": dhs_msg}
                 disks.extend(dhs_disks)
         except Exception:
-            logger.error("{} : {}".format(self.entity.ipaddr, "dedicated hot spare exception."))
+            logger.error(f"{self.entity.ipaddr} : dedicated hot spare exception.")
 
 
-        for disk in disks:
-            counter += 1
+        for counter, disk in enumerate(disks, start=1):
             if n_dhs > 0 and (counter > raid_disks and counter <= (raid_disks + n_dhs)):
                 state = RAIDHotSpareStatusTypes.Dedicated
                 vdisk.RAIDdedicatedSpare = disk.FQDD._value
@@ -384,18 +373,18 @@ class RAIDHelper:
             tgt_disk.RAIDHotSpareStatus.nullify_value()
             tgt_disk.RAIDHotSpareStatus.commit()
             tgt_disk.RAIDHotSpareStatus = RAIDHotSpareStatusTypes.No
-        logger.info(self.entity.ipaddr + " : Interface create_virtual_disk exit")
+        logger.info(f"{self.entity.ipaddr} : Interface create_virtual_disk exit")
 
     def new_virtual_disk(self, **kwargs):
-        logger.info(self.entity.ipaddr + " : Interface new_virtual_disk enter")
+        logger.info(f"{self.entity.ipaddr} : Interface new_virtual_disk enter")
         sysconfig = self.entity.config_mgr._sysconfig
         apply_changes = kwargs.get("apply_changes")
         if kwargs.get("multiple_vd") is None:
-            logger.debug(self.entity.ipaddr + " : new_virtual_disk single vd creation")
+            logger.debug(f"{self.entity.ipaddr} : new_virtual_disk single vd creation")
             # This change is for OMSDK v1.0 and v1.1 compatibility
             self.create_virtual_disk(sysconfig, **kwargs)
         else:
-            logger.debug(self.entity.ipaddr + " : new_virtual_disk multiple vd creation")
+            logger.debug(f"{self.entity.ipaddr} : new_virtual_disk multiple vd creation")
             for vd_val in kwargs["multiple_vd"]:
                 span_depth = vd_val.get("SpanDepth") if vd_val.get("SpanDepth") is not None else 0
                 span_length = vd_val.get("SpanLength") if vd_val.get("SpanLength") is not None else 0
@@ -417,12 +406,13 @@ class RAIDHelper:
                     return standard
             for kwargs in kwargs["multiple_vd"]:
                 try:
-                    virtual_disk = self.create_virtual_disk(sysconfig, **kwargs)
-                    if virtual_disk:
+                    if virtual_disk := self.create_virtual_disk(
+                        sysconfig, **kwargs
+                    ):
                         return virtual_disk
                 except Exception as e:
-                    logger.debug("{}: {}".format(self.entity.ipaddr, e))
-        logger.info(self.entity.ipaddr + " : Interface new_virtual_disk exit")
+                    logger.debug(f"{self.entity.ipaddr}: {e}")
+        logger.info(f"{self.entity.ipaddr} : Interface new_virtual_disk exit")
         if apply_changes is True or apply_changes is None:
             return self.entity.config_mgr.apply_changes(reboot=True)
         else:

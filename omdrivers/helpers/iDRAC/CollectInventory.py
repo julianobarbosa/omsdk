@@ -74,16 +74,15 @@ def CollectInventory(arglist):
     creds = UserCredentials(options.user, options.password)
     for ipaddr in options.idrac_ip:
         try:
-            print("Connecting to " + ipaddr + " ... ")
-            idrac = sd.get_driver(sd.driver_enum.iDRAC, ipaddr, creds)
-            if idrac:
+            print(f"Connecting to {ipaddr} ... ")
+            if idrac := sd.get_driver(sd.driver_enum.iDRAC, ipaddr, creds):
                 print("    ... saving firmware!")
                 UpdateHelper.save_firmware_inventory(idrac)
                 idrac.disconnect()
             else:
                 print("    failed to connect to iDRAC")
         except Exception as ex:
-            print(str(ex))
+            print(ex)
 
 
 if __name__ == "__main__":

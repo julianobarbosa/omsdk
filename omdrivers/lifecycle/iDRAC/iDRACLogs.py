@@ -69,7 +69,7 @@ class iDRACLogs(iBaseLogApi):
         return self.SELLog
 
     def get_logs_for_last_job(self):
-        if self.entity.cfactory == None:
+        if self.entity.cfactory is None:
             logger.debug("Protocol not initialized!")
             return {}
         if self._job_mgr.last_job is None:
@@ -138,10 +138,9 @@ class iDRACLogs(iBaseLogApi):
 
         if isinstance(share_path, LocalFile):
             export_file = share.local_full_path
-            rjson = self.entity.streaming_mgr.export_data(file_type=file_type, export_file=export_file)
-
-            return rjson
-
+            return self.entity.streaming_mgr.export_data(
+                file_type=file_type, export_file=export_file
+            )
         return {
             "Status": "Failure",
             "Message": "Cannot perform export operation. Video Logs can be exported only to iDRAC Local Share."
@@ -223,7 +222,7 @@ class iDRACLogs(iBaseLogApi):
         return rjson
 
     def get_logs_for_job(self, jobid):
-        if self.entity.cfactory == None:
+        if self.entity.cfactory is None:
             logger.debug("Protocol not initialized!")
             return {}
         if not self.liason_share:
@@ -247,14 +246,12 @@ class iDRACLogs(iBaseLogApi):
             logs = []
             startlogging = False
             for logent in domtree.getroot().getchildren():
-                logentry = {}
-                for (attrname, attrvalue) in logent.items():
-                    logentry[attrname] = attrvalue
+                logentry = dict(logent.items())
                 for field in logent.getchildren():
                     if field.tag == "MessageArgs":
                         cntr = 0
                         for arg in field.getchildren():
-                            logentry["MessageArgs." + arg.tag + "." + str(cntr)] = arg.text
+                            logentry[f"MessageArgs.{arg.tag}.{str(cntr)}"] = arg.text
                             cntr = cntr + 1
                     logentry[field.tag] = field.text
                 if startlogging:
@@ -268,6 +265,6 @@ class iDRACLogs(iBaseLogApi):
                     else:
                         startlogging = False
         except Exception as ex:
-            logger.debug("ERROR: " + str(ex))
+            logger.debug(f"ERROR: {str(ex)}")
         tempshare.dispose()
         return logs

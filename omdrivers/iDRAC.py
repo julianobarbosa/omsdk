@@ -1599,14 +1599,12 @@ iDRACRedfishViews_FieldSpec = {
 }
 
 def chk_classifier(myListoFDict, cls=None):
-    valid = False
     flist = []
     for sys in myListoFDict:
         id = sys.get('Id', 'None')
         if 'System.Embedded' in id:
             flist.append(sys)
-    if flist:
-        valid = True
+    valid = bool(flist)
     return (valid, flist)
 
 classify_cond = {
@@ -3266,7 +3264,7 @@ class iDRACEntity(iDeviceDriver):
             retval = js['ServiceTag']
         else:
             idlist = ['Id','DeviceID', 'MemberID', 'MemberId', '@odata.id']
-            retval = clsName + "_null"
+            retval = f"{clsName}_null"
             for id in idlist:
                 if id in js:
                     retval = js[id]
@@ -3275,19 +3273,18 @@ class iDRACEntity(iDeviceDriver):
 
     def _isin(self, parentClsName, parent, childClsName, child):
         if TypeHelper.resolve(parentClsName) == "Controller" and \
-           TypeHelper.resolve(childClsName) == "PhysicalDisk" and \
-           ("Disk.Direct" not in self._get_obj_index(childClsName, child)):
+               TypeHelper.resolve(childClsName) == "PhysicalDisk" and \
+               ("Disk.Direct" not in self._get_obj_index(childClsName, child)):
            return False
         if TypeHelper.resolve(parentClsName) == "VirtualDisk" and \
-           TypeHelper.resolve(childClsName) == "PhysicalDisk":
-            if 'PhysicalDiskIDs' in parent:
-                parentdiskListStr = parent['PhysicalDiskIDs'].strip("[]")
-                if (self._get_obj_index(childClsName, child) in parentdiskListStr):
-                    return True
-            else:
+               TypeHelper.resolve(childClsName) == "PhysicalDisk":
+            if 'PhysicalDiskIDs' not in parent:
                 return False
+            parentdiskListStr = parent['PhysicalDiskIDs'].strip("[]")
+            if (self._get_obj_index(childClsName, child) in parentdiskListStr):
+                return True
         return self._get_obj_index(parentClsName, parent) in \
-               self._get_obj_index(childClsName, child)
+                   self._get_obj_index(childClsName, child)
 
     def _get_MemoryType(self, idx):
         ty = self._get_field_device("Memory", "type", idx)
@@ -3305,8 +3302,8 @@ class iDRACEntity(iDeviceDriver):
     def SystemIDInHex(self):
         sid = self._get_field_device(self.ComponentEnum.System, "SystemID")
         # following line is kludge for reflection api
-        if sid == None or sid == '<not_found>': sid = '0'
-        return (('0000' + str(hex(int(sid)))[2:])[-4:])
+        if sid is None or sid == '<not_found>': sid = '0'
+        return f'0000{hex(int(sid))[2:]}'[-4:]
 
     @property
     def Model(self):
@@ -3326,15 +3323,13 @@ class iDRACEntity(iDeviceDriver):
     @property
     def IsRackStyleManaged(self):
         # return true if rack services, pounce platform
-        if not "Modular" in self.get_server_generation():
+        if "Modular" not in self.get_server_generation():
             return True
 
         # check if psu is enumerable from idrac. if yes, it is rsm mode
         self.get_partial_entityjson(self.ComponentEnum.PowerSupply)
         psfq= self._get_field_device(self.ComponentEnum.PowerSupply, "FQDD", 0)
-        if psfq is None or psfq in ['<not_found>', "Not Available", '']:
-            return False
-        return True
+        return psfq is not None and psfq not in ['<not_found>', "Not Available", '']
 
     @property
     def AssetTag(self):
