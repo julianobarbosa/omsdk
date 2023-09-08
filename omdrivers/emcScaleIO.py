@@ -93,13 +93,18 @@ class emcScaleIOEntity(iDeviceDriver):
             if isinstance(self.creds, ProtocolCredentialsFactory):
                 creds = self.creds.get(CredentialsEnum.User)
             if OMScaleIOPresent and creds:
-                self.sio = ScaleIO("https://" + self.ipaddr + "/api", creds.username,
-                                   creds.password, pOptions.verify_ssl, pOptions.debugLevel)
+                self.sio = ScaleIO(
+                    f"https://{self.ipaddr}/api",
+                    creds.username,
+                    creds.password,
+                    pOptions.verify_ssl,
+                    pOptions.debugLevel,
+                )
                 status = True
         except:
             traceback.print_exc()
             status = False
-        logger.debug(self.ref.name + '::connect(' + self.ipaddr + ', ' + str(creds) + ")=" + str(status))
+        logger.debug(f'{self.ref.name}::connect({self.ipaddr}, {str(creds)})={status}')
         return status
 
     def my_get_entityjson(self):

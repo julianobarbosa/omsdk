@@ -93,66 +93,64 @@ class iDRACStreaming():
 
     def __export_data_to_local_share(self, export_file_type=None, **kwargs):
         if export_file_type == FileTypeEnum.SystemConfigXML:
-            export_data_resp = self._config_mgr.scp_export_to_local_share(
+            return self._config_mgr.scp_export_to_local_share(
                 target=kwargs["target"],
                 export_format=kwargs["export_format"],
                 export_use=kwargs["export_use"],
-                include_in_export=kwargs[
-                    "include_in_export"])
+                include_in_export=kwargs["include_in_export"],
+            )
         elif export_file_type == FileTypeEnum.LCLogs:
-            export_data_resp = self._log_mgr.lclog_export_to_local_share()
+            return self._log_mgr.lclog_export_to_local_share()
         elif export_file_type == FileTypeEnum.Inventory:
-            export_data_resp = self._config_mgr.inventory_export_to_local_share(xml_schema=kwargs["xml_schema"])
+            return self._config_mgr.inventory_export_to_local_share(
+                xml_schema=kwargs["xml_schema"]
+            )
         elif export_file_type == FileTypeEnum.FactoryConfig:
-            export_data_resp = self._config_mgr.factory_export_to_local_share()
+            return self._config_mgr.factory_export_to_local_share()
         elif export_file_type == FileTypeEnum.TSR:
-            export_data_resp = self._config_mgr.support_assist_collection_to_local_share(
+            return self._config_mgr.support_assist_collection_to_local_share(
                 data_selector_array_in=kwargs["data_selector_array_in"],
                 filter=kwargs["filter"],
-                transmit=kwargs["transmit"])
+                transmit=kwargs["transmit"],
+            )
         elif export_file_type == FileTypeEnum.BootVideoLogs:
-            export_data_resp = self._log_mgr.videolog_export_to_local_share(
-                video_log_file_type=VideoLogsFileTypeEnum.Boot_Capture)
+            return self._log_mgr.videolog_export_to_local_share(
+                video_log_file_type=VideoLogsFileTypeEnum.Boot_Capture
+            )
         elif export_file_type == FileTypeEnum.Diagnostics:
-            export_data_resp = self._config_mgr.epsa_diagnostics_export_to_local_share()
+            return self._config_mgr.epsa_diagnostics_export_to_local_share()
         elif export_file_type == FileTypeEnum.LCFullLogs:
-            export_data_resp = self._log_mgr.complete_lclog_export_to_local_share()
+            return self._log_mgr.complete_lclog_export_to_local_share()
         elif export_file_type == FileTypeEnum.CrashVideoLogs:
-            export_data_resp = self._log_mgr.videolog_export_to_local_share(
-                video_log_file_type=VideoLogsFileTypeEnum.Crash_Capture)
+            return self._log_mgr.videolog_export_to_local_share(
+                video_log_file_type=VideoLogsFileTypeEnum.Crash_Capture
+            )
         else:
-            export_data_resp = {
+            return {
                 "Status": "Failure",
-                "Message": "Cannot perform export operation. Please provide a valid export type."
+                "Message": "Cannot perform export operation. Please provide a valid export type.",
             }
-
-        return export_data_resp
 
     def __import_data_to_local_share(self, import_file_type=None, **kwargs):
         if import_file_type is FileTypeEnum.SystemConfigXML:
-            if "scp_preview" in kwargs and kwargs["scp_preview"] == True:
-                import_data_resp = self._config_mgr.scp_preview_import_to_local_share(
-                    target=kwargs["target"],
-                    job_wait=kwargs["job_wait"])
-
-            else:
-                import_data_resp = self._config_mgr.scp_import_to_local_share(
-                    target=kwargs["target"],
-                    shutdown_type=kwargs[
-                        "shutdown_type"],
-                    time_to_wait=kwargs["time_to_wait"],
-                    end_host_power_state=kwargs[
-                        "end_host_power_state"],
-                    job_wait=kwargs["job_wait"]
+            return (
+                self._config_mgr.scp_preview_import_to_local_share(
+                    target=kwargs["target"], job_wait=kwargs["job_wait"]
                 )
-
+                if "scp_preview" in kwargs and kwargs["scp_preview"] == True
+                else self._config_mgr.scp_import_to_local_share(
+                    target=kwargs["target"],
+                    shutdown_type=kwargs["shutdown_type"],
+                    time_to_wait=kwargs["time_to_wait"],
+                    end_host_power_state=kwargs["end_host_power_state"],
+                    job_wait=kwargs["job_wait"],
+                )
+            )
         else:
-            import_data_resp = {
+            return {
                 "Status": "Failure",
-                "Message": "Cannot perform export operation. Please provide a valid export type."
+                "Message": "Cannot perform export operation. Please provide a valid export type.",
             }
-
-        return import_data_resp
 
     # Todo Exported Data should be returned as string or file
     def export_data(self, file_type=FileTypeEnum.SystemConfigXML, export_file="", **kwargs):
@@ -180,9 +178,17 @@ class iDRACStreaming():
             }
 
         # Maximum allowed value for chunk size(512KB)
-        chunk_size = 122280 if file_type == FileTypeEnum.LCLogs or file_type == FileTypeEnum.LCFullLogs or \
-                               file_type == FileTypeEnum.BootVideoLogs or file_type == FileTypeEnum.CrashVideoLogs \
+        chunk_size = (
+            122280
+            if file_type
+            in [
+                FileTypeEnum.LCLogs,
+                FileTypeEnum.LCFullLogs,
+                FileTypeEnum.BootVideoLogs,
+                FileTypeEnum.CrashVideoLogs,
+            ]
             else 524286
+        )
 
         export_response = ""
 
@@ -204,8 +210,13 @@ class iDRACStreaming():
         if clear_transfer_session_status == "Success" or (
                         clear_transfer_session_status == "Error" and
                         clear_transfer_session_msg_id == "RAC088"):
-            logger.debug(clear_transfer_session_msg_id + ":" + clear_transfer_session_resp["Message"] +
-                         "Continuing export data operation...")
+            logger.debug(
+                (
+                    f"{clear_transfer_session_msg_id}:"
+                    + clear_transfer_session_resp["Message"]
+                    + "Continuing export data operation..."
+                )
+            )
 
         else:
             logger.error(clear_transfer_session_resp["MessageID"] + ":" + clear_transfer_session_resp["Message"])
@@ -262,14 +273,12 @@ class iDRACStreaming():
         session_id = long(export_data_output["SessionID"])
         txfr_descriptor = export_data_output["TxfrDescriptor"]
 
-        payloads_list = list()
-
-        payloads_list.append(payload)
+        payloads_list = [payload]
 
         # Export the subsequent chunks till EOF
         while int(txfr_descriptor) != 3:
             count += 1
-            logger.debug("Exporting chunk {}...".format(count))
+            logger.debug(f"Exporting chunk {count}...")
 
             export_data_resp = self._config_mgr.export_data(
                 file_type=file_type,
@@ -314,7 +323,10 @@ class iDRACStreaming():
                     with gzip.open(export_file, 'wb+') as f:
                         f.write(gzip.GzipFile(fileobj=StringIO(export_file_data)).read() if PY2
                                 else gzip.decompress(export_file_data))
-                elif file_type == FileTypeEnum.BootVideoLogs or file_type == FileTypeEnum.CrashVideoLogs:
+                elif file_type in [
+                    FileTypeEnum.BootVideoLogs,
+                    FileTypeEnum.CrashVideoLogs,
+                ]:
                     # Todo: Not Implemented
                     with open(export_file, 'w+', encoding='utf-8') as f:
                         f.write(export_file_data.decode("ISO-8859-1"))
@@ -325,7 +337,10 @@ class iDRACStreaming():
                 export_response = {"Status": "Success", "Message": "File exported successfully!!"}
             except IOError as e:
                 logger.error("I/O error({0}): {1}".format(e.errno, e.strerror))
-                export_response = {"Status": "Failure", "Message": "Unable to export file. " + e.strerror}
+                export_response = {
+                    "Status": "Failure",
+                    "Message": f"Unable to export file. {e.strerror}",
+                }
         else:
             logger.error("Unable to export file... CRC of exported data doesn't match with that in iDRAC local "
                          "share...")
@@ -376,8 +391,13 @@ class iDRACStreaming():
             if clear_transfer_session_status == "Success" or (
                             clear_transfer_session_status == "Error" and
                             clear_transfer_session_msg_id == "RAC088"):
-                logger.debug(clear_transfer_session_msg_id + ":" + clear_transfer_session_resp["Message"] +
-                             "Continuing import data operation...")
+                logger.debug(
+                    (
+                        f"{clear_transfer_session_msg_id}:"
+                        + clear_transfer_session_resp["Message"]
+                        + "Continuing import data operation..."
+                    )
+                )
 
             else:
                 logger.error(
@@ -407,13 +427,13 @@ class iDRACStreaming():
             for count in range(1, number_of_chunks + 1):
                 base64_payload = payload_chunks[count - 1]
                 payload_size = len(base64_payload)
-                logger.debug("Payload Size : {}".format(payload_size))
+                logger.debug(f"Payload Size : {payload_size}")
 
                 # Append \n
                 base64_data = "\n".join(self.__recursive_append_char__(base64_payload.decode(), 64))
 
                 payload_data = str(base64_data if count == number_of_chunks and payload_size % 64 is not 0 \
-                                       else base64_data + "\n")
+                                           else base64_data + "\n")
 
                 # Import the first chunk
                 if count == 1:
@@ -439,9 +459,8 @@ class iDRACStreaming():
 
                     session_id = long(import_chunk_resp["Data"]["ImportData_OUTPUT"]["SessionID"])
 
-                # Import the last chunk
                 elif count == number_of_chunks:
-                    logger.debug("Importing Chunk {}(Last Chunk)...".format(count))
+                    logger.debug(f"Importing Chunk {count}(Last Chunk)...")
                     import_chunk_resp = self._config_mgr.import_data(
                         file_type=import_file_type,
                         in_session_id=session_id, chunk_size=payload_size,
@@ -461,9 +480,8 @@ class iDRACStreaming():
                                        import_chunk_resp["Message"]
                         }
 
-                # Import subsequent chunks
                 else:
-                    logger.debug("Importing Chunk {}...".format(count))
+                    logger.debug(f"Importing Chunk {count}...")
 
                     import_chunk_resp = self._config_mgr.import_data(
                         file_type=import_file_type,
@@ -497,6 +515,9 @@ class iDRACStreaming():
 
         except IOError as e:
             logger.error("I/O error({0}): {1}".format(e.errno, e.strerror))
-            import_data_resp = {"Status": "Failure", "Message": "Unable to import file. " + e.strerror}
+            import_data_resp = {
+                "Status": "Failure",
+                "Message": f"Unable to import file. {e.strerror}",
+            }
 
         return import_data_resp

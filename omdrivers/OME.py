@@ -61,7 +61,9 @@ class OMEEntity(iConsoleDriver):
                 status = True
         except:
             status = False
-        logger.debug(self.ref.name + '::connect(' + self.ipaddr + ', ' + str(self.creds) + ")=" + str(status))
+        logger.debug(
+            f'{self.ref.name}::connect({self.ipaddr}, {str(self.creds)})={status}'
+        )
         return status
 
     def my_get_entityjson(self):
@@ -80,16 +82,14 @@ class OMEEntity(iConsoleDriver):
 
     def get_device_identifier(self, device):
         retval = None
-        if not device is None and "System" in device:
+        if device is not None and "System" in device:
             if "ServiceTag" in device["System"]:
                 retval = device["System"]["ServiceTag"]
         return retval
 
     def add_device_props(self, device):
         retval = self.get_device_identifier(device)
-        if not retval is None:
-            retval = "10.94.44." + retval
-            device["doc.prop"] = {}
-            device["doc.prop"]["ipaddr"] = retval
-            device["doc.prop"]["creds"] = ""
+        if retval is not None:
+            retval = f"10.94.44.{retval}"
+            device["doc.prop"] = {"ipaddr": retval, "creds": ""}
         return retval

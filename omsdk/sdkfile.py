@@ -131,7 +131,7 @@ class _PathObject(object):
                 self.iptype = Share.IPAddressTypeEnum.IPv6
 
         self.paths = [path for path in args \
-                         if path is not None and len(path.strip()) > 0]
+                             if path is not None and len(path.strip()) > 0]
         if self.share_type in Share._ShareSpec:
             psep = Share._ShareSpec[self.share_type]['path_sep']
             path_repl_char = '\\'
@@ -150,9 +150,9 @@ class _PathObject(object):
                 self.share_path = self.full_path
             else:
                 shpatharr = shpath.split(psep)
-                self.share_name = psep.join(shpatharr[0:-1])
+                self.share_name = psep.join(shpatharr[:-1])
                 self.file_name = shpatharr[-1]
-                self.share_path = psep.join(self.full_path.split(psep)[0:-1])
+                self.share_path = psep.join(self.full_path.split(psep)[:-1])
 
             if self.share_type in [Share.ShareType.CIFS, Share.LocalFolderType.Windows]:
                 self.folder_name = self.share_name
@@ -213,16 +213,16 @@ class _PathObject(object):
         return self._get_full_path(self.paths + npaths)
 
     def printx(self, sname):
-        print("Share (" + str(self.share_type) + "): " + str(self.share_name))
+        print(f"Share ({str(self.share_type)}): {str(self.share_name)}")
         if self.ipaddr and len(self.ipaddr) > 0:
-            print("  " + sname + " IPAddress " + str(self.ipaddr))
-            print("  " + sname + " IPType " + str(self.iptype))
+            print(f"  {sname} IPAddress {str(self.ipaddr)}")
+            print(f"  {sname} IPType {str(self.iptype)}")
         if self.file_name and len(self.file_name) > 0:
-            print("  " + sname + " Filename " + str(self.file_name))
-        print("  " + sname + " Full Path " + str(self.full_path))
-        print("  " + sname + " Mountable Path " + str(self.mountable_path))
-        print("  " + sname + " Share Path " + str(self.share_path))
-        print("  " + sname + " Folder Name " + str(self.folder_name))
+            print(f"  {sname} Filename {str(self.file_name)}")
+        print(f"  {sname} Full Path {str(self.full_path)}")
+        print(f"  {sname} Mountable Path {str(self.mountable_path)}")
+        print(f"  {sname} Share Path {str(self.share_path)}")
+        print(f"  {sname} Folder Name {str(self.folder_name)}")
 
 class RemotePath(_PathObject):
     def __init__(self, share_type, isFolder, ipaddr, *args):
@@ -285,7 +285,7 @@ class FileOnShare(Share):
                 if not cfgtype: continue
                 share_type = pspec
                 if len(cfgtype.groups()) > 1:
-                    (ipaddr, rshare, filename) = [i for i in cfgtype.groups()]
+                    (ipaddr, rshare, filename) = list(cfgtype.groups())
                     path_list = [ rshare, filename ]
                     if common_path:
                         psp = Share._ShareSpec[pspec]['path_sep']
@@ -300,7 +300,7 @@ class FileOnShare(Share):
                 path_list =  [ remote_path ]
                 if common_path: path_list.append(common_path)
                 return LocalPath(share_type, isFolder, *path_list)
-        
+
         for pspec in stype_enum:
             if pspec not in Share._ShareSpec:
                 continue
@@ -313,7 +313,7 @@ class FileOnShare(Share):
             if not cfgtype: continue
             share_type = pspec
             if len(cfgtype.groups()) > 1:
-                (ipaddr, rshare) = [i for i in cfgtype.groups()]
+                (ipaddr, rshare) = list(cfgtype.groups())
                 path_list = [ rshare ]
                 if common_path:
                     rshare = rshare.replace(common_path, '')
@@ -354,11 +354,11 @@ class FileOnShare(Share):
         else:
             self.mount_point = None
         if remote is not None and self.remote and isinstance(self.remote, InvalidPath):
-            logger.error("Share path is not valid : {}".format(repr(remote)))
-            raise ValueError("Share path is not valid : {}".format(repr(remote)))
+            logger.error(f"Share path is not valid : {repr(remote)}")
+            raise ValueError(f"Share path is not valid : {repr(remote)}")
         if mount_point is not None and self.mount_point and isinstance(self.mount_point, InvalidPath):
-            logger.error("Mount point is not valid : {}".format(repr(mount_point)))
-            raise ValueError("Mount point is not valid : {}".format(repr(mount_point)))
+            logger.error(f"Mount point is not valid : {repr(mount_point)}")
+            raise ValueError(f"Mount point is not valid : {repr(mount_point)}")
         self.mounted = False
         self.fd = fd
         self.valid = False
@@ -371,14 +371,9 @@ class FileOnShare(Share):
         if platform.system() != "Windows":
             return True
         maps = self._mapdetails(drive)
-        status = False
-        if 'Status' in maps:
-            status = (maps['Status'] == 'OK')
         if 'Remote name' in maps:
-            if not remote:
-                return status
-            elif (maps['Remote name'] == remote):
-                return status
+            if not remote or (maps['Remote name'] == remote):
+                return (maps['Status'] == 'OK') if 'Status' in maps else False
         return False
 
     def _isMapped(self, drive, remote = None):
@@ -386,9 +381,7 @@ class FileOnShare(Share):
             return True
         maps = self._mapdetails(drive)
         if 'Remote name' in maps:
-            if not remote:
-                return True
-            elif (maps['Remote name'] == remote):
+            if not remote or (maps['Remote name'] == remote):
                 return True
         return False
 
@@ -396,28 +389,27 @@ class FileOnShare(Share):
         if platform.system() != "Windows":
             return {}
         if len(drive) == 1:
-            drive = drive + ':'
+            drive = f'{drive}:'
         if len(drive) > 2:
-            drive = drive[0:2]
-        try :
+            drive = drive[:2]
+        try:
             (fd, fonshare) = tempfile.mkstemp(prefix='n', suffix='.out')
             #Kludge: Windows associates the fonshare with the fd
             # and keeps the file in open state.
             # As a result, os.system() fails to write to this openfile
             # so we attach a suffix "1" to file and create it.
-            os.system("net use " + drive + " > " + fonshare + "1 2>&1")
+            os.system(f"net use {drive} > {fonshare}1 2>&1")
             mapinfo = {}
-            with open(fonshare + "1", "r") as netout:
+            with open(f"{fonshare}1", "r") as netout:
                 for line in netout:
                     if 'could not be found' in line:
                         mapinfo['cmd_status'] = 'Failed'
                     if 'success' in line:
                         mapinfo['cmd_status'] = 'Success'
-                    field = re.search('^(.+)\s\s+(.+)$', line)
-                    if field:
+                    if field := re.search('^(.+)\s\s+(.+)$', line):
                         mapinfo[field.group(1).strip()] = field.group(2).strip()
         except Exception as ex:
-            logger.debug("Tempfile creation failed: " + str(ex))
+            logger.debug(f"Tempfile creation failed: {str(ex)}")
 
         try:
             os.close(fd)
@@ -442,21 +434,21 @@ class FileOnShare(Share):
             return self.mounted
 
         if platform.system() == "Windows":
-            logger.debug("net use /d " + self.mount_point.mountable_path)
-            err = os.system("net use /d " + self.mount_point.mountable_path + " >nul 2>&1")
-            logger.debug("net use /d returned : " + str(err) + ". Ignoring!")
-            logger.debug("net use " + self.mount_point.mountable_path +
-              " " + self.remote.mountable_path + 
-              " /user:" + self.creds.username + " " + self.creds.password)
-            err = os.system("net use " + self.mount_point.mountable_path + 
-              " " + self.remote.mountable_path + 
-              " /user:" + self.creds.username + " " + self.creds.password + " >nul 2>&1")
+            logger.debug(f"net use /d {self.mount_point.mountable_path}")
+            err = os.system(f"net use /d {self.mount_point.mountable_path} >nul 2>&1")
+            logger.debug(f"net use /d returned : {str(err)}. Ignoring!")
+            logger.debug(
+                f"net use {self.mount_point.mountable_path} {self.remote.mountable_path} /user:{self.creds.username} {self.creds.password}"
+            )
+            err = os.system(
+                f"net use {self.mount_point.mountable_path} {self.remote.mountable_path} /user:{self.creds.username} {self.creds.password} >nul 2>&1"
+            )
             if err == 0:
                 self.mounted = True
                 logger.debug("net use succeeded!")
             else:
                 self.mounted = False
-                logger.debug("net use failed with err code:" + str(err))
+                logger.debug(f"net use failed with err code:{str(err)}")
         if platform.system() == "Linux":
             self.mounted = True
         return self.mounted
@@ -488,7 +480,7 @@ class FileOnShare(Share):
             (fd, fname) = tempfile.mkstemp(prefix=prefix, suffix=suffix,
                         dir=self.mount_point.full_path, text=text)
         except Exception as ex:
-            logger.debug("Failed to create temp file: " +str(ex))
+            logger.debug(f"Failed to create temp file: {str(ex)}")
             return None
         common_path = fname.lower().replace(self.mount_point.mountable_path.lower() + psep, '')
 
@@ -496,10 +488,14 @@ class FileOnShare(Share):
         # and keeps the file in open state.
         # As a result, os.system() fails to write to this openfile
         # so we attach a suffix "1" to file and create it.
-        return FileOnShare(remote = self.remote.mountable_path,
-            mount_point = self.mount_point.mountable_path + psep,
-            common_path = common_path + "1", fd = fd,
-            isFolder = False, creds = self.creds)
+        return FileOnShare(
+            remote=self.remote.mountable_path,
+            mount_point=self.mount_point.mountable_path + psep,
+            common_path=f"{common_path}1",
+            fd=fd,
+            isFolder=False,
+            creds=self.creds,
+        )
 
     def format(self, **kwargs):
 
@@ -511,7 +507,7 @@ class FileOnShare(Share):
 
         fname = self.remote.full_path
         for arg in kwargs:
-            fname = re.sub("%"+arg, kwargs[arg], fname)
+            fname = re.sub(f"%{arg}", kwargs[arg], fname)
         try:
             fname = datetime.strftime(datetime.now(), fname)
         except Exception as ex:
@@ -535,7 +531,7 @@ class FileOnShare(Share):
             return None
 
         # at least provide one path
-        if len(args) == 0:
+        if not args:
             return None
 
         if self.mount_point is None and self.remote is None:
@@ -563,9 +559,9 @@ class FileOnShare(Share):
 
         if mp_mountable_path:
             mp_mountable_path += psep
-        logger.debug("new_file().remote: " + str(r_mountable_path))
-        logger.debug("new_file().mount_point: " + str(mp_mountable_path))
-        logger.debug("new_file().common_path: " + str(common_path))
+        logger.debug(f"new_file().remote: {str(r_mountable_path)}")
+        logger.debug(f"new_file().mount_point: {str(mp_mountable_path)}")
+        logger.debug(f"new_file().common_path: {str(common_path)}")
 
         return FileOnShare(remote = r_mountable_path,
             mount_point = mp_mountable_path,
@@ -580,7 +576,7 @@ class FileOnShare(Share):
         if self.mount_point is None:
             logger.debug('makedirs(): no mount point')
             return None
-        if not 'path_sep' in Share._ShareSpec[self.mount_point.share_type]:
+        if 'path_sep' not in Share._ShareSpec[self.mount_point.share_type]:
             logger.debug('makedirs(): no path_sep found')
             return None
         if not self.IsValid:
@@ -591,11 +587,11 @@ class FileOnShare(Share):
         psep = Share._ShareSpec[self.mount_point.share_type]['path_sep']
         for t in args:
             fname += psep + t
-        try :
+        try:
             if not os.path.exists(fname):
                 msg = os.makedirs(fname)
-                logger.debug('makedirs(): ' + str(msg))
-            
+                logger.debug(f'makedirs(): {str(msg)}')
+
             if not os.path.isdir(fname):
                 logger.debug('makedirs(): did not get created!!')
                 return None
@@ -611,7 +607,7 @@ class FileOnShare(Share):
                 isFolder = True, creds = self.creds)
 
         except Exception as ex:
-            logger.debug("makedirs(): Failed to create folder: " +str(ex))
+            logger.debug(f"makedirs(): Failed to create folder: {str(ex)}")
             return None
 
     @property
@@ -631,9 +627,9 @@ class FileOnShare(Share):
             logger.debug(str(ex))
 
         # Windows Kludge: Remove the file without 1 suffix
-        try :
-            if os.path.exists(self.mount_point.full_path[0:-1]):
-                os.remove(self.mount_point.full_path[0:-1])
+        try:
+            if os.path.exists(self.mount_point.full_path[:-1]):
+                os.remove(self.mount_point.full_path[:-1])
         except Exception as ex:
             logger.debug(str(ex))
     
@@ -702,9 +698,9 @@ class FileOnShare(Share):
         if self.mount_point:
             self.mount_point.printx("Mount")
         if self.creds:
-            print("   Username " + self.creds.username)
-            print("   Password " + self.creds.password)
-        print("   Template " + str(self.is_template))
+            print(f"   Username {self.creds.username}")
+            print(f"   Password {self.creds.password}")
+        print(f"   Template {str(self.is_template)}")
 
 class LocalFile(Share):
 
@@ -773,14 +769,14 @@ class LocalFile(Share):
             (fd, fname) = tempfile.mkstemp(prefix=prefix, suffix=suffix,
                         dir=self.local.full_path, text=text)
         except Exception as ex:
-            logger.debug("Failed to create temp file: " +str(ex))
+            logger.debug(f"Failed to create temp file: {str(ex)}")
             return None
 
         #Kludge: Windows associates the fonshare with the fd
         # and keeps the file in open state.
         # As a result, os.system() fails to write to this openfile
         # so we attach a suffix "1" to file and create it.
-        return LocalFile(local = fname + "1", fd = fd, isFolder = False)
+        return LocalFile(local=f"{fname}1", fd = fd, isFolder = False)
 
     def format(self, **kwargs):
 
@@ -790,7 +786,7 @@ class LocalFile(Share):
             return self
         fname = self.local.full_path
         for arg in kwargs:
-            fname = re.sub("%"+arg, kwargs[arg], fname)
+            fname = re.sub(f"%{arg}", kwargs[arg], fname)
         try:
             fname = datetime.strftime(datetime.now(), fname)
         except Exception as ex:
@@ -804,7 +800,7 @@ class LocalFile(Share):
             return None
 
         # at least provide one path
-        if len(args) == 0:
+        if not args:
             return None
 
         if self.local is None:
@@ -825,7 +821,7 @@ class LocalFile(Share):
             return None
         if self.local is None:
             return None
-        if not 'path_sep' in Share._ShareSpec[self.local.share_type]:
+        if 'path_sep' not in Share._ShareSpec[self.local.share_type]:
             return None
         if not self.IsValid:
             return None
@@ -834,7 +830,7 @@ class LocalFile(Share):
         psep = Share._ShareSpec[self.local.share_type]['path_sep']
         for t in args:
             fname += psep + t
-        try :
+        try:
             if not os.path.exists(fname):
                 os.makedirs(fname)
 
@@ -843,7 +839,7 @@ class LocalFile(Share):
 
             return LocalFile(local = fname, fd = None, isFolder = True)
         except Exception as ex:
-            logger.debug("makedirs(): Failed to create folder: " +str(ex))
+            logger.debug(f"makedirs(): Failed to create folder: {str(ex)}")
             return False
 
     @property
@@ -863,9 +859,9 @@ class LocalFile(Share):
             logger.debug(str(ex))
 
         # Windows Kludge: Remove the file without 1 suffix
-        try :
-            if os.path.exists(self.local.full_path[0:-1]):
-                os.remove(self.local.full_path[0:-1])
+        try:
+            if os.path.exists(self.local.full_path[:-1]):
+                os.remove(self.local.full_path[:-1])
         except Exception as ex:
             logger.debug(str(ex))
 
@@ -887,7 +883,7 @@ class LocalFile(Share):
     def printx(self):
         if self.local:
             self.local.printx("local")
-        print("   Template " + str(self.is_template))
+        print(f"   Template {str(self.is_template)}")
 
 class cfgprocessor:
 	UNGROUPED = "<ungrouped>"
@@ -900,125 +896,123 @@ class cfgprocessor:
 		self.reset()
 
 	def reset(self):
-		self.datasets = {}
-		self.hosts = {}
-		self.hostgroup = {}
-		self.topology = {}
-		self.topology["DeviceGroups"] = {}
-		self.devmap = {}
-		self.hostgroup[self.UNGROUPED] = []
+	    self.datasets = {}
+	    self.hosts = {}
+	    self.topology = {"DeviceGroups": {}}
+	    self.devmap = {}
+	    self.hostgroup = {self.UNGROUPED: []}
 
 	def process(self, file1):
-		with open(file1, "r") as cfg:
-			mytype = ""
-			fields = {}
-			for line in cfg:
-				if (self.comment.match(line.rstrip('\n'))): continue
-				if (self.emptyline.match(line.rstrip('\n'))): continue
-				cfgtype = self.defineline.match(line.rstrip('\n'))
-				if not cfgtype is None:
-					if (len(fields) > 0):
-						if not "register" in fields:
-							n = mytype + "-none"
-						else:
-							n = mytype + "-" + fields["register"]
-						if not n in self.datasets:
-							self.datasets[n] = []
-						self.datasets[n].append(fields)
-						fields = {}
-					mytype = cfgtype.group(1)
-					continue
-				tokentype = self.token.match(line.rstrip('\n'))
-				if not tokentype is None:
-					fields[tokentype.group(1)] = tokentype.group(2)
-					continue
-				if (self.finalline.match(line.rstrip('\n'))): continue
-				logger.debug("notsure>>" + line.rstrip('\n'))
-			if (len(fields) > 0):
-				if not "register" in fields:
-					n = mytype + "-none"
-				else:
-					n = mytype + "-" + fields["register"]
-				if not n in self.datasets:
-					self.datasets[n] = []
-				self.datasets[n].append(fields)
-		return self
+	    with open(file1, "r") as cfg:
+	        mytype = ""
+	        fields = {}
+	        for line in cfg:
+	            if (self.comment.match(line.rstrip('\n'))): continue
+	            if (self.emptyline.match(line.rstrip('\n'))): continue
+	            cfgtype = self.defineline.match(line.rstrip('\n'))
+	            if cfgtype is not None:
+	                if (len(fields) > 0):
+	                    if "register" not in fields:
+	                        n = f"{mytype}-none"
+	                    else:
+	                        n = f"{mytype}-" + fields["register"]
+	                    if n not in self.datasets:
+	                        self.datasets[n] = []
+	                    self.datasets[n].append(fields)
+	                    fields = {}
+	                mytype = cfgtype.group(1)
+	                continue
+	            tokentype = self.token.match(line.rstrip('\n'))
+	            if tokentype is not None:
+	                fields[tokentype.group(1)] = tokentype.group(2)
+	                continue
+	            if (self.finalline.match(line.rstrip('\n'))): continue
+	            logger.debug("notsure>>" + line.rstrip('\n'))
+	        if (len(fields) > 0):
+	            if "register" not in fields:
+	                n = f"{mytype}-none"
+	            else:
+	                n = f"{mytype}-" + fields["register"]
+	            if n not in self.datasets:
+	                self.datasets[n] = []
+	            self.datasets[n].append(fields)
+	    return self
 	
 	def printx(self):
-		logger.debug("====")
-		for i in self.datasets:
-			logger.debug("=====" + i + "=======")
-			logger.debug(self.datasets[i])
-			logger.debug("=====================")
-		logger.debug("====")
-		return self
+	    logger.debug("====")
+	    for i in self.datasets:
+	        logger.debug(f"====={i}=======")
+	        logger.debug(self.datasets[i])
+	        logger.debug("=====================")
+	    logger.debug("====")
+	    return self
 
 	def hostit(self):
-		#self.svcnames = {}
-		#for i in self.datasets:
-		#	logger.debug("=====" + i + "=======")
-		#for host in self.datasets["service-0"]:
-		#	if 'use' in host:
-		#		self.svcnames[host['name']] = host['use']
-		#	else:
-		#		self.svcnames[host['name']] = "<unknown>"
-		#for host in self.datasets["host-0"]:
-		#	if 'use' in host:
-		#		self.hstnames[host['name']] = host['use']
-		#	else:
-		#		self.hstnames[host['name']] = "<unknown>"
+	    #self.svcnames = {}
+	    #for i in self.datasets:
+	    #	logger.debug("=====" + i + "=======")
+	    #for host in self.datasets["service-0"]:
+	    #	if 'use' in host:
+	    #		self.svcnames[host['name']] = host['use']
+	    #	else:
+	    #		self.svcnames[host['name']] = "<unknown>"
+	    #for host in self.datasets["host-0"]:
+	    #	if 'use' in host:
+	    #		self.hstnames[host['name']] = host['use']
+	    #	else:
+	    #		self.hstnames[host['name']] = "<unknown>"
 
-		dgroup = DeviceGroupFilter("Dell.*")
-		if "hostgroup-none" in self.datasets:
-			for hgroup in self.datasets["hostgroup-none"]:
-				if "hostgroup_name" in hgroup:
-					if dgroup.isMatch(hgroup["hostgroup_name"]):
-						self.hostgroup[hgroup["hostgroup_name"]] = []
-						continue
-				if "alias" in hgroup:
-					if dgroup.isMatch(hgroup["alias"]):
-						self.hostgroup[hgroup["hostgroup_name"]] = []
-						continue
+	    dgroup = DeviceGroupFilter("Dell.*")
+	    if "hostgroup-none" in self.datasets:
+	    	for hgroup in self.datasets["hostgroup-none"]:
+	    		if "hostgroup_name" in hgroup:
+	    			if dgroup.isMatch(hgroup["hostgroup_name"]):
+	    				self.hostgroup[hgroup["hostgroup_name"]] = []
+	    				continue
+	    		if "alias" in hgroup:
+	    			if dgroup.isMatch(hgroup["alias"]):
+	    				self.hostgroup[hgroup["hostgroup_name"]] = []
+	    				continue
 
-		if "host-1" in self.datasets:
-			for host in self.datasets["host-1"]:
-				ipaddr = ""
-				svctag = None
+	    if "host-1" in self.datasets:
+	        for host in self.datasets["host-1"]:
+	            ipaddr = ""
+	            svctag = None
 
-				if 'hostgroups' in host:
-					if not host['hostgroups'] in self.hostgroup:
-						self.hostgroup[host['hostgroups']] = []
+	            if 'hostgroups' in host:
+	                if host['hostgroups'] not in self.hostgroup:
+	                    self.hostgroup[host['hostgroups']] = []
 
-				if 'address' in host:
-					ipaddr = host['address']
-					if not ipaddr in self.hosts:
-						self.hosts[ipaddr] = host['host_name']
-					if 'hostgroups' in host:
-						self.hostgroup[host['hostgroups']].append(ipaddr)
-					else:
-						self.hostgroup[self.UNGROUPED].append(ipaddr)
+	            if 'address' in host:
+	                ipaddr = host['address']
+	                if ipaddr not in self.hosts:
+	                    self.hosts[ipaddr] = host['host_name']
+	                if 'hostgroups' in host:
+	                	self.hostgroup[host['hostgroups']].append(ipaddr)
+	                else:
+	                	self.hostgroup[self.UNGROUPED].append(ipaddr)
 
-				if '_servicetag' in host:
-					svctag = host['_servicetag']
-					self.devmap[svctag] = {}
-					self.devmap[svctag]["doc.prop"] = {}
-					self.devmap[svctag]["doc.prop"]["ipaddr"] = ipaddr
+	            if '_servicetag' in host:
+	                svctag = host['_servicetag']
+	                self.devmap[svctag] = {"doc.prop": {}}
+	                self.devmap[svctag]["doc.prop"]["ipaddr"] = ipaddr
 
-					# host['use'] ==> host-0 / host-0['use'] ==> host-0
-					# host['alias'], host['display_name'] ==> DNSName
-					# host['notes'] => Protocol selected: WSMAN, SNMP
-					# host['action_url'] => http://<ipaddress>
-					# host['_servicetag'] => servicetag
-					# host['_xiwizard'] => MonitoringWizard
-			for hgroup in self.hostgroup:
-				tst = { }
-				tst["Name"] = hgroup
-				tst["ID"] = hgroup
-				tst["Description"] = hgroup
-				tst["Devices"] = self.hostgroup[hgroup]
-				tst["DevicesCount"] = len(self.hostgroup[hgroup])
-				self.topology["DeviceGroups"][hgroup] = tst
-		return self
+	            				# host['use'] ==> host-0 / host-0['use'] ==> host-0
+	            				# host['alias'], host['display_name'] ==> DNSName
+	            				# host['notes'] => Protocol selected: WSMAN, SNMP
+	            				# host['action_url'] => http://<ipaddress>
+	            				# host['_servicetag'] => servicetag
+	            				# host['_xiwizard'] => MonitoringWizard
+	        for hgroup in self.hostgroup:
+	            tst = {
+	                "Name": hgroup,
+	                "ID": hgroup,
+	                "Description": hgroup,
+	                "Devices": self.hostgroup[hgroup],
+	                "DevicesCount": len(self.hostgroup[hgroup]),
+	            }
+	            self.topology["DeviceGroups"][hgroup] = tst
+	    return self
 
 
 class file_share_manager:
@@ -1031,10 +1025,9 @@ class file_share_manager:
         else:
             logger.error("Share path value is missing")
             raise ValueError("Share path value is missing")
-        if win_format or unix_format:
-            if share_path and not os.path.exists(share_path):
-                logger.error("Share path {} does not exist".format(share_path))
-                raise ValueError("Share path {} does not exist".format(share_path))
-            return LocalFile(local=share_path)
-        else:
+        if not win_format and not unix_format:
             return FileOnShare(share_path, mount_point, isFolder=isFolder, creds=creds)
+        if share_path and not os.path.exists(share_path):
+            logger.error(f"Share path {share_path} does not exist")
+            raise ValueError(f"Share path {share_path} does not exist")
+        return LocalFile(local=share_path)

@@ -64,7 +64,9 @@ class NagiosEntity(iConsoleDriver):
                 status = True
         except:
             status = False
-        logger.debug(self.ref.name + '::connect(' + self.ipaddr + ', ' + str(self.creds) + ")=" + str(status))
+        logger.debug(
+            f'{self.ref.name}::connect({self.ipaddr}, {str(self.creds)})={status}'
+        )
         return status
 
     def my_disconnect(self):
@@ -87,7 +89,7 @@ class NagiosEntity(iConsoleDriver):
         return True
 
     def my_add_or_update_group(self, groupname):
-        logger.debug(">>  Creating or update Group:" + groupname)
+        logger.debug(f">>  Creating or update Group:{groupname}")
         with open("d\\" + self.ipaddr + "\\cfg\\Templates\\ome_hostgroup.cfg", "a") as f:
             f.write("define hostgroup {\n")
             f.write("    hostgroup_name\t{0}\n".format(groupname))
@@ -98,21 +100,21 @@ class NagiosEntity(iConsoleDriver):
     def my_add_or_update_device(self, device, devmap, groupname=None):
         svctag = device
         ipaddr = device
-        if not devmap is None:
+        if devmap is not None:
             if "System" in devmap and "ServiceTag" in devmap["System"]:
                 svctag = devmap["System"]["ServiceTag"]
             if "doc.prop" in devmap and "ipaddr" in devmap["doc.prop"]:
                 ipaddr = devmap["doc.prop"]["ipaddr"]
 
-        logger.debug(">>--->>---add " + str(device) + " to " + groupname)
+        logger.debug(f">>--->>---add {str(device)} to {groupname}")
         with open("d\\" + self.ipaddr + "\\cfg\\ome_" + ipaddr + ".host.cfg", "a") as f:
             f.write("define host {\n")
-            f.write("    host_name            " + svctag + "\n")
-            f.write("    use                xiwizard_" + groupname + "\n")
-            f.write("    alias                " + svctag + "\n")
+            f.write(f"    host_name            {svctag}" + "\n")
+            f.write(f"    use                xiwizard_{groupname}" + "\n")
+            f.write(f"    alias                {svctag}" + "\n")
             f.write("    display_name            idrac-R330PTS\n")
-            f.write("    address                " + ipaddr + "\n")
-            f.write("    hostgroups            " + groupname + "\n")
+            f.write(f"    address                {ipaddr}" + "\n")
+            f.write(f"    hostgroups            {groupname}" + "\n")
             f.write("    check_command            check-dell-host-alive\n")
             f.write("    max_check_attempts        3\n")
             f.write("    check_interval            5\n")
@@ -123,11 +125,11 @@ class NagiosEntity(iConsoleDriver):
             f.write("    notification_period        dellworkhours\n")
             f.write("    notification_options        d,u,r\n")
             f.write("    notes                Protocol selected : WSMAN\n")
-            f.write("    action_url            http://" + ipaddr + "\n")
+            f.write(f"    action_url            http://{ipaddr}" + "\n")
             f.write("    icon_image            dell_idrac.png\n")
             f.write("    statusmap_image            dell_idrac.png\n")
             f.write("    _INDEX                NA\n")
-            f.write("    _servicetag            " + svctag + "\n")
+            f.write(f"    _servicetag            {svctag}" + "\n")
             f.write("    _xiwizard            Dell_OM_NagiosXI_monitoring_wizard\n")
             f.write("    register            1\n")
             f.write("}\n")
@@ -136,15 +138,15 @@ class NagiosEntity(iConsoleDriver):
     def my_update_device_group(self, device, devmap, gname):
         svctag = device
         ipaddr = device
-        if not devmap is None:
+        if devmap is not None:
             if "System" in devmap and "ServiceTag" in devmap["System"]:
                 svctag = devmap["System"]["ServiceTag"]
             if "doc.prop" in devmap and "ipaddr" in devmap["doc.prop"]:
                 ipaddr = devmap["doc.prop"]["ipaddr"]
         if ipaddr in self.entityjson["topology"]["DeviceGroups"][gname]["Devices"]:
-            logger.debug(device + " in already in target group " + gname)
+            logger.debug(f"{device} in already in target group {gname}")
             return ipaddr
-        logger.debug("Updating " + device + " to group: " + gname)
+        logger.debug(f"Updating {device} to group: {gname}")
         return ipaddr
 
     def get_service_tag(self):

@@ -73,7 +73,7 @@ class FileListEntity(iConsoleDriver):
         logger.debug("Starting")
         devEntity = self.pinfra.find_driver(device, self.creds, True)
         with self.myentitylistlock:
-            if not devEntity is None:
+            if devEntity is not None:
                 self.entitylist.append(devEntity)
         # if devEntity is None:
         #    logger.debug("None is  " + device)
@@ -87,27 +87,28 @@ class FileListEntity(iConsoleDriver):
             for line in mylist:
                 device = line.rstrip()
                 thr = threading.Thread(name=device, \
-                                       target=self._worker, args=(device,))
+                                           target=self._worker, args=(device,))
                 self.threadlist.append(thr)
                 thr.start()
         logger.debug('Waiting for _worker threads')
         for t in self.threadlist:
             t.join()
         for hgroup in self.maplist:
-            tst = {}
-            tst["Name"] = hgroup
-            tst["ID"] = hgroup
-            tst["Description"] = hgroup
-            tst["Devices"] = self.maplist[hgroup]
-            tst["DevicesCount"] = len(self.maplist[hgroup])
+            tst = {
+                "Name": hgroup,
+                "ID": hgroup,
+                "Description": hgroup,
+                "Devices": self.maplist[hgroup],
+                "DevicesCount": len(self.maplist[hgroup]),
+            }
             self.entityjson["topology"]["DeviceGroups"][hgroup] = tst
         return self
 
     def printx(self):
         with self.myentitylistlock:
             for device in self.entityjson["devices"]["Devices"]:
-                logger.debug("-======" + str(device) + "----------")
-                if not device is None:
+                logger.debug(f"-======{str(device)}----------")
+                if device is not None:
                     logger.debug(device.entityjson)
                 logger.debug("-==================-------")
 
@@ -118,7 +119,9 @@ class FileListEntity(iConsoleDriver):
                 status = True
         except:
             status = False
-        logger.debug(self.ref.name + '::connect(' + self.listfile + ', ' + str(self.creds) + ")=" + str(status))
+        logger.debug(
+            f'{self.ref.name}::connect({self.listfile}, {str(self.creds)})={status}'
+        )
         return status
 
     def my_get_entityjson(self):
@@ -126,12 +129,12 @@ class FileListEntity(iConsoleDriver):
         return True
 
     def _do_function(self, entity, function, *args):
-        logger.debug("Executing for " + entity.ipaddr + str(*args))
+        logger.debug(f"Executing for {entity.ipaddr}{str(*args)}")
         (retval, fname, msg) = function(entity, *args)
         if retval:
             with self.myentitylistlock:
                 self.success[function] = self.success[function] + 1
-            logger.debug("INFO: factory_config_export success! File=" + fname)
+            logger.debug(f"INFO: factory_config_export success! File={fname}")
         else:
             with self.myentitylistlock:
                 self.failed[function] = self.failed[function] + 1
@@ -139,7 +142,7 @@ class FileListEntity(iConsoleDriver):
             logger.debug("ERROR: factory_config_export failed with message: " + msg['Message'])
 
     def runit(self, function, *arguments):
-        logger.debug("Running: " + str(function))
+        logger.debug(f"Running: {str(function)}")
         with self.myentitylistlock:
             if function in self.success:
                 logger.debug("another runit with same funciton in progress!!")
@@ -148,8 +151,8 @@ class FileListEntity(iConsoleDriver):
             self.failed[function] = 0
         for entity in self.entitylist:
             thr = threading.Thread(name=entity.ipaddr, \
-                                   target=self._do_function, \
-                                   args=(entity, function, arguments))
+                                       target=self._do_function, \
+                                       args=(entity, function, arguments))
             self.threadlist.append(thr)
             thr.start()
         for t in self.threadlist:
@@ -161,7 +164,7 @@ class FileListEntity(iConsoleDriver):
             if self.success[function] == 0:
                 retval = False
                 status = 'Failed'
-            msg = str(self.success[function]) + " succeeded. "
+            msg = f"{str(self.success[function])} succeeded. "
             msg = msg + str(self.failed[function]) + " failed."
             del self.success[function]
             del self.failed[function]

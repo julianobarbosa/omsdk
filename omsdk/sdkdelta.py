@@ -142,12 +142,7 @@ class DeltaComputer:
                 if diff_filter.allow_scope(DiffScope.Deleted):
                     deleted["_deleted_comps"][comp] = first[comp]
                 continue
-            # comp in both first and second
-            kmap = {}
-            # build a hashmap of component instances
-            for entries in first[comp]:
-                kmap[entries["Key"]] = entries
-
+            kmap = {entries["Key"]: entries for entries in first[comp]}
             for entries in second[comp]:
                 # comp instance in second, not in first => added
                 if entries["Key"] not in kmap:
@@ -186,7 +181,7 @@ class DeltaComputer:
                 # remove the entry from map - as it is visited
                 kmap[entries["Key"]] = None
 
-                if len(tomodify) == 0 and len(todel) == 0 and len(toadd) == 0:
+                if not tomodify and not todel and not toadd:
                     # instance is same
                     if diff_filter.allow_scope(DiffScope.Same):
                         tosame["Key"] = entries["Key"]
@@ -194,7 +189,7 @@ class DeltaComputer:
                             same["_same_instances"][comp] = []
                         same["_same_instances"][comp].append(tosame)
                     continue
-                elif len(tosame) == 0 and len(todel) == 0 and len(toadd) == 0:
+                elif not tosame and not todel and not toadd:
                     if diff_filter.allow_scope(DiffScope.Modified):
                         tomodify["Key"] = entries["Key"]
                         if comp not in modified["_modified_instances"]:
@@ -202,7 +197,7 @@ class DeltaComputer:
                         modified["_modified_instances"][comp].append(tomodify)
                     continue
 
-                if len(tomodify) > 0:
+                if tomodify:
                     tomodify["Key"] = entries["Key"]
                     # insert the tomodify into result array
                     if diff_filter.allow_scope(DiffScope.Modified):
@@ -210,21 +205,21 @@ class DeltaComputer:
                             modified["_modified_attribs"][comp] = []
                         modified["_modified_attribs"][comp].append(tomodify)
                 if diff_filter.is_style(DiffStyle.Formal):
-                    if len(tosame) > 0:
+                    if tosame:
                         tosame["Key"] = entries["Key"]
                         # insert the tosame into result array
                         if diff_filter.allow_scope(DiffScope.Same):
                             if comp not in same["_same_attribs"]:
                                 same["_same_attribs"][comp] = []
                             same["_same_attribs"][comp].append(tosame)
-                    if len(toadd) > 0:
+                    if toadd:
                         toadd["Key"] = entries["Key"]
                         # insert the toadd into result array
                         if diff_filter.allow_scope(DiffScope.Added):
                             if comp not in added["_added_attribs"]:
                                 added["_added_attribs"][comp] = []
                             added["_added_attribs"][comp].append(toadd)
-                if len(todel) > 0:
+                if todel:
                     todel["Key"] = entries["Key"]
                     # insert the tomodify into result array
                     if diff_filter.allow_scope(DiffScope.Deleted):
@@ -232,8 +227,8 @@ class DeltaComputer:
                             deleted["_deleted_attribs"][comp] = []
                         deleted["_deleted_attribs"][comp].append(todel)
 
-            for entkey in kmap:
-                if kmap[entkey] == None:
+            for entkey, value in kmap.items():
+                if value is None:
                     continue
                 if diff_filter.allow_scope(DiffScope.Deleted):
                     if comp not in deleted["_deleted_instances"]:
@@ -255,12 +250,11 @@ class DeltaComputer:
         if isinstance(first, list):
             if leaf_has_instances:
                 for comp in first:
-                    if comp not in second:
-                        if diff_filter.allow_scope(DiffScope.Deleted):
-                            mod_deleted.append(comp)
-                    else:
+                    if comp in second:
                         if diff_filter.allow_scope(DiffScope.Same):
                             result.append(comp)
+                    elif diff_filter.allow_scope(DiffScope.Deleted):
+                        mod_deleted.append(comp)
                 for comp in second:
                     if comp not in first:
                         if diff_filter.allow_scope(DiffScope.Added):
@@ -338,32 +332,31 @@ class DeltaComputer:
 
     @staticmethod
     def _clean_tree(todel):
-        if isinstance(todel, bool) or isinstance(todel, str):
+        if isinstance(todel, (bool, str)):
             return False
         if isinstance(todel, list):
             return len(todel) <= 0
-        td = []
-        for i in todel:
-            if DeltaComputer._clean_tree(todel[i]):
-                td.append(i)
+        td = [i for i in todel if DeltaComputer._clean_tree(todel[i])]
         for i in td:
             del todel[i]
         return len(todel) <= 0
 
-    def tree_with_instances(first, second, diff_filter=None):
+    def tree_with_instances(self, second, diff_filter=None):
         if diff_filter is None: diff_filter = DiffFilter()
-        first = DeltaComputer.replicate(first)
+        self = DeltaComputer.replicate(self)
         second = DeltaComputer.replicate(second)
-        result = DeltaComputer._recurse_ctree(first, second, {}, None, None,
-                                              diff_filter, True)
+        result = DeltaComputer._recurse_ctree(
+            self, second, {}, None, None, diff_filter, True
+        )
         DeltaComputer._clean_tree(result)
         return result
 
-    def tree_without_instances(first, second, diff_filter=None):
+    def tree_without_instances(self, second, diff_filter=None):
         if diff_filter is None: diff_filter = DiffFilter()
-        first = DeltaComputer.replicate(first)
+        self = DeltaComputer.replicate(self)
         second = DeltaComputer.replicate(second)
-        result = DeltaComputer._recurse_ctree(first, second, {}, None, None,
-                                              diff_filter, False)
+        result = DeltaComputer._recurse_ctree(
+            self, second, {}, None, None, diff_filter, False
+        )
         DeltaComputer._clean_tree(result)
         return result

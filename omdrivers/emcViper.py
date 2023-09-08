@@ -103,9 +103,9 @@ class emcViperEntity(iDeviceDriver):
                 return status
             if pOptions is None or not isinstance(pOptions, emcViperProtoOptions):
                 pOptions = emcViperProtoOptions()
-            viper_endpoint = 'https://' + self.ipaddr + ':' + str(pOptions.port)
+            viper_endpoint = f'https://{self.ipaddr}:{str(pOptions.port)}'
             if pOptions.token_endpoint is None:
-                pOptions.token_endpoint = viper_endpoint + '/login'
+                pOptions.token_endpoint = f'{viper_endpoint}/login'
             self.sio = Viperpy(vipr_endpoint=viper_endpoint,
                                token_endpoint=pOptions.token_endpoint,
                                username=self.creds.username,
@@ -118,49 +118,50 @@ class emcViperEntity(iDeviceDriver):
         except:
             traceback.print_exc()
             status = False
-        logger.debug(self.ref.name + '::connect(' + self.ipaddr + ', ' + str(self.creds) + ")=" + str(status))
+        logger.debug(
+            f'{self.ref.name}::connect({self.ipaddr}, {str(self.creds)})={status}'
+        )
         return status
 
     def my_get_entityjson(self):
         if not OMViperPresent:
             return False
-        if OMViperPresent:
-            entityjson["Disk"] = self.sio.disk.get_disks()["disk"]
-            entityjson["Capacity"] = self.sio.fabric_capacity.get_capacity()["total_capacity"]
-            entityjson["Node"] = self.sio.node.get_nodes()["node"]
-            entityjson["Service"] = self.sio.services.get_services()["service"]
-            entityjson["HealthMonitor"] = self.sio.health_monitor.get_health()["node_health_list"]
+        entityjson["Disk"] = self.sio.disk.get_disks()["disk"]
+        entityjson["Capacity"] = self.sio.fabric_capacity.get_capacity()["total_capacity"]
+        entityjson["Node"] = self.sio.node.get_nodes()["node"]
+        entityjson["Service"] = self.sio.services.get_services()["service"]
+        entityjson["HealthMonitor"] = self.sio.health_monitor.get_health()["node_health_list"]
 
-            entityjson["Namespace"] = self.sio.namespace.get_namespaces()["namespace"]
-            entityjson["Users"] = self.sio.user_management.get_objectusers()["blobuser"]
-            entityjson["Configuration"] = self.sio.configuration.get_config_properties()["properties"]
+        entityjson["Namespace"] = self.sio.namespace.get_namespaces()["namespace"]
+        entityjson["Users"] = self.sio.user_management.get_objectusers()["blobuser"]
+        entityjson["Configuration"] = self.sio.configuration.get_config_properties()["properties"]
 
-            entityjson["Tenants"] = []
-            tenantids = self.sio.tenants.get_tenants_bulk()
-            for i in tenantids:
-                entityjson["Tenants"].append(self.sio.tenants.get_tenant(i))
-                entityjson["Tenants"][-1]["Subtenants"] = self.sio.tenants.get_subtenants(i)
+        entityjson["Tenants"] = []
+        tenantids = self.sio.tenants.get_tenants_bulk()
+        for i in tenantids:
+            entityjson["Tenants"].append(self.sio.tenants.get_tenant(i))
+            entityjson["Tenants"][-1]["Subtenants"] = self.sio.tenants.get_subtenants(i)
 
-            entityjson["Projects"] = []
-            projectids = self.sio.projects.get_projects_bulk()
-            for i in projectids:
-                entityjson["Projects"].append(self.sio.projects.get_project(i))
+        entityjson["Projects"] = []
+        projectids = self.sio.projects.get_projects_bulk()
+        for i in projectids:
+            entityjson["Projects"].append(self.sio.projects.get_project(i))
 
-            entityjson["Volumes"] = []
-            volumeids = self.sio.block_volumes.get_volumes_bulk()
-            for i in volumeids:
-                entityjson["Volumes"].append(self.sio.block_volumes.get_volume(i))
+        entityjson["Volumes"] = []
+        volumeids = self.sio.block_volumes.get_volumes_bulk()
+        for i in volumeids:
+            entityjson["Volumes"].append(self.sio.block_volumes.get_volume(i))
 
-            entityjson["VirtualPools"] = []
-            vpoolids = self.sio.block_vpools.get_vpools_bulk()
-            for i in vpoolids:
-                entityjson["VirtualPools"].append(self.sio.block_vpools.get_vpool(i))
+        entityjson["VirtualPools"] = []
+        vpoolids = self.sio.block_vpools.get_vpools_bulk()
+        for i in vpoolids:
+            entityjson["VirtualPools"].append(self.sio.block_vpools.get_vpool(i))
 
-            entityjson["vCenters"] = []
-            vcenterids = self.sio.vcenters.get_vcenters_bulk()
-            for i in vcenterids:
-                entityjson["vCenters"].append(self.sio.block_vcenters.get_vcenter(i))
+        entityjson["vCenters"] = []
+        vcenterids = self.sio.vcenters.get_vcenters_bulk()
+        for i in vcenterids:
+            entityjson["vCenters"].append(self.sio.block_vcenters.get_vcenter(i))
 
-            entityjson["License"] = self.sio.license.get_license()
+        entityjson["License"] = self.sio.license.get_license()
 
-            return True
+        return True

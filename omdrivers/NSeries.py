@@ -394,19 +394,19 @@ class NSeriesEntity(iDeviceDriver):
         if component in ["Port"]:
             if entry["Status"] == 'Testing':
                 return False
-            if not 'Class' in entry:
+            if 'Class' not in entry:
                 return False
         if component in ["System"]:
             if 'SwitchUptime' in entry:
                 x = entry["SwitchUptime"].split()
-                if "Seconds" not in x :
+                if "Seconds" not in x:
                     s = float(entry["SwitchUptime"]) / 100.0
                     m, s = divmod(s, 60)
                     h, m = divmod(m, 60)
                     l = [('Hours', int(h)), ('Minutes', int(m)), ('Seconds', int(s))]
-                    entry["SwitchUptime"] = ' '.join('{} {}'.format(value, name)
-                                        for name, value in l
-                                        if value)
+                    entry["SwitchUptime"] = ' '.join(
+                        f'{value} {name}' for name, value in l if value
+                    )
             if 'Model' in entry:
                 entry["SwitchType"] = entry.get('Model')[:1].upper()+"Series"
             if ':' in self.ipaddr:
@@ -424,60 +424,52 @@ class NSeriesEntity(iDeviceDriver):
         """
         device_json = self.get_json_device()
         ctree = self._build_ctree(self.protofactory.ctree, device_json)
-        fn = {"Fan":[]}
-        ps = {"PowerSupply":[]}
-        if not "Fan" in ctree["System"]:
+        if "Fan" not in ctree["System"]:
+            fn = {"Fan":[]}
             ctree["System"].update(fn)
-        if not "PowerSupply" in ctree["System"]:
+        if "PowerSupply" not in ctree["System"]:
+            ps = {"PowerSupply":[]}
             ctree["System"].update(ps)
         return ctree
 
     def get_basic_entityjson(self):
-        plist = []
-        for comp in self.protofactory.classifier:
-            plist.append(comp)
-        entj = self.get_partial_entityjson(*plist)
-        if entj:
+        plist = list(self.protofactory.classifier)
+        if entj := self.get_partial_entityjson(*plist):
             compList = ["Fan", "PowerSupply"]
             for comp in compList:
-                tmp = {}
-                compiList = entj.pop(comp, [])
-                if compiList:
+                if compiList := entj.pop(comp, []):
                     finalStat = 'Healthy'
                     for iComp in compiList:
                         iStat = iComp.get('OperStatus','Unknown')
                         if iStat == 'Critical':
                             finalStat = iStat
                             break
-                        elif iStat == 'Warning':
+                        elif (
+                            iStat == 'Warning'
+                            or iStat == 'Unknown'
+                            and finalStat != 'Warning'
+                        ):
                             finalStat = iStat
-                        elif iStat == 'Unknown' and finalStat != 'Warning':
-                            finalStat = iStat
-                    tmp.update({"Key": comp})
-                    tmp.update({"PrimaryStatus": finalStat})
+                    tmp = {"Key": comp, "PrimaryStatus": finalStat}
                     entj["Subsystem"].append(tmp)
 
     def get_entityjson(self):
-        plist = []
-        for comp in self.ComponentEnum:
-            plist.append(comp)
-        entj = self.get_partial_entityjson(*plist)
-        if entj:
+        plist = list(self.ComponentEnum)
+        if entj := self.get_partial_entityjson(*plist):
             compList = ["Fan", "PowerSupply"]
             for comp in compList:
-                tmp = {}
-                compiList = entj.get(comp, [])
-                if compiList:
+                if compiList := entj.get(comp, []):
                     finalStat = 'Healthy'
                     for iComp in compiList:
                         iStat = iComp.get('OperStatus','Unknown')
                         if iStat == 'Critical':
                             finalStat = iStat
                             break
-                        elif iStat == 'Warning':
+                        elif (
+                            iStat == 'Warning'
+                            or iStat == 'Unknown'
+                            and finalStat != 'Warning'
+                        ):
                             finalStat = iStat
-                        elif iStat == 'Unknown' and finalStat != 'Warning':
-                            finalStat = iStat
-                    tmp.update({"Key": comp})
-                    tmp.update({"PrimaryStatus": finalStat})
+                    tmp = {"Key": comp, "PrimaryStatus": finalStat}
                     entj["Subsystem"].append(tmp)

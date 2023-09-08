@@ -75,15 +75,15 @@ class Filter(object):
             for i in enumtype:
                 self.add(i)
         else:
-            logger.debug(str(enumtype) + " is not allowed for " + str(self))
+            logger.debug(f"{str(enumtype)} is not allowed for {str(self)}")
         return self
 
     def test(self, enumtype):
         if self.allowedtype(enumtype):
             for i in enumtype:
-                logger.debug("  " + str(i) + "=" + str(self.isset(i)))
+                logger.debug(f"  {str(i)}={str(self.isset(i))}")
         else:
-            logger.debug(str(enumtype) + " is not allowed for " + str(self))
+            logger.debug(f"{str(enumtype)} is not allowed for {str(self)}")
 
 
 MonitorScopeMap = {
@@ -181,14 +181,10 @@ class ComponentScope:
 class RegExpFilter:
     def __init__(self, *args):
         self.rexp = []
-        for rexp in args:
-            self.rexp.append(re.compile(rexp))
+        self.rexp.extend(re.compile(rexp) for rexp in args)
 
     def isMatch(self, obj):
-        for rexp in self.rexp:
-            if rexp.match(obj):
-                return True
-        return False
+        return any(rexp.match(obj) for rexp in self.rexp)
 
 
 class DeviceGroupFilter(RegExpFilter):

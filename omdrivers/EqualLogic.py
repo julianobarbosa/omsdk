@@ -60,8 +60,8 @@ class NoConfig:
 
 if not Pyconfig_mgr:
     EqualLogicConfig = NoConfig
-if not Pyconfig_mgr and PyPSNMP:
-    EqualLogicPSNMPCmds = {}
+    if PyPSNMP:
+        EqualLogicPSNMPCmds = {}
 
 EqualLogicCompEnum = EnumWrapper('EqualLogicCompEnum', {
     "System" : "System",
@@ -286,7 +286,11 @@ class EqualLogicEntity(iDeviceDriver):
 
     def _should_i_include(self, component, entry):
         if component in ["Volume"]:
-            if entry["Name"] == 'vss-control' or entry["Name"] == 'pe-control-vol' or entry["Name"] == 'xpr-control-vol': 
+            if entry["Name"] in [
+                'vss-control',
+                'pe-control-vol',
+                'xpr-control-vol',
+            ]: 
                 return False
             if 'StoragePool' in self.entityjson:
                 storagepoolarr = self.entityjson['StoragePool']
@@ -302,13 +306,13 @@ class EqualLogicEntity(iDeviceDriver):
         if component == "System":
             if 'GroupIP' in entry:
                 entry['GroupURL'] = "http://"+entry['GroupIP']
-            if ':' in self.ipaddr:
-                if 'GroupIPv6' in entry:
+            if 'GroupIPv6' in entry:
+                if ':' in self.ipaddr:
                     entry['GroupURL'] = "http://"+"["+entry['GroupIPv6']+"]"
-                    entry['GroupIP'] = entry['GroupIPv6'] 
+                    entry['GroupIP'] = entry['GroupIPv6']
         if component == "Member":
-            if ':' in self.ipaddr:
-                if 'GroupIPv6' in entry:
+            if 'GroupIPv6' in entry:
+                if ':' in self.ipaddr:
                     entry['GroupIP'] = entry['GroupIPv6']
             if 'StoragePool' in self.entityjson:
                 storagepoolarr = self.entityjson['StoragePool']
@@ -319,36 +323,38 @@ class EqualLogicEntity(iDeviceDriver):
         return True
 
     def _call_it(self,keyComp):
-        self.memid = "" 
+        self.memid = ""
         sys_dict = self.entityjson[keyComp][0]
         for item in self.entityjson:
             if type(self.entityjson[item]) is list:
                 for temp in self.entityjson[item]:
-                    if temp['_SNMPIndex'].find('.' + self.ipaddr) > 0:
-                        #code is IPv4 specific 
-                        templist = temp['_SNMPIndex'].split(".1.4." + self.ipaddr)
+                    if temp['_SNMPIndex'].find(f'.{self.ipaddr}') > 0:
+                        #code is IPv4 specific
+                        templist = temp['_SNMPIndex'].split(f".1.4.{self.ipaddr}")
                         self.memid = templist[0]
-                        #get the exact member index
-                        #self._get_index(self.memid)
-                        #it help you to filter member specific values  
+                                        #get the exact member index
+                                        #self._get_index(self.memid)
+                                        #it help you to filter member specific values  
                     if ':' in self.ipaddr:
                         #code is IPv6 specific
-                        if (sys.version_info > (3, 0)):
-                            u = self.ipaddr
-                        else:
-                            u = unicode(self.ipaddr, "utf-8")
+                        u = (
+                            self.ipaddr
+                            if (sys.version_info > (3, 0))
+                            else unicode(self.ipaddr, "utf-8")
+                        )
                         addr = ipaddress.ip_address(u)
                         v = addr.exploded.replace(":", "")
                         x = [int(v[i:i+2], 16) for i in range(0, len(v), 2)]
                         z = ".".join(str(l) for l in x)
-                        if temp['_SNMPIndex'].find('.' + z) > 0:
-                            templist = temp['_SNMPIndex'].split(".2.16." + z)
+                        if temp['_SNMPIndex'].find(f'.{z}') > 0:
+                            templist = temp['_SNMPIndex'].split(f".2.16.{z}")
                             self.memid = templist[0]
         if ':' in self.ipaddr:
-            if (sys.version_info > (3, 0)):
-                u = self.ipaddr
-            else:
-                u = unicode(self.ipaddr, "utf-8")
+            u = (
+                self.ipaddr
+                if (sys.version_info > (3, 0))
+                else unicode(self.ipaddr, "utf-8")
+            )
             addr = ipaddress.ip_address(u)
             ipaddr = str(addr.exploded)
             if (ipaddr == sys_dict.get('GroupIPv6')):

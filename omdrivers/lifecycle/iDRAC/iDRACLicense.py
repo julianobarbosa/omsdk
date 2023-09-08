@@ -72,9 +72,9 @@ class iDRACLicense(iBaseLicenseApi):
 
     def _get_license_text(self, entitlementId):
         retVal = self.entity._export_license(id=entitlementId)
-        ltext = self.entity._get_field_from_action(retVal,
-                                                   "Data", "ExportLicense_OUTPUT", "LicenseFile")
-        if ltext:
+        if ltext := self.entity._get_field_from_action(
+            retVal, "Data", "ExportLicense_OUTPUT", "LicenseFile"
+        ):
             retVal['License'] = base64.b64decode(ltext).decode("utf-8")
         return retVal
 
@@ -94,7 +94,7 @@ class iDRACLicense(iBaseLicenseApi):
             return []
 
         self._get_license_json()
-        if not "License" in self.license:
+        if "License" not in self.license:
             # replace with exception
             return []
 
@@ -108,7 +108,7 @@ class iDRACLicense(iBaseLicenseApi):
 
     def export_license_share(self, license_share_path):
         self._get_license_json()
-        if not "License" in self.license:
+        if "License" not in self.license:
             return {"l": False}
 
         llist = self.license["License"]
@@ -131,7 +131,7 @@ class iDRACLicense(iBaseLicenseApi):
 
     def _import_license_fqdd(self, license_file, fqdd="iDRAC.Embedded.1", options=LicenseApiOptionsEnum.NoOptions):
         if not os.path.exists(license_file) or not os.path.isfile(license_file):
-            logger.debug(license_file + " is not a file!")
+            logger.debug(f"{license_file} is not a file!")
             return False
         content = ''
         with open(license_file, 'rb') as f:
@@ -146,7 +146,7 @@ class iDRACLicense(iBaseLicenseApi):
     def _import_license_share_fqdd(self, license_share_path, fqdd="iDRAC.Embedded.1",
                                    options=LicenseApiOptionsEnum.NoOptions):
         self._get_license_json()
-        if not "License" in self.license:
+        if "License" not in self.license:
             return False
         llist = self.license["License"]
         if isinstance(self.license["License"], dict):
@@ -171,7 +171,7 @@ class iDRACLicense(iBaseLicenseApi):
     def _replace_license_fqdd(self, license_file, entitlementId, fqdd="iDRAC.Embedded.1",
                               options=LicenseApiOptionsEnum.NoOptions):
         if not os.path.exists(license_file) or not os.path.isfile(license_file):
-            logger.debug(license_file + " is not a file!")
+            logger.debug(f"{license_file} is not a file!")
             return False
         content = ''
         with open(license_file) as f:

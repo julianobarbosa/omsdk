@@ -73,7 +73,7 @@ class UpdateHelper(object):
             with open(fname) as firmware_data:
                 fwinventory = json.load(firmware_data)
             if not fwinventory:
-                logger.debug(' no data found in ' + fname)
+                logger.debug(f' no data found in {fname}')
                 continue
             flist = []
             for comp in components:
@@ -101,7 +101,7 @@ class UpdateHelper(object):
             with open(fname) as firmware_data:
                 fwinventory = json.load(firmware_data)
             if not fwinventory:
-                logger.debug(' no data found in ' + fname)
+                logger.debug(f' no data found in {fname}')
                 continue
             device_fw[fwinventory['ServiceTag']] = fwinventory
 
